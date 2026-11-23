@@ -405,6 +405,14 @@
                     }
 
                 } else if (type === 'win') {
+     // Wenn der Soundtrack gerade taktgenau ausklingt, übernimmt er die Dur-Auflösung nahtlos auf der Eins
+     if (gameMusicState.endingPhase === 'cadence') {
+       gameMusicState.endingOutcome = 'win';
+       return;
+     }
+     if (gameMusicState.endingPhase === 'coda' && (performance.now() - (gameMusicState.lastStopAt || 0) < 1600)) {
+       return;
+     }
                     // Warme Auflösung in einen leuchtenden A-Dur(add9)-Kathedralen-Schlussakkord
                     const arp = [
                         { f: 440.00, t: 0.00, p: -0.42 }, // A4
@@ -470,395 +478,471 @@
             setSoundEnabled(!soundEnabled);
         }
 
-        // ============================================================================
-        // ADAPTIVER CORNFIELD-CHASE-SOUNDTRACK (LIVE-SPANNUNGS-ENGINE)
-        // ============================================================================
-        const gameMusicState = {
-            active: false,
-            mode: null,
-            timer: null,
-            step: 0,
-            nextNoteTime: 0,
-            eighthSec: 60 / 118 / 2,
-            currentBarIdx: 0,
-            currentTension: 0,
-            targetTension: 0.08,
-            lastStopAt: 0,
-            musicGain: null
-        };
+// ============================================================================
+ // ADAPTIVER CORNFIELD-CHASE-SOUNDTRACK (NAHTLOSES AUSPENDELN AM ENDE)
+ // ============================================================================
+ const gameMusicState = {
+   active: false,
+   mode: null,
+   timer: null,
+   step: 0,
+   nextNoteTime: 0,
+   eighthSec: 60 / 116 / 2,
+   currentBarIdx: 0,
+   currentTension: 0,
+   targetTension: 0.04,
+   lastStopAt: 0,
+   endingPhase: 'none',      // 'none' | 'cadence' | 'coda'
+   endingOutcome: 'resolve', // 'resolve' | 'win'
+   endingBarIdx: 0,
+   endingStepsTotal: 0,
+   endingStepsDone: 0,
+   musicGain: null,
+   musicComp: null
+ };
 
-        function computeLiveMusicTension(mode) {
-            try {
-                if (mode === 'arena' && typeof gameState !== 'undefined' && gameState.isRunning) {
-                    const pRem = (gameState.playerDeck ? gameState.playerDeck.length : 0) + (gameState.playerHand ? gameState.playerHand.length : 0);
-                    const hasOpp = gameState.mode === 'ai' || gameState.mode === 'online';
-                    const aRem = hasOpp ? ((gameState.aiDeck ? gameState.aiDeck.length : 0) + (gameState.aiHand ? gameState.aiHand.length : 0)) : 99;
-                    const minRem = Math.min(pRem, aRem);
+ // Berechnet den Spielfortschritt (0.0 = entspannter Start, 1.0 = fokussiertes Finale)
+ function computeLiveMusicTension(mode) {
+   try {
+     if (mode === 'arena' && typeof gameState !== 'undefined' && gameState.isRunning) {
+       const pRem = (gameState.playerDeck ? gameState.playerDeck.length : 0) + (gameState.playerHand ? gameState.playerHand.length : 0);
+       const hasOpp = gameState.mode === 'ai' || gameState.mode === 'online';
+       const aRem = hasOpp ? ((gameState.aiDeck ? gameState.aiDeck.length : 0) + (gameState.aiHand ? gameState.aiHand.length : 0)) : 99;
+       const maxInitial = hasOpp ? 29 : 30;
+       const minRem = Math.min(pRem, aRem);
 
-                    let t = 0;
-                    if (minRem <= 2) t = 1.0;
-                    else if (minRem <= 5) t = 0.78 + ((5 - minRem) / 3) * 0.18;
-                    else if (minRem <= 12) t = 0.36 + ((12 - minRem) / 7) * 0.42;
-                    else if (minRem <= 22) t = ((22 - minRem) / 10) * 0.36;
+       const rawProgress = Math.min(1, Math.max(0, (maxInitial - minRem) / Math.max(1, maxInitial - 1)));
+       let t = Math.pow(rawProgress, 1.25);
+       if (gameState.streak >= 3) t += 0.06;
+       return Math.min(1, Math.max(0, t));
+     }
 
-                    const elapsed = gameState.startTime ? (performance.now() - gameState.startTime) / 1000 : 0;
-                    if (elapsed > 35) t += Math.min(0.22, (elapsed - 35) / 140);
-                    if (gameState.streak >= 3) t += 0.10;
-                    return Math.min(1, Math.max(0, t));
-                }
+     if (mode === 'verhoer' && typeof vhState !== 'undefined' && vhState.isRunning && typeof getMaxClusterSubsetSize === 'function') {
+       const pProg = getMaxClusterSubsetSize(vhState.playerHand, vhState.playerTrios);
+       const bProg = getMaxClusterSubsetSize(vhState.aiHand, vhState.aiTrios);
+       const maxProg = Math.max(pProg, bProg);
+       let t = maxProg <= 2 ? 0.06 : (maxProg === 3 ? 0.42 : (maxProg === 4 ? 0.82 : 1.0));
+       if (vhState.phase === 'interrogation') t = Math.min(1.0, t + 0.14);
+       return t;
+     }
 
-                if (mode === 'verhoer' && typeof vhState !== 'undefined' && vhState.isRunning && typeof getMaxClusterSubsetSize === 'function') {
-                    const pProg = getMaxClusterSubsetSize(vhState.playerHand, vhState.playerTrios);
-                    const bProg = getMaxClusterSubsetSize(vhState.aiHand, vhState.aiTrios);
-                    const maxProg = Math.max(pProg, bProg);
-                    let t = maxProg <= 2 ? 0.04 : (maxProg === 3 ? 0.42 : (maxProg === 4 ? 0.88 : 1.0));
-                    if (vhState.phase === 'interrogation') t = Math.min(1.0, t + 0.22);
-                    return t;
-                }
+     if (mode === 'daily' && typeof dailyState !== 'undefined' && dailyState.solutions.length > 0) {
+       return Math.min(1, Math.max(0.05, dailyState.foundKeys.size / dailyState.solutions.length));
+     }
 
-                if (mode === 'daily' && typeof dailyState !== 'undefined' && dailyState.solutions.length > 0) {
-                    const left = dailyState.solutions.length - dailyState.foundKeys.size;
-                    if (left <= 1) return 0.94;
-                    return Math.min(0.88, (dailyState.foundKeys.size / dailyState.solutions.length) * 0.92);
-                }
+     if (mode === 'sudoku' && typeof sudokuState !== 'undefined' && !sudokuState.solved) {
+       const filled = sudokuState.board.filter(Boolean).length;
+       const totalEmpty = Math.max(1, sudokuState.emptyCount || 10);
+       const placed = Math.max(0, filled - (25 - totalEmpty));
+       return Math.min(1, Math.max(0.05, placed / totalEmpty));
+     }
 
-                if (mode === 'sudoku' && typeof sudokuState !== 'undefined' && !sudokuState.solved) {
-                    const filled = sudokuState.board.filter(Boolean).length;
-                    const totalEmpty = Math.max(1, sudokuState.emptyCount || 10);
-                    const placed = Math.max(0, filled - (25 - totalEmpty));
-                    const ratio = placed / totalEmpty;
-                    return ratio >= 0.82 ? 0.92 : ratio * 0.82;
-                }
+     if (mode === 'endgame' && typeof endgameState !== 'undefined' && endgameState.status === 'playing') {
+       const rem = endgameState.hand.length;
+       if (rem <= 1) return 0.90;
+       if (rem === 2) return 0.65;
+       if (rem === 3) return 0.35;
+       return 0.08;
+     }
 
-                if (mode === 'endgame' && typeof endgameState !== 'undefined' && endgameState.status === 'playing') {
-                    const rem = endgameState.hand.length;
-                    if (rem <= 1) return 0.95;
-                    if (rem === 2) return 0.72;
-                    if (rem === 3) return 0.40;
-                    return 0.10;
-                }
+     if (mode === 'cascade' && typeof cascadeState !== 'undefined' && !cascadeState.gameOver) {
+       let filled = 0;
+       let topDanger = false;
+       for (let r = 0; r < 5; r++) {
+         for (let c = 0; c < 5; c++) {
+           if (cascadeState.board[r] && cascadeState.board[r][c]) {
+             filled++;
+             if (r <= 1) topDanger = true;
+           }
+         }
+       }
+       let t = Math.max(0.05, (filled - 5) / 15);
+       if (topDanger) t = Math.max(t, 0.82);
+       return Math.min(1, t);
+     }
+   } catch (e) {}
+   return 0.05;
+ }
 
-                if (mode === 'cascade' && typeof cascadeState !== 'undefined' && !cascadeState.gameOver) {
-                    let filled = 0;
-                    let topDanger = false;
-                    for (let r = 0; r < 5; r++) {
-                        for (let c = 0; c < 5; c++) {
-                            if (cascadeState.board[r] && cascadeState.board[r][c]) {
-                                filled++;
-                                if (r <= 1) topDanger = true;
-                            }
-                        }
-                    }
-                    let t = Math.max(0, (filled - 6) / 14);
-                    if (topDanger) t = Math.max(t, 0.84);
-                    return Math.min(1, t);
-                }
-            } catch (e) {}
-            return 0.08;
-        }
+ function ensureMusicComp(ctx) {
+   if (!gameMusicState.musicComp && ctx && audioOutputGain) {
+     const comp = ctx.createDynamicsCompressor();
+     comp.threshold.value = -15;
+     comp.knee.value = 22;
+     comp.ratio.value = 4.0;
+     comp.attack.value = 0.015;
+     comp.release.value = 0.25;
+     comp.connect(audioOutputGain);
+     gameMusicState.musicComp = comp;
+   }
+   return gameMusicState.musicComp;
+ }
 
-        function ensureMusicGain(ctx) {
-            if (!gameMusicState.musicGain && ctx && audioOutputGain) {
-                gameMusicState.musicGain = ctx.createGain();
-                gameMusicState.musicGain.gain.value = 0.0001;
-                gameMusicState.musicGain.connect(audioOutputGain);
-            }
-            return gameMusicState.musicGain;
-        }
+ function createFreshMusicBus(ctx) {
+   const comp = ensureMusicComp(ctx);
+   if (!comp) return null;
+   const bus = ctx.createGain();
+   bus.gain.value = 0.0001;
+   bus.connect(comp);
+   gameMusicState.musicGain = bus;
+   return bus;
+ }
 
-        function playMusicKey(ctx, dest, freq, start, duration, volume, pan = 0, brightness = 4.2) {
-            const env = ctx.createGain();
-            env.gain.setValueAtTime(0.0001, start);
-            env.gain.linearRampToValueAtTime(volume, start + 0.009);
-            env.gain.exponentialRampToValueAtTime(volume * 0.42, start + duration * 0.35);
-            env.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+ // Warmes, intimes Filz-Klavier (Cornfield Chase)
+ function playMusicKey(ctx, dest, freq, start, duration, volume, pan = 0, brightness = 3.8) {
+   const env = ctx.createGain();
+   env.gain.setValueAtTime(0.0001, start);
+   env.gain.linearRampToValueAtTime(volume, start + 0.009);
+   env.gain.exponentialRampToValueAtTime(volume * 0.42, start + duration * 0.35);
+   env.gain.exponentialRampToValueAtTime(0.0001, start + duration);
 
-            const lp = ctx.createBiquadFilter();
-            lp.type = 'lowpass';
-            lp.Q.value = 0.65;
-            lp.frequency.setValueAtTime(Math.min(4200, freq * brightness), start);
-            lp.frequency.exponentialRampToValueAtTime(Math.max(280, freq * 1.35), start + duration);
+   const lp = ctx.createBiquadFilter();
+   lp.type = 'lowpass';
+   lp.Q.value = 0.6;
+   lp.frequency.setValueAtTime(Math.min(4000, freq * brightness), start);
+   lp.frequency.exponentialRampToValueAtTime(Math.max(260, freq * 1.35), start + duration);
 
-            env.connect(lp);
-            let target = lp;
-            if (typeof ctx.createStereoPanner === 'function' && pan !== 0) {
-                const panner = ctx.createStereoPanner();
-                panner.pan.value = pan;
-                lp.connect(panner);
-                target = panner;
-            }
-            target.connect(dest);
-            if (audioReverbBus) {
-                const send = ctx.createGain();
-                send.gain.value = 0.48;
-                target.connect(send);
-                send.connect(audioReverbBus);
-            }
+   env.connect(lp);
+   let target = lp;
+   if (typeof ctx.createStereoPanner === 'function' && pan !== 0) {
+     const panner = ctx.createStereoPanner();
+     panner.pan.value = pan;
+     lp.connect(panner);
+     target = panner;
+   }
+   target.connect(dest);
+   if (audioReverbBus) {
+     const send = ctx.createGain();
+     send.gain.value = 0.48;
+     target.connect(send);
+     send.connect(audioReverbBus);
+   }
 
-            // Warmes, intimes Filz-Klavier mit zartem Oberton-Schimmer
-            [
-                { mult: 1, amp: 1.00, wave: 'sine', det: 0 },
-                { mult: 1, amp: 0.28, wave: 'triangle', det: 2.2 },
-                { mult: 2, amp: 0.22, wave: 'sine', det: -1.6 },
-                { mult: 3, amp: 0.06, wave: 'sine', det: 1.0 }
-            ].forEach(p => {
-                const osc = ctx.createOscillator();
-                const g = ctx.createGain();
-                osc.type = p.wave;
-                osc.frequency.setValueAtTime(freq * p.mult, start);
-                if (p.det) osc.detune.setValueAtTime(p.det, start);
-                g.gain.value = p.amp;
-                osc.connect(g);
-                g.connect(env);
-                osc.start(start);
-                osc.stop(start + duration + 0.05);
-            });
-        }
+   [
+     { mult: 1, amp: 1.00, wave: 'sine',     det: 0 },
+     { mult: 1, amp: 0.26, wave: 'triangle', det: 2.0 },
+     { mult: 2, amp: 0.20, wave: 'sine',     det: -1.5 },
+     { mult: 3, amp: 0.05, wave: 'sine',     det: 0.8 }
+   ].forEach(p => {
+     const osc = ctx.createOscillator();
+     const g = ctx.createGain();
+     osc.type = p.wave;
+     osc.frequency.setValueAtTime(freq * p.mult, start);
+     if (p.det) osc.detune.setValueAtTime(p.det, start);
+     g.gain.value = p.amp;
+     osc.connect(g);
+     g.connect(env);
+     osc.start(start);
+     osc.stop(start + duration + 0.05);
+   });
+ }
 
-        function playMusicOrganPad(ctx, dest, freq, start, duration, volume, maxFilter = 1100, fullStops = false) {
-            const stops = fullStops
-                ? [
-                    { mult: 0.5, amp: 0.62, wave: 'sine',     det:  0, pan:  0.00 }, // 16' Sub-Pedal
-                    { mult: 1.0, amp: 0.50, wave: 'triangle', det: -5, pan: -0.55 }, // 8' Links
-                    { mult: 1.0, amp: 0.50, wave: 'triangle', det:  5, pan:  0.55 }, // 8' Rechts
-                    { mult: 1.0, amp: 0.22, wave: 'sawtooth', det:  0, pan:  0.00 }, // 8' Zungen-Wärme
-                    { mult: 2.0, amp: 0.24, wave: 'sine',     det:  3, pan: -0.30 }, // 4' Oktave
-                    { mult: 3.0, amp: 0.09, wave: 'sine',     det: -3, pan:  0.30 }  // 2 2/3' Kathedralen-Glanz
-                ]
-                : [
-                    { mult: 0.5, amp: 0.58, wave: 'sine',     det:  0, pan:  0.00 },
-                    { mult: 1.0, amp: 0.48, wave: 'triangle', det: -4, pan: -0.45 },
-                    { mult: 1.0, amp: 0.48, wave: 'triangle', det:  4, pan:  0.45 },
-                    { mult: 2.0, amp: 0.16, wave: 'sine',     det:  0, pan:  0.00 }
-                ];
+ // Sanfte, warme Temple-Church-Orgel
+ function playMusicOrganPad(ctx, dest, freq, start, duration, volume, maxFilter = 1050, fullStops = false) {
+   const stops = fullStops
+     ? [
+         { mult: 0.5, amp: 0.60, wave: 'sine',     det: 0,    pan: 0.00 },
+         { mult: 1.0, amp: 0.48, wave: 'triangle', det: -4.0, pan: -0.52 },
+         { mult: 1.0, amp: 0.48, wave: 'triangle', det: 4.0,  pan: 0.52 },
+         { mult: 1.0, amp: 0.14, wave: 'sawtooth', det: 0,    pan: 0.00 },
+         { mult: 2.0, amp: 0.20, wave: 'sine',     det: 2.5,  pan: -0.25 },
+         { mult: 3.0, amp: 0.07, wave: 'sine',     det: -2.5, pan: 0.25 }
+       ]
+     : [
+         { mult: 0.5, amp: 0.55, wave: 'sine',     det: 0,    pan: 0.00 },
+         { mult: 1.0, amp: 0.46, wave: 'triangle', det: -3.5, pan: -0.42 },
+         { mult: 1.0, amp: 0.46, wave: 'triangle', det: 3.5,  pan: 0.42 },
+         { mult: 2.0, amp: 0.15, wave: 'sine',     det: 0,    pan: 0.00 }
+       ];
 
-            stops.forEach(s => {
-                const osc = ctx.createOscillator();
-                const lp = ctx.createBiquadFilter();
-                const g = ctx.createGain();
+   stops.forEach(s => {
+     const osc = ctx.createOscillator();
+     const lp = ctx.createBiquadFilter();
+     const g = ctx.createGain();
 
-                osc.type = s.wave;
-                osc.frequency.setValueAtTime(freq * s.mult, start);
-                if (s.det) osc.detune.setValueAtTime(s.det, start);
+     osc.type = s.wave;
+     osc.frequency.setValueAtTime(freq * s.mult, start);
+     if (s.det) osc.detune.setValueAtTime(s.det, start);
 
-                // Typische Temple-Church-Schwellkasten-Kurve
-                lp.type = 'lowpass';
-                lp.Q.value = 0.7;
-                lp.frequency.setValueAtTime(190, start);
-                lp.frequency.exponentialRampToValueAtTime(maxFilter, start + duration * 0.48);
-                lp.frequency.exponentialRampToValueAtTime(240, start + duration);
+     lp.type = 'lowpass';
+     lp.Q.value = 0.65;
+     lp.frequency.setValueAtTime(200, start);
+     lp.frequency.exponentialRampToValueAtTime(maxFilter, start + duration * 0.42);
+     lp.frequency.exponentialRampToValueAtTime(240, start + duration);
 
-                g.gain.setValueAtTime(0.0001, start);
-                g.gain.linearRampToValueAtTime(volume * s.amp, start + duration * 0.26);
-                g.gain.setValueAtTime(volume * s.amp, start + duration * 0.68);
-                g.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+     g.gain.setValueAtTime(0.0001, start);
+     g.gain.linearRampToValueAtTime(volume * s.amp, start + Math.min(0.24, duration * 0.25));
+     g.gain.setValueAtTime(volume * s.amp, start + duration * 0.65);
+     g.gain.exponentialRampToValueAtTime(0.0001, start + duration);
 
-                osc.connect(lp);
-                lp.connect(g);
+     osc.connect(lp);
+     lp.connect(g);
 
-                let target = g;
-                if (typeof ctx.createStereoPanner === 'function' && s.pan !== 0) {
-                    const panner = ctx.createStereoPanner();
-                    panner.pan.value = s.pan;
-                    g.connect(panner);
-                    target = panner;
-                }
-                target.connect(dest);
-                if (audioReverbBus) {
-                    const send = ctx.createGain();
-                    send.gain.value = fullStops ? 0.58 : 0.44;
-                    target.connect(send);
-                    send.connect(audioReverbBus);
-                }
+     let target = g;
+     if (typeof ctx.createStereoPanner === 'function' && s.pan !== 0) {
+       const panner = ctx.createStereoPanner();
+       panner.pan.value = s.pan;
+       g.connect(panner);
+       target = panner;
+     }
+     target.connect(dest);
+     if (audioReverbBus) {
+       const send = ctx.createGain();
+       send.gain.value = fullStops ? 0.55 : 0.44;
+       target.connect(send);
+       send.connect(audioReverbBus);
+     }
 
-                osc.start(start);
-                osc.stop(start + duration + 0.08);
-            });
-        }
+     osc.start(start);
+     osc.stop(start + duration + 0.08);
+   });
+ }
 
-        function playMusicPulseBass(ctx, dest, freq, start, duration, volume = 0.028, cutoff = 420) {
-            const osc = ctx.createOscillator();
-            const lp = ctx.createBiquadFilter();
-            const g = ctx.createGain();
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(freq, start);
-            lp.type = 'lowpass';
-            lp.frequency.setValueAtTime(cutoff, start);
-            lp.frequency.exponentialRampToValueAtTime(135, start + duration);
-            g.gain.setValueAtTime(0.0001, start);
-            g.gain.linearRampToValueAtTime(volume, start + 0.014);
-            g.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-            osc.connect(lp);
-            lp.connect(g);
-            g.connect(dest);
-            osc.start(start);
-            osc.stop(start + duration + 0.03);
-        }
+ function playMusicPulseBass(ctx, dest, freq, start, duration, volume = 0.020, cutoff = 320) {
+   const osc = ctx.createOscillator();
+   const lp = ctx.createBiquadFilter();
+   const g = ctx.createGain();
+   osc.type = 'triangle';
+   osc.frequency.setValueAtTime(freq, start);
+   lp.type = 'lowpass';
+   lp.frequency.setValueAtTime(cutoff, start);
+   lp.frequency.exponentialRampToValueAtTime(130, start + duration);
+   g.gain.setValueAtTime(0.0001, start);
+   g.gain.linearRampToValueAtTime(volume, start + 0.015);
+   g.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+   osc.connect(lp);
+   lp.connect(g);
+   g.connect(dest);
+   osc.start(start);
+   osc.stop(start + duration + 0.03);
+ }
 
-        function playMusicTick(ctx, dest, start, volume = 0.016) {
-            const osc = ctx.createOscillator();
-            const g = ctx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(1180, start);
-            osc.frequency.exponentialRampToValueAtTime(410, start + 0.015);
-            g.gain.setValueAtTime(0.0001, start);
-            g.gain.linearRampToValueAtTime(volume, start + 0.002);
-            g.gain.exponentialRampToValueAtTime(0.0001, start + 0.022);
-            osc.connect(g);
-            g.connect(dest);
-            osc.start(start);
-            osc.stop(start + 0.03);
-        }
+ function playMusicTick(ctx, dest, start, volume = 0.014) {
+   const osc = ctx.createOscillator();
+   const g = ctx.createGain();
+   osc.type = 'triangle';
+   osc.frequency.setValueAtTime(1180, start);
+   osc.frequency.exponentialRampToValueAtTime(410, start + 0.015);
+   g.gain.setValueAtTime(0.0001, start);
+   g.gain.linearRampToValueAtTime(volume, start + 0.002);
+   g.gain.exponentialRampToValueAtTime(0.0001, start + 0.022);
+   osc.connect(g);
+   g.connect(dest);
+   osc.start(start);
+   osc.stop(start + 0.03);
+ }
 
-        function startGameMusic(mode = 'arena') {
-            if (!musicEnabled) return;
-            if (gameMusicState.active && gameMusicState.mode === mode) return;
-            stopGameMusic(true);
+ function startGameMusic(mode = 'arena') {
+   if (!musicEnabled) return;
+   if (gameMusicState.active && gameMusicState.mode === mode && gameMusicState.endingPhase === 'none') return;
+   stopGameMusic(true);
 
-            try {
-                const ctx = getAudioContext();
-                if (!ctx) return;
-                const dest = ensureMusicGain(ctx);
-                if (!dest) return;
+   try {
+     const ctx = getAudioContext();
+     if (!ctx) return;
+     const dest = createFreshMusicBus(ctx);
+     if (!dest) return;
 
-                const now = ctx.currentTime;
-                dest.gain.cancelScheduledValues(now);
-                dest.gain.setValueAtTime(Math.max(0.0001, dest.gain.value), now);
-                dest.gain.linearRampToValueAtTime(0.85, now + 1.2);
+     const now = ctx.currentTime;
+     dest.gain.setValueAtTime(0.0001, now);
+     dest.gain.linearRampToValueAtTime(0.86, now + 1.1);
 
-                const bpm = 118;
-                const eighthSec = 60 / bpm / 2;
+     gameMusicState.active = true;
+     gameMusicState.mode = mode;
+     gameMusicState.endingPhase = 'none';
+     gameMusicState.endingOutcome = 'resolve';
+     gameMusicState.endingBarIdx = 0;
+     gameMusicState.endingStepsTotal = 0;
+     gameMusicState.endingStepsDone = 0;
+     gameMusicState.step = 0;
+     gameMusicState.eighthSec = 60 / 116 / 2;
+     gameMusicState.nextNoteTime = now + 0.05;
+     gameMusicState.currentBarIdx = 0;
+     gameMusicState.currentTension = 0;
+     gameMusicState.targetTension = computeLiveMusicTension(mode);
 
-                gameMusicState.active = true;
-                gameMusicState.mode = mode;
-                gameMusicState.step = 0;
-                gameMusicState.eighthSec = eighthSec;
-                gameMusicState.nextNoteTime = now + 0.05;
-                gameMusicState.currentBarIdx = 0;
-                gameMusicState.currentTension = 0;
-                gameMusicState.targetTension = computeLiveMusicTension(mode);
+     const scheduleStep = (t) => {
+       const s = gameMusicState.step;
+       const isEnding = gameMusicState.endingPhase === 'cadence';
+       // Beim Ausklingen bleibt exakt die laufende Harmonie stehen → 0 % Akkord-Sprung!
+       const barIdx = isEnding ? gameMusicState.endingBarIdx : (Math.floor(s / 6) % 4);
+       const beatInBar = s % 6;
+       gameMusicState.currentBarIdx = barIdx;
+       const bar = CORNFIELD_BARS[barIdx];
 
-                const scheduleStep = (t) => {
-                    const s = gameMusicState.step;
-                    const barIdx = Math.floor(s / 6) % 4;
-                    const beatInBar = s % 6;
-                    gameMusicState.currentBarIdx = barIdx;
-                    const bar = CORNFIELD_BARS[barIdx];
+       if (beatInBar === 0 && !isEnding) {
+         gameMusicState.targetTension = computeLiveMusicTension(gameMusicState.mode);
+       }
+       gameMusicState.currentTension += (gameMusicState.targetTension - gameMusicState.currentTension) * 0.14;
+       const tension = gameMusicState.currentTension;
 
-                    // Spannung nur einmal pro Takt neu berechnen (verhindert Ruckler im Verhör-Modus)
-                    if (beatInBar === 0) {
-                        gameMusicState.targetTension = computeLiveMusicTension(gameMusicState.mode);
-                    }
-                    gameMusicState.currentTension += (gameMusicState.targetTension - gameMusicState.currentTension) * 0.16;
-                    const tension = gameMusicState.currentTension;
+       // --- NAHTLOSES AUSPENDELN IM SELBEN RHYTHMUS & IN DERSELBEN HARMONIE ---
+       if (isEnding) {
+         const idx = gameMusicState.endingStepsDone;
+         const total = Math.max(1, gameMusicState.endingStepsTotal);
+         const isFinalNote = idx >= total - 1;
+         const progress = (idx + 1) / total; // 0 → 1
 
-                    // 1. Zartes Filz-Klavier (3/4-Pendel)
-                    const pan = (beatInBar % 2 === 0) ? -0.28 : 0.28;
-                    const accent = beatInBar === 0 ? 1.18 : (beatInBar === 3 ? 1.04 : 0.88);
-                    const baseKeyVol = 0.040 + tension * 0.017;
-                    const brightness = 3.4 + tension * 2.1;
-                    playMusicKey(
-                        audioCtx, dest, bar.arp[beatInBar], t,
-                        eighthSec * (3.2 - tension * 0.65),
-                        baseKeyVol * accent, pan, brightness
-                    );
+         // Organisches, kaum merkliches Ritardando (+5 % bis +16 %)
+         const liveBpm = (116 + tension * 5) * (1 - progress * 0.14);
+         const stepDur = 60 / liveBpm / 2;
+         gameMusicState.eighthSec = stepDur;
 
-                    // 2. Uhrwerk-Tick
-                    if (beatInBar % 2 === 0) {
-                        playMusicTick(audioCtx, dest, t, (beatInBar === 0 ? 0.015 : 0.008) + tension * 0.006);
-                    } else if (tension >= 0.72) {
-                        playMusicTick(audioCtx, dest, t, 0.007 + (tension - 0.72) * 0.014);
-                    }
+         const pan = isFinalNote ? 0 : ((beatInBar % 2 === 0) ? -0.24 : 0.24);
+         const baseVol = 0.042 + tension * 0.012;
+         const noteVol = baseVol * (1 - progress * 0.42);
+         const noteDur = isFinalNote ? 1.65 : stepDur * 3.1;
+         const brightness = (3.4 + tension * 1.4) * (1 - progress * 0.24);
 
-                    // 3. Gedämpfter Bass-Puls ab mittlerer Spannung
-                    if (tension >= 0.30) {
-                        const bassFactor = Math.min(1, (tension - 0.30) / 0.70);
-                        const pulseVol = 0.008 + bassFactor * 0.024;
-                        const cutoff = 260 + bassFactor * 260;
-                        playMusicPulseBass(audioCtx, dest, bar.bass, t, eighthSec * 0.92, beatInBar === 0 ? pulseVol * 1.25 : pulseVol, cutoff);
-                    }
+         // Exakt der nächste natürliche Pendel-Ton aus dem laufenden Takt
+         playMusicKey(audioCtx, dest, bar.arp[beatInBar], t, noteDur, noteVol, pan, brightness);
 
-                    // 4. Temple-Church-Kathedralen-Orgel
-                    if (beatInBar === 0 && tension >= 0.18) {
-                        const barDur = eighthSec * 6.35;
-                        const orgFactor = Math.min(1, (tension - 0.18) / 0.82);
-                        const fullStops = tension >= 0.55;
-                        const bassVol = 0.020 + orgFactor * 0.060;
-                        const bassFilter = 460 + orgFactor * 1650;
+         if (isFinalNote) {
+           // Auf dem letzten Ton: hauchzarter, harmonisch identischer Nachklang
+           if (gameMusicState.endingOutcome === 'win') {
+             // Eine einzige, glasklare Konsonanz-Oktave exakt aus demselben Takt (kein Akkordbruch!)
+             playMusicKey(audioCtx, dest, bar.high[0], t + 0.025, 1.75, 0.020, 0.12, 3.6);
+           }
+           // Federleichtes Orgel-Atem-Polster auf genau demselben Grundton, damit kein Loch entsteht
+           playMusicOrganPad(audioCtx, dest, bar.bass, t, 1.55, 0.016 + tension * 0.012, 620, false);
 
-                        playMusicOrganPad(audioCtx, dest, bar.bass, t, barDur, bassVol, bassFilter, fullStops);
-                        if (tension >= 0.36) {
-                            playMusicOrganPad(audioCtx, dest, bar.pad, t, barDur, 0.016 + orgFactor * 0.032, 820 + orgFactor * 1350, tension >= 0.78);
-                        }
-                        if (tension >= 0.66) {
-                            playMusicOrganPad(audioCtx, dest, bar.fifth, t, barDur, 0.012 + orgFactor * 0.018, 1250 + orgFactor * 1050, false);
-                        }
-                    }
+           // Scheduler beenden & Bus ab t + 0.65s komplett klickfrei in die Stille gleiten lassen
+           gameMusicState.endingPhase = 'coda';
+           if (gameMusicState.timer) {
+             clearInterval(gameMusicState.timer);
+             gameMusicState.timer = null;
+           }
+           dest.gain.setTargetAtTime(0.0001, t + 0.65, 0.34);
+           setTimeout(() => {
+             if (gameMusicState.endingPhase === 'coda' && gameMusicState.musicGain === dest) {
+               gameMusicState.endingPhase = 'none';
+             }
+           }, Math.round((t + 2.2 - audioCtx.currentTime) * 1000));
+         }
 
-                    // 5. Hohe Oktav-Gegenmelodie bei hoher Spannung
-                    if (tension >= 0.55 && (beatInBar === 0 || (tension >= 0.82 && beatInBar === 4))) {
-                        const note = beatInBar === 0 ? bar.high[0] : bar.high[1];
-                        const highVol = 0.015 + Math.min(1, (tension - 0.55) / 0.45) * 0.018;
-                        playMusicKey(audioCtx, dest, note, t, eighthSec * 4.5, highVol, 0.14, 4.9);
-                    }
+         gameMusicState.endingStepsDone++;
+         gameMusicState.step++;
+         return stepDur;
+       }
 
-                    gameMusicState.step++;
-                };
+       // --- REGULÄRER CORNFIELD-CHASE-VERLAUF ---
+       const liveBpm = 116 + tension * 5;
+       const stepDur = 60 / liveBpm / 2;
+       gameMusicState.eighthSec = stepDur;
 
-                // Hardware-Audio-Lookahead (180 ms Puffer) — bleibt auch bei DOM-Updates absolut flüssig
-                const runScheduler = () => {
-                    if (!gameMusicState.active || !musicEnabled || !audioCtx) return;
-                    const nowTime = audioCtx.currentTime;
-                    if (gameMusicState.nextNoteTime < nowTime - 0.25) {
-                        gameMusicState.nextNoteTime = nowTime + 0.03;
-                    }
-                    const scheduleAheadSec = 0.18;
-                    while (gameMusicState.nextNoteTime < nowTime + scheduleAheadSec) {
-                        scheduleStep(gameMusicState.nextNoteTime);
-                        gameMusicState.nextNoteTime += eighthSec;
-                    }
-                };
+       // 1. Filz-Klavier (3/4-Pendel – immer im Vordergrund)
+       const pan = (beatInBar % 2 === 0) ? -0.28 : 0.28;
+       const accent = beatInBar === 0 ? 1.18 : (beatInBar === 3 ? 1.04 : 0.88);
+       playMusicKey(
+         audioCtx, dest, bar.arp[beatInBar], t,
+         stepDur * (3.2 - tension * 0.45),
+         (0.042 + tension * 0.014) * accent, pan, 3.4 + tension * 1.6
+       );
 
-                runScheduler();
-                gameMusicState.timer = setInterval(runScheduler, 40);
-            } catch (e) {}
-        }
+       // 2. Subtiles Interstellar-Uhrwerk
+       if (beatInBar % 2 === 0) {
+         playMusicTick(audioCtx, dest, t, (beatInBar === 0 ? 0.014 : 0.008) + tension * 0.005);
+       } else if (tension >= 0.78) {
+         playMusicTick(audioCtx, dest, t, 0.006 + (tension - 0.78) * 0.012);
+       }
 
-        function stopGameMusic(immediate = false) {
-            if (gameMusicState.timer) {
-                clearInterval(gameMusicState.timer);
-                gameMusicState.timer = null;
-            }
-            const wasActive = gameMusicState.active;
-            const lastBar = CORNFIELD_BARS[gameMusicState.currentBarIdx] || CORNFIELD_BARS[2];
-            if (wasActive) {
-                gameMusicState.lastStopAt = performance.now();
-            }
-            gameMusicState.active = false;
-            gameMusicState.mode = null;
+       // 3. Weicher Bass-Puls ab ca. 35 % Fortschritt
+       if (tension >= 0.35) {
+         const bassFactor = Math.min(1, (tension - 0.35) / 0.65);
+         const pulseVol = 0.008 + bassFactor * 0.020;
+         playMusicPulseBass(audioCtx, dest, bar.bass, t, stepDur * 0.92, beatInBar === 0 ? pulseVol * 1.2 : pulseVol, 240 + bassFactor * 200);
+       }
 
-            if (gameMusicState.musicGain && audioCtx) {
-                try {
-                    const now = audioCtx.currentTime;
-                    const dest = gameMusicState.musicGain;
-                    dest.gain.cancelScheduledValues(now);
-                    dest.gain.setValueAtTime(Math.max(0.0001, dest.gain.value), now);
-                    if (immediate) {
-                        dest.gain.setValueAtTime(0.0001, now);
-                    } else {
-                        // Sanftes, musikalisches Ausklingen (2,8 s + leiser, verhallender Schlusston)
-                        if (wasActive) {
-                            const tailStart = Math.max(now + 0.02, gameMusicState.nextNoteTime || now + 0.02);
-                            playMusicKey(audioCtx, dest, 440.00, tailStart, 1.9, 0.032, -0.15, 3.0);
-                            playMusicKey(audioCtx, dest, 659.25, tailStart + 0.26, 2.1, 0.020, 0.15, 2.8);
-                            playMusicOrganPad(audioCtx, dest, lastBar.bass, tailStart, 2.4, 0.024, 520, false);
-                        }
-                        dest.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
-                    }
-                } catch (e) {}
-            }
-        }
+       // 4. Warme, maßvolle Temple-Church-Orgel
+       if (beatInBar === 0 && tension >= 0.24) {
+         const barDur = stepDur * 6.35;
+         const orgFactor = Math.min(1, (tension - 0.24) / 0.76);
+         const fullStops = tension >= 0.62;
+         playMusicOrganPad(audioCtx, dest, bar.bass, t, barDur, 0.018 + orgFactor * 0.046, 440 + orgFactor * 1150, fullStops);
 
+         if (tension >= 0.45) {
+           playMusicOrganPad(audioCtx, dest, bar.pad, t, barDur, 0.014 + orgFactor * 0.026, 760 + orgFactor * 950, false);
+         }
+         if (tension >= 0.72) {
+           playMusicOrganPad(audioCtx, dest, bar.fifth, t, barDur, 0.010 + orgFactor * 0.016, 1100 + orgFactor * 700, false);
+         }
+       }
+
+       // 5. Zarte hohe Klavier-Oktav-Gegenmelodie im letzten Drittel
+       if (tension >= 0.60 && (beatInBar === 0 || (tension >= 0.84 && beatInBar === 4))) {
+         const note = beatInBar === 0 ? bar.high[0] : bar.high[1];
+         const highVol = 0.014 + Math.min(1, (tension - 0.60) / 0.40) * 0.016;
+         playMusicKey(audioCtx, dest, note, t, stepDur * 4.2, highVol, 0.14, 4.6);
+       }
+
+       gameMusicState.step++;
+       return stepDur;
+     };
+
+     const runScheduler = () => {
+       if ((!gameMusicState.active && gameMusicState.endingPhase !== 'cadence') || !musicEnabled || !audioCtx) return;
+       const nowTime = audioCtx.currentTime;
+       if (gameMusicState.nextNoteTime < nowTime - 0.25) {
+         gameMusicState.nextNoteTime = nowTime + 0.03;
+       }
+       const scheduleAheadSec = 0.14;
+       while (gameMusicState.nextNoteTime < nowTime + scheduleAheadSec) {
+         const stepDur = scheduleStep(gameMusicState.nextNoteTime);
+         gameMusicState.nextNoteTime += stepDur;
+         if (gameMusicState.endingPhase === 'coda') break;
+       }
+     };
+
+     runScheduler();
+     gameMusicState.timer = setInterval(runScheduler, 35);
+   } catch (e) {}
+ }
+
+ function stopGameMusic(immediate = false) {
+   const wasActive = gameMusicState.active;
+   if (wasActive) {
+     gameMusicState.lastStopAt = performance.now();
+   }
+   gameMusicState.active = false;
+   gameMusicState.mode = null;
+
+   const oldBus = gameMusicState.musicGain;
+   if (!oldBus || !audioCtx) {
+     if (gameMusicState.timer) { clearInterval(gameMusicState.timer); gameMusicState.timer = null; }
+     gameMusicState.endingPhase = 'none';
+     return;
+   }
+
+   try {
+     const now = audioCtx.currentTime;
+
+     if (immediate) {
+       if (gameMusicState.timer) { clearInterval(gameMusicState.timer); gameMusicState.timer = null; }
+       gameMusicState.endingPhase = 'none';
+       oldBus.gain.setTargetAtTime(0.0001, now, 0.03);
+       setTimeout(() => { try { oldBus.disconnect(); } catch (e) {} }, 220);
+       return;
+     }
+
+     const isLeavingGamePage = (typeof state !== 'undefined' && state.currentPage !== 'game');
+
+     // Beim Verlassen der Spiel-Seite: weiches, klickfreies Ausblenden
+     if (!wasActive || isLeavingGamePage || !musicEnabled) {
+       if (gameMusicState.timer) { clearInterval(gameMusicState.timer); gameMusicState.timer = null; }
+       gameMusicState.endingPhase = 'none';
+       oldBus.gain.setTargetAtTime(0.0001, now, 0.24);
+       return;
+     }
+
+     // SPIELENDE: Nahtlos auf dem aktuellen Akkord auspendeln (2 Schritte bei ungeradem, 3 bei geradem Beat)
+     // → landet exakt auf dem ruhigen Akkordton ohne jeden harmonischen oder rhythmischen Sprung!
+     gameMusicState.endingPhase = 'cadence';
+     gameMusicState.endingOutcome = 'resolve';
+     gameMusicState.endingBarIdx = gameMusicState.currentBarIdx;
+     gameMusicState.endingStepsTotal = (gameMusicState.step % 2 === 0) ? 3 : 2;
+     gameMusicState.endingStepsDone = 0;
+   } catch (e) {}
+ }
         function setMusicEnabled(enabled) {
             musicEnabled = Boolean(enabled);
             localStorage.setItem('blink_music_enabled', musicEnabled ? 'true' : 'false');

@@ -151,11 +151,40 @@ function recordAnalysisRestock() {
   matchAnalysisState.timeline.push({ t, playerRem, oppRem, adv: oppRem - playerRem });
 }
 
+function timeToBaseElo(normSec) {
+  // Orientiert an den Bot-Abschlusszeiten (29 Karten): 25s ≈ Grandmaster (2000), 33s ≈ Master (1800) usw.
+  const anchors = [
+    [12, 2350],
+    [18, 2180],
+    [25, 2000],
+    [33, 1800],
+    [43, 1600],
+    [55, 1400],
+    [68, 1200],
+    [83, 1050],
+    [100, 900],
+    [119, 750],
+    [145, 550],
+    [180, 450]
+  ];
+  if (normSec <= anchors[0][0]) return anchors[0][1];
+  for (let i = 1; i < anchors.length; i++) {
+    const [t1, e1] = anchors[i - 1];
+    const [t2, e2] = anchors[i];
+    if (normSec <= t2) {
+      const ratio = (normSec - t1) / (t2 - t1);
+      return e1 + ratio * (e2 - e1);
+    }
+  }
+  return 450;
+}
+
 function buildMatchAnalysisReport(meta) {
   const playerPlays = matchAnalysisState.events.filter(e => e.type === 'play' && e.actor === 'player');
   const oppPlays = matchAnalysisState.events.filter(e => e.type === 'play' && e.actor === 'ai');
   const totalAttempts = playerPlays.length + matchAnalysisState.mistakes;
   const durationSec = Math.max(1, (performance.now() - matchAnalysisState.startedAt) / 1000);
+  const didWin = meta ? Boolean(meta.didWin) : false;
 
   // Reaktionszeiten
   const reactions = playerPlays.map(e => e.reactionMs).filter(v => typeof v === 'number');
@@ -168,18 +197,46 @@ function buildMatchAnalysisReport(meta) {
     if (e.quality && counts[e.quality.key] !== undefined) counts[e.quality.key]++;
   });
 
-  // Chess.com-Style Genauigkeit (0–100 %)
+  // Genauigkeit (0–100 %)
   const hitRatio = totalAttempts > 0 ? (playerPlays.length / totalAttempts) : 1;
   const slowPenalty = playerPlays.length > 0 ? (counts.inaccuracy / playerPlays.length) * 14 : 0;
   const brilliantBonus = playerPlays.length > 0 ? Math.min(6, (counts.brilliant / playerPlays.length) * 18) : 0;
   const accuracy = Math.max(15, Math.min(99.9, +(hitRatio * 100 - slowPenalty + brilliantBonus).toFixed(1)));
 
-  // Geschätzte Performance-Elo dieser Partie
-  const oppElo = (meta && typeof meta.beforeOppElo === 'number') ? meta.beforeOppElo : getCurrentOpponentElo();
-  const didWin = meta ? Boolean(meta.didWin) : false;
-  const speedBonus = avgReactionMs > 0 ? Math.max(-140, Math.min(180, Math.round((2100 - avgReactionMs) * 0.14))) : 0;
-  const accBonus = Math.round((accuracy - 82) * 5);
-  const perfElo = Math.max(450, Math.min(2350, Math.round(oppElo + (didWin ? 140 : -140) + speedBonus * 0.5 + accBonus * 0.5)));
+  // --------------------------------------------------------------------------
+  // SPIEL-RATING: HAUPTKRITERIUM = ABSCHLUSSZEIT, SEKUNDÄR = DEADLOCKS & FEHLER
+  // --------------------------------------------------------------------------
+  const isVersus = (typeof gameState !== 'undefined') && (gameState.mode === 'ai' || gameState.mode === 'online');
+  const isCluster = matchAnalysisState.ruleMode === 'cluster';
+  const totalCards = isCluster ? 28 : (isVersus ? 29 : 30);
+
+  // Bei Sieg zählt die echte Zeit; bei Niederlage wird auf alle Karten hochgerechnet
+  let effectiveSec = durationSec;
+  if (!didWin) {
+    const cleared = Math.max(1, playerPlays.length + Math.min(matchAnalysisState.restocks, 3));
+    effectiveSec = durationSec * (totalCards / cleared);
+  }
+
+  // Deadlock-Ausgleich: Unverschuldete Restocks kosten Zeit → faire Zeitgutschrift (max. 4×)
+  const legitimatePlays = playerPlays.length >= Math.round(totalCards * 0.65);
+  const deadlockCredit = (legitimatePlays && matchAnalysisState.restocks <= 5)
+    ? Math.min(matchAnalysisState.restocks, 4) * (isCluster ? 3.5 : 2.5)
+    : 0;
+  const adjustedSec = Math.max(8, effectiveSec - deadlockCredit);
+
+  // Cluster-Modus dauert kognitiv länger → auf Standard-Skala normieren
+  const normSec = isCluster ? (adjustedSec / 1.45) : adjustedSec;
+  const baseTimeElo = timeToBaseElo(normSec);
+
+  // Sekundäre Feinjustierung (Fehler, fehlerfreie Partie, Flow, Restock-Spam-Schutz)
+  const mistakeAdj = matchAnalysisState.mistakes === 0 && playerPlays.length >= 15
+    ? 35
+    : -Math.min(140, matchAnalysisState.mistakes * 18);
+  const flowBonus = Math.min(25, Math.max(0, (matchAnalysisState.maxStreak - 3) * 4));
+  const lossAdj = didWin ? 0 : -40;
+  const excessRestockPenalty = matchAnalysisState.restocks > 5 ? -(matchAnalysisState.restocks - 5) * 40 : 0;
+
+  const perfElo = Math.max(450, Math.min(2400, Math.round(baseTimeElo + mistakeAdj + flowBonus + lossAdj + excessRestockPenalty)));
 
   // Eigenschafts-Profil (Anzahl / Farbe / Symbol)
   const props = { x: 0, y: 0, z: 0, cluster: 0 };
@@ -187,14 +244,16 @@ function buildMatchAnalysisReport(meta) {
     if (props[e.propType] !== undefined) props[e.propType]++;
   });
 
-  // Schlüsselmoment ermitteln (größte Aufholjagd, kritischer Fehler oder Endspiel-Sprint)
+  // Schlüsselmoment ermitteln
   let keyMoment = 'Konstante Partie ohne größere Einbrüche.';
-  let maxLead = -99, minLead = 99, swingMoment = null;
+  let maxLead = -99, minLead = 99;
   matchAnalysisState.timeline.forEach(pt => {
     if (pt.adv > maxLead) maxLead = pt.adv;
     if (pt.adv < minLead) minLead = pt.adv;
   });
-  if (didWin && minLead <= -3) {
+  if (didWin && normSec <= 25) {
+    keyMoment = `Grandmaster-Tempo: ${formatElapsedTime(durationSec)}${deadlockCredit > 0 ? ` (inkl. ${deadlockCredit.toFixed(1)}s Deadlock-Ausgleich)` : ''}.`;
+  } else if (didWin && minLead <= -3) {
     keyMoment = `Starkes Comeback: Trotz ${Math.abs(minLead)} Karten Rückstand noch gedreht.`;
   } else if (!didWin && maxLead >= 3) {
     keyMoment = `Knapper Wendepunkt: Du lagst zwischenzeitlich +${maxLead} Karten vorn.`;
@@ -203,7 +262,7 @@ function buildMatchAnalysisReport(meta) {
   } else if (counts.brilliant >= 3) {
     keyMoment = `Starke Tempo-Phase mit ${counts.brilliant} brillanten Zügen und ${matchAnalysisState.maxStreak}× Flow-Serie.`;
   } else if (matchAnalysisState.restocks >= 2) {
-    keyMoment = `${matchAnalysisState.restocks}× Stocken (Deadlock) – hohe kombinatorische Blockade in dieser Partie.`;
+    keyMoment = `${matchAnalysisState.restocks}× Stocken (Deadlock) – im Spiel-Rating fair ausgeglichen.`;
   }
 
   matchAnalysisState.lastReport = {
