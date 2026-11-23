@@ -4383,7 +4383,7 @@ let heroSpinCount = 0;
 
             playSound('flip');
 
-            heroSpinCount += 1;
+            heroSpinCount += 1; if (window.BlinkHeroPhysics) window.BlinkHeroPhysics.onShuffle(heroTurboLevel);
             const deg = heroSpinCount * 180;
             const targetSide = (heroSpinCount % 2 === 1) ? 'back' : 'front';
 
@@ -4434,7 +4434,7 @@ let heroSpinCount = 0;
         
         // --- Interaktiver 3D-Tilt-Effekt + Holografischer Lichtglanz ---
             updateSoundButtonUI();
-            const hero3DContainer = document.querySelector('.hero-3d-container');
+            const hero3DContainer = null;
             const heroCardGroup = document.querySelector('.hero-card-group');
 
             if (hero3DContainer && heroCardGroup) {

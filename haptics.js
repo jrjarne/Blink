@@ -1385,3 +1385,366 @@
         bootFinalPolish();
     }
 })();
+// ============================================================================
+// HERO 3D PHYSIK-ENGINE — FEDER-DÄMPFER · PARALLAXE · FOKUS · 3D-KANTE · SCHATTEN
+// ============================================================================
+(function initBlinkHeroPhysics() {
+    if (window.__BLINK_HERO_PHYSICS_READY) return;
+    window.__BLINK_HERO_PHYSICS_READY = true;
+
+    const SIDES = ['left', 'center', 'right'];
+
+    // Gestaffelte Feder-Masse & Parallaxe pro Karte (vorn knackig, hinten weicher nachziehend)
+    const CARD_SPEC = {
+        center: {
+            k: 176, d: 16.5,
+            base: { x: 52, y: 26, z: 86, rz: 0 },
+            floatPhase: 0.0, floatAmp: 9.5, floatRot: 1.1,
+            parallax: { x: 11, y: 7, rx: 4.5, ry: 5.5 }
+        },
+        right: {
+            k: 132, d: 14.5,
+            base: { x: 112, y: 34, z: -14, rz: 14 },
+            floatPhase: 2.1, floatAmp: 10.5, floatRot: 1.5,
+            parallax: { x: -7, y: -5, rx: -3.2, ry: -3.8 }
+        },
+        left: {
+            k: 108, d: 13.0,
+            base: { x: -88, y: 20, z: -34, rz: -10 },
+            floatPhase: 4.2, floatAmp: 10.0, floatRot: -1.5,
+            parallax: { x: -9, y: -6, rx: -3.8, ry: -4.4 }
+        }
+    };
+
+    // Fokus-Offsets (mathematisch so abgestimmt, dass keine Karte beim Vorfahren clippt)
+    const FOCUS_OFFSETS = {
+        left: {
+            left:   { x:  36, y: -15, z: 124, rx: -11, ry: 14, rz:   8, s: 1.08 },
+            center: { x:  16, y:   6, z: -52, rx:   2, ry: -5, rz:   3, s: 0.96 },
+            right:  { x:  16, y:   8, z: -18, rx:   2, ry: -6, rz:   4, s: 0.95 }
+        },
+        center: {
+            center: { x:  -4, y: -14, z:  34, rx: -11, ry: 14, rz:   0, s: 1.075 },
+            left:   { x: -24, y:   6, z: -18, rx:   2, ry:  5, rz:  -5, s: 0.96 },
+            right:  { x:  24, y:   6, z: -18, rx:   2, ry: -5, rz:   5, s: 0.96 }
+        },
+        right: {
+            right:  { x:  46, y: -15, z: 106, rx: -11, ry: 13, rz: -11, s: 1.08 },
+            center: { x: -22, y:   6, z: -52, rx:   2, ry:  5, rz:  -3, s: 0.96 },
+            left:   { x: -16, y:   8, z: -16, rx:   2, ry:  6, rz:  -4, s: 0.95 }
+        }
+    };
+
+    const makeSpring = (v) => ({ v, vel: 0 });
+    function stepSpring(s, target, k, d, dt) {
+        const acc = (target - s.v) * k - s.vel * d;
+        s.vel += acc * dt;
+        s.v += s.vel * dt;
+    }
+
+    function bootHeroPhysics() {
+        const wrapper = document.getElementById('hero-3d-wrapper');
+        const group = wrapper ? wrapper.querySelector('.hero-card-group') : null;
+        if (!wrapper || !group) return;
+
+        const slots = {};
+        const cards = {};
+        const shadows = {};
+        const cardSprings = {};
+
+        wrapper.classList.add('hero-physics-active');
+
+        // 1. Echte 3D-Kartenkante (5 laminierte Schichten) in jede Hero-Karte einfügen
+        const edgeDepths = [-1.6, -0.8, 0, 0.8, 1.6];
+        SIDES.forEach(side => {
+            const slot = wrapper.querySelector(`.hero-slot.${side}`);
+            const card = slot ? slot.querySelector('.hero-card') : null;
+            if (!slot || !card) return;
+            slots[side] = slot;
+            cards[side] = card;
+
+            if (!card.querySelector('.hero-card-edge-slice')) {
+                const firstFace = card.firstChild;
+                edgeDepths.forEach(z => {
+                    const slice = document.createElement('div');
+                    slice.className = z === 0 ? 'hero-card-edge-slice is-core' : 'hero-card-edge-slice';
+                    slice.setAttribute('aria-hidden', 'true');
+                    slice.style.transform = `translateZ(${z}px)`;
+                    card.insertBefore(slice, firstFace);
+                });
+            }
+
+            const b = CARD_SPEC[side].base;
+            cardSprings[side] = {
+                x: makeSpring(b.x),
+                y: makeSpring(b.y),
+                z: makeSpring(b.z),
+                rx: makeSpring(0),
+                ry: makeSpring(0),
+                rz: makeSpring(b.rz),
+                s: makeSpring(1),
+                glareOp: makeSpring(0)
+            };
+        });
+
+        // 2. Dynamische Bodenschatten-Ebene unterhalb der 3 Karten anlegen
+        let shadowPlane = wrapper.querySelector('.hero-ground-shadow-plane');
+        if (!shadowPlane) {
+            shadowPlane = document.createElement('div');
+            shadowPlane.className = 'hero-ground-shadow-plane';
+            shadowPlane.setAttribute('aria-hidden', 'true');
+            SIDES.forEach(side => {
+                const sh = document.createElement('div');
+                sh.className = `hero-floor-shadow ${side}`;
+                shadowPlane.appendChild(sh);
+                shadows[side] = sh;
+            });
+            wrapper.insertBefore(shadowPlane, group);
+        }
+
+        // 3. Gruppen-Federzustand & Pointer-Status
+        const groupSprings = {
+            rotX: makeSpring(22),
+            rotY: makeSpring(-24),
+            panX: makeSpring(0),
+            panY: makeSpring(0)
+        };
+
+        let isHovering = false;
+        let ptrX = 0;
+        let ptrY = 0;
+        let focusedSide = null;
+        let unfocusTimer = null;
+        let rafId = null;
+        let lastFrameTime = 0;
+        const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        function applyFocusClasses(nextFocus) {
+            if (focusedSide === nextFocus) return;
+            const prev = focusedSide;
+            focusedSide = nextFocus;
+
+            SIDES.forEach(side => {
+                const slot = slots[side];
+                if (!slot) return;
+                slot.classList.toggle('is-hero-focused', nextFocus === side);
+                slot.classList.toggle('is-hero-dimmed', Boolean(nextFocus) && nextFocus !== side);
+                slot.style.zIndex = nextFocus === side ? '30' : (side === 'center' ? '15' : '10');
+            });
+
+            if (nextFocus && prev !== nextFocus && window.BlinkHaptics) {
+                const pitch = nextFocus === 'left' ? 0.94 : (nextFocus === 'right' ? 1.08 : 1.01);
+                window.BlinkHaptics.foley('cardLift', pitch);
+            }
+        }
+
+        wrapper.addEventListener('pointermove', (e) => {
+            if (e.pointerType === 'touch') return;
+            const rect = wrapper.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) return;
+
+            isHovering = true;
+            ptrX = Math.max(-1, Math.min(1, ((e.clientX - rect.left) / rect.width) * 2 - 1));
+            ptrY = Math.max(-1, Math.min(1, ((e.clientY - rect.top) / rect.height) * 2 - 1));
+
+            const hitSlot = e.target && e.target.closest ? e.target.closest('.hero-slot') : null;
+            let hitSide = null;
+            if (hitSlot) {
+                if (hitSlot.classList.contains('left')) hitSide = 'left';
+                else if (hitSlot.classList.contains('center')) hitSide = 'center';
+                else if (hitSlot.classList.contains('right')) hitSide = 'right';
+            }
+
+            if (hitSide) {
+                if (unfocusTimer) { clearTimeout(unfocusTimer); unfocusTimer = null; }
+                applyFocusClasses(hitSide);
+            } else if (focusedSide && !unfocusTimer) {
+                unfocusTimer = setTimeout(() => {
+                    unfocusTimer = null;
+                    applyFocusClasses(null);
+                }, 110);
+            }
+        }, { passive: true });
+
+        wrapper.addEventListener('pointerleave', () => {
+            isHovering = false;
+            ptrX = 0;
+            ptrY = 0;
+            if (unfocusTimer) { clearTimeout(unfocusTimer); unfocusTimer = null; }
+            applyFocusClasses(null);
+        });
+
+        // 4. Shuffle-Impuls beim Klick auf die Hero-Karten
+        window.BlinkHeroPhysics = {
+            onShuffle(turboLevel = 0) {
+                const boost = 1 + Math.min(4, turboLevel) * 0.22;
+                groupSprings.rotX.vel -= 75 * boost;
+                SIDES.forEach(side => {
+                    const cs = cardSprings[side];
+                    if (!cs) return;
+                    cs.y.vel -= (210 + (side === 'center' ? 45 : 0)) * boost;
+                    cs.z.vel += (side === 'center' ? 150 : 95) * boost;
+                    cs.x.vel += (side === 'left' ? -130 : (side === 'right' ? 130 : 0)) * boost;
+                    cs.rz.vel += (side === 'left' ? -40 : (side === 'right' ? 40 : 0)) * boost;
+                });
+            }
+        };
+
+        // 5. Haupt-Simulationsschleife (pausiert automatisch auf allen Unterseiten)
+        function isHeroVisible() {
+            if (document.visibilityState === 'hidden') return false;
+            const home = document.getElementById('page-home');
+            return Boolean(home && !home.classList.contains('hidden'));
+        }
+
+        function tick(now) {
+            if (!isHeroVisible()) {
+                rafId = null;
+                return;
+            }
+            const dt = lastFrameTime ? Math.min(0.032, Math.max(0.004, (now - lastFrameTime) / 1000)) : 0.016;
+            lastFrameTime = now;
+            const tSec = now * 0.001;
+
+            const wrapW = wrapper.clientWidth || 420;
+            const mobScale = wrapW < 310 ? 0.70 : (wrapW < 370 ? 0.84 : 1.0);
+
+            // Gruppen-Zielwinkel (sanfte Trägheit + Rückführung bei Einzelkarten-Fokus)
+            const focusDamp = focusedSide ? 0.58 : 1.0;
+            const targetGroupRx = 22 - (isHovering ? ptrY * 16 * focusDamp : 0);
+            const targetGroupRy = -24 + (isHovering ? ptrX * 22 * focusDamp : 0);
+            const targetPanX = isHovering ? ptrX * 6 : 0;
+            const targetPanY = isHovering ? ptrY * 4 : 0;
+
+            stepSpring(groupSprings.rotX, targetGroupRx, 92, 13.5, dt);
+            stepSpring(groupSprings.rotY, targetGroupRy, 92, 13.5, dt);
+            stepSpring(groupSprings.panX, targetPanX, 85, 13.0, dt);
+            stepSpring(groupSprings.panY, targetPanY, 85, 13.0, dt);
+
+            const gRx = groupSprings.rotX.v;
+            const gRy = groupSprings.rotY.v;
+            const gRyRad = (gRy * Math.PI) / 180;
+            const cosRy = Math.cos(gRyRad);
+            const sinRy = Math.sin(gRyRad);
+
+            group.style.transform =
+                `translate3d(${groupSprings.panX.v.toFixed(2)}px, ${groupSprings.panY.v.toFixed(2)}px, 0) ` +
+                `rotateX(${gRx.toFixed(2)}deg) rotateY(${gRy.toFixed(2)}deg)`;
+
+            // Einzelkarten-Federn, Parallaxe, Magnet-Fächer, Glanz & Bodenschatten
+            SIDES.forEach(side => {
+                const slot = slots[side];
+                const card = cards[side];
+                const cs = cardSprings[side];
+                if (!slot || !card || !cs) return;
+
+                const spec = CARD_SPEC[side];
+                const b = spec.base;
+
+                // Organisches, phasenversetztes Schweben
+                const breathe = reducedMotion ? 0 : Math.sin(tSec * 1.15 + spec.floatPhase);
+                const floatY = breathe * spec.floatAmp * (focusedSide === side ? 0.35 : 1.0);
+                const floatRz = reducedMotion ? 0 : Math.cos(tSec * 0.9 + spec.floatPhase) * spec.floatRot;
+
+                // Magnetisches Auffächern bei Container-Hover
+                const fanX = isHovering ? (side === 'left' ? -15 : (side === 'right' ? 15 : 0)) : 0;
+                const fanY = isHovering && side === 'center' ? -4 : 0;
+                const fanZ = isHovering && side === 'center' ? 8 : 0;
+                const fanRz = isHovering ? (side === 'left' ? -3.2 : (side === 'right' ? 3.2 : 0)) : 0;
+
+                // Tiefen-Parallaxe relativ zur Maus
+                const parX = isHovering ? ptrX * spec.parallax.x : 0;
+                const parY = isHovering ? ptrY * spec.parallax.y : 0;
+                const parRx = isHovering ? -ptrY * spec.parallax.rx : 0;
+                const parRy = isHovering ? ptrX * spec.parallax.ry : 0;
+
+                // Einzelkarten-Fokus
+                const foc = focusedSide ? FOCUS_OFFSETS[focusedSide][side] : null;
+                const tx = (b.x + fanX + parX + (foc ? foc.x : 0)) * mobScale;
+                const ty = (b.y + fanY + parY + floatY + (foc ? foc.y : 0)) * mobScale;
+                const tz = (b.z + fanZ + (foc ? foc.z : 0)) * mobScale;
+                const trx = parRx + (foc ? foc.rx : 0);
+                const tryDeg = parRy + (foc ? foc.ry : 0);
+                const trz = b.rz + fanRz + floatRz + (foc ? foc.rz : 0);
+                const ts = foc ? foc.s : (isHovering ? 1.015 : 1.0);
+                const tGlareOp = focusedSide === side ? 1.0 : (isHovering ? 0.52 : 0.0);
+
+                stepSpring(cs.x, tx, spec.k, spec.d, dt);
+                stepSpring(cs.y, ty, spec.k, spec.d, dt);
+                stepSpring(cs.z, tz, spec.k, spec.d, dt);
+                stepSpring(cs.rx, trx, spec.k * 0.9, spec.d, dt);
+                stepSpring(cs.ry, tryDeg, spec.k * 0.9, spec.d, dt);
+                stepSpring(cs.rz, trz, spec.k * 0.85, spec.d, dt);
+                stepSpring(cs.s, ts, spec.k, spec.d, dt);
+                stepSpring(cs.glareOp, tGlareOp, 110, 18, dt);
+
+                slot.style.setProperty('--hs-x', `${cs.x.v.toFixed(2)}px`);
+                slot.style.setProperty('--hs-y', `${cs.y.v.toFixed(2)}px`);
+                slot.style.setProperty('--hs-z', `${cs.z.v.toFixed(2)}px`);
+                slot.style.setProperty('--hs-rx', `${cs.rx.v.toFixed(2)}deg`);
+                slot.style.setProperty('--hs-ry', `${cs.ry.v.toFixed(2)}deg`);
+                slot.style.setProperty('--hs-rz', `${cs.rz.v.toFixed(2)}deg`);
+                slot.style.setProperty('--hs-s', `${cs.s.v.toFixed(4)}`);
+
+                // Individueller holografischer Lichtglanz pro Karte aus realem Neigungswinkel
+                const totalRx = gRx + cs.rx.v;
+                const totalRy = gRy + cs.ry.v;
+                const gx = Math.max(8, Math.min(92, 50 + (totalRy + 24) * 1.35 + ptrX * 14));
+                const gy = Math.max(8, Math.min(92, 50 - (totalRx - 22) * 1.45 + ptrY * 14));
+                card.style.setProperty('--glare-x', `${gx.toFixed(1)}%`);
+                card.style.setProperty('--glare-y', `${gy.toFixed(1)}%`);
+                card.style.setProperty('--glare-bg-x', `${(100 - gx).toFixed(1)}%`);
+                card.style.setProperty('--glare-bg-y', `${(100 - gy).toFixed(1)}%`);
+                card.style.setProperty('--glare-opacity', `${Math.max(0, Math.min(1, cs.glareOp.v)).toFixed(3)}`);
+
+                // Dynamischer direkter Kartenschatten abhängig von Neigung & Höhe
+                const liftFactor = Math.max(0, (34 - cs.y.v) * 0.25 + (cs.z.v + 34) * 0.08);
+                const shX = -totalRy * 0.42;
+                const shY = 16 + totalRx * 0.34 + liftFactor * 0.35;
+                const shBlur = 26 + liftFactor * 0.65;
+                const isLight = document.documentElement.getAttribute('data-theme') === 'academic-light';
+                const baseAlpha = isLight ? 0.17 : 0.44;
+                const shAlpha = Math.max(isLight ? 0.08 : 0.22, baseAlpha - liftFactor * 0.003);
+                card.style.setProperty('--hero-sh-x', `${shX.toFixed(1)}px`);
+                card.style.setProperty('--hero-sh-y', `${shY.toFixed(1)}px`);
+                card.style.setProperty('--hero-sh-blur', `${shBlur.toFixed(1)}px`);
+                card.style.setProperty('--hero-sh-alpha', `${shAlpha.toFixed(3)}`);
+
+                // Dynamischer Bodenschatten pro Karte (driftet & weicht mit Höhe/Tiefe)
+                const floorSh = shadows[side];
+                if (floorSh) {
+                    const projX = (cs.x.v * cosRy + cs.z.v * sinRy) * 0.92 + groupSprings.panX.v - 14 * mobScale - totalRy * 0.32;
+                    const projY = (cs.z.v * -0.05) + 4;
+                    const heightNorm = Math.max(0, Math.min(1.6, (44 - cs.y.v) / 48));
+                    const scX = (0.86 + heightNorm * 0.24) * mobScale;
+                    const scY = (0.78 + heightNorm * 0.28) * mobScale;
+                    const floorOp = Math.max(0.24, 0.92 - heightNorm * 0.34);
+                    floorSh.style.transform = `translate3d(${projX.toFixed(1)}px, ${projY.toFixed(1)}px, 0) scale(${scX.toFixed(3)}, ${scY.toFixed(3)})`;
+                    floorSh.style.opacity = floorOp.toFixed(3);
+                }
+            });
+
+            rafId = requestAnimationFrame(tick);
+        }
+
+        function ensureRunning() {
+            if (!rafId && isHeroVisible()) {
+                lastFrameTime = 0;
+                rafId = requestAnimationFrame(tick);
+            }
+        }
+
+        const homeEl = document.getElementById('page-home');
+        if (homeEl && typeof MutationObserver !== 'undefined') {
+            new MutationObserver(ensureRunning).observe(homeEl, { attributes: true, attributeFilter: ['class'] });
+        }
+        document.addEventListener('visibilitychange', ensureRunning);
+        ensureRunning();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootHeroPhysics);
+    } else {
+        bootHeroPhysics();
+    }
+})();
