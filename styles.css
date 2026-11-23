@@ -3217,3 +3217,145 @@ mjx-container[display="true"] {
 #mapping-modal tbody tr {
   height: 56px;
 }
+/* ============================================================================
+   HERO 3D PHYSIK-ENGINE — FEDER-PARALLAXE · EINZELFOKUS · 3D-KANTE · SCHATTEN
+   ============================================================================ */
+
+.hero-3d-container.hero-physics-active {
+    position: relative;
+    perspective: 1180px;
+}
+
+/* Feder-Engine steuert Gruppe & Slots direkt per rAF (keine konkurrierenden CSS-Transitions) */
+.hero-3d-container.hero-physics-active .hero-card-group {
+    transition: none !important;
+    will-change: transform;
+}
+
+.hero-3d-container.hero-physics-active .hero-slot.left,
+.hero-3d-container.hero-physics-active .hero-slot.center,
+.hero-3d-container.hero-physics-active .hero-slot.right {
+    transform:
+        translate3d(var(--hs-x, 0px), var(--hs-y, 0px), var(--hs-z, 0px))
+        rotateX(var(--hs-rx, 0deg))
+        rotateY(var(--hs-ry, 0deg))
+        rotateZ(var(--hs-rz, 0deg))
+        scale(var(--hs-s, 1)) !important;
+    will-change: transform;
+}
+
+.hero-3d-container.hero-physics-active .hero-card {
+    animation: none !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    box-shadow:
+        var(--hero-sh-x, -12px) var(--hero-sh-y, 22px) var(--hero-sh-blur, 34px) -8px rgba(0, 0, 0, var(--hero-sh-alpha, 0.42)) !important;
+}
+
+[data-theme="academic-light"] .hero-3d-container.hero-physics-active .hero-card {
+    box-shadow:
+        var(--hero-sh-x, -10px) var(--hero-sh-y, 18px) var(--hero-sh-blur, 28px) -8px rgba(15, 23, 42, var(--hero-sh-alpha, 0.16)) !important;
+}
+
+/* Echte 3D-Kartenstärke: Vorder- & Rückseite sitzen bei ±2,2px Tiefe */
+.hero-3d-container.hero-physics-active .hero-card-face {
+    pointer-events: auto;
+    border-radius: 16px;
+    border: 1px solid #cbd5e1;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+    transition: border-color 220ms ease, filter 260ms ease, box-shadow 260ms ease;
+}
+
+.hero-3d-container.hero-physics-active .hero-card-face.front {
+    transform: translateZ(2.2px);
+}
+
+.hero-3d-container.hero-physics-active .hero-card-face.back {
+    transform: rotateY(180deg) translateZ(2.2px);
+}
+
+/* Karten-individueller Fokus-Glanz & sanftes Zurücktreten der Nachbarkarten */
+.hero-3d-container.hero-physics-active .hero-slot.is-hero-focused .hero-card-face {
+    border-color: rgba(34, 211, 238, 0.78);
+    box-shadow:
+        inset 0 1px 0 #ffffff,
+        0 0 24px -4px rgba(34, 211, 238, 0.34);
+}
+[data-theme="onyx-oled"] .hero-3d-container.hero-physics-active .hero-slot.is-hero-focused .hero-card-face {
+    border-color: rgba(255, 255, 255, 0.90);
+    box-shadow:
+        inset 0 1px 0 #ffffff,
+        0 0 24px -6px rgba(255, 255, 255, 0.24);
+}
+[data-theme="academic-light"] .hero-3d-container.hero-physics-active .hero-slot.is-hero-focused .hero-card-face {
+    border-color: rgba(24, 24, 27, 0.45);
+    box-shadow:
+        inset 0 1px 0 #ffffff,
+        0 6px 20px -8px rgba(15, 23, 42, 0.22);
+}
+
+.hero-3d-container.hero-physics-active .hero-slot.is-hero-dimmed .hero-card-face {
+    filter: brightness(0.92) saturate(0.92);
+}
+
+/* Laminierte 3D-Kartenkante (5 dünne Schichten zwischen Vorder- & Rückseite) */
+.hero-card-edge-slice {
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    pointer-events: none;
+    background: linear-gradient(150deg, #e2e8f0 0%, #94a3b8 50%, #64748b 100%);
+    border: 1px solid rgba(148, 163, 184, 0.85);
+}
+.hero-card-edge-slice.is-core {
+    background: linear-gradient(150deg, #38bdf8 0%, #1e293b 50%, #0f172a 100%);
+    border-color: rgba(56, 189, 248, 0.55);
+}
+[data-theme="onyx-oled"] .hero-card-edge-slice {
+    background: linear-gradient(150deg, #d4d4d8 0%, #71717a 52%, #3f3f46 100%);
+    border-color: rgba(161, 161, 170, 0.72);
+}
+[data-theme="onyx-oled"] .hero-card-edge-slice.is-core {
+    background: #27272a;
+    border-color: rgba(255, 255, 255, 0.35);
+}
+[data-theme="academic-light"] .hero-card-edge-slice {
+    background: linear-gradient(150deg, #f1f5f9 0%, #cbd5e1 52%, #94a3b8 100%);
+    border-color: rgba(148, 163, 184, 0.75);
+}
+[data-theme="academic-light"] .hero-card-edge-slice.is-core {
+    background: #64748b;
+    border-color: rgba(71, 85, 105, 0.55);
+}
+
+/* Dynamische Bodenschatten-Ebene unter den schwebenden Karten */
+.hero-ground-shadow-plane {
+    position: absolute;
+    left: 50%;
+    bottom: 8px;
+    width: 300px;
+    height: 44px;
+    transform: translateX(-50%);
+    pointer-events: none;
+    z-index: 0;
+}
+.hero-floor-shadow {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 118px;
+    height: 26px;
+    margin-left: -59px;
+    margin-top: -13px;
+    border-radius: 9999px;
+    background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.62) 0%, rgba(2, 6, 23, 0.24) 48%, transparent 76%);
+    filter: blur(11px);
+    will-change: transform, opacity;
+}
+[data-theme="onyx-oled"] .hero-floor-shadow {
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.76) 0%, rgba(0, 0, 0, 0.30) 48%, transparent 76%);
+}
+[data-theme="academic-light"] .hero-floor-shadow {
+    background: radial-gradient(ellipse at center, rgba(15, 23, 42, 0.24) 0%, rgba(15, 23, 42, 0.09) 50%, transparent 78%);
+}
