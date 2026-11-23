@@ -3181,3 +3181,14 @@ mjx-container[display="true"] {
     padding: 7px 10px !important;
   }
 }
+#match-analysis-modal > div {
+  backdrop-filter: blur(32px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(190%) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 34px 80px -20px rgba(0, 0, 0, 0.82) !important;
+}
+
+@media (max-width: 767px) {
+  #match-analysis-modal { padding: 10px !important; }
+  #match-analysis-modal > div { padding: 16px !important; border-radius: 20px !important; max-height: 88dvh !important; }
+  #ma-quality-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
