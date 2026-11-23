@@ -3359,3 +3359,158 @@ mjx-container[display="true"] {
 [data-theme="academic-light"] .hero-floor-shadow {
     background: radial-gradient(ellipse at center, rgba(15, 23, 42, 0.24) 0%, rgba(15, 23, 42, 0.09) 50%, transparent 78%);
 }
+/* ============================================================================
+   ERWEITERTE SPIEL- & UI-PHYSIK — LIQUID STRETCH · CASCADE · DAILY · SUDOKU
+   ============================================================================ */
+
+/* 1. LIQUID STRETCH AUF ALLEN GLEITENDEN PILLS */
+.sliding-pill-bg.is-liquid-spring,
+#nav-indicator.is-liquid-spring {
+    transition:
+        background 240ms ease,
+        border-color 240ms ease,
+        box-shadow 240ms ease,
+        opacity 180ms ease !important;
+    will-change: transform, width;
+    transform-origin: center center;
+}
+
+/* 2. CLUSTER-CASCADE: SCHWERKRAFT & RADIALE DRUCKWELLE */
+#cas-grid {
+    overflow: visible !important;
+}
+.phys-cascade-falling {
+    transition: none !important;
+    will-change: transform;
+    z-index: 25;
+}
+.phys-cascade-shock {
+    transition: none !important;
+    will-change: transform;
+    z-index: 15;
+}
+.phys-shockwave-ring {
+    position: fixed;
+    border-radius: 9999px;
+    pointer-events: none;
+    z-index: 9991;
+    border: 2.5px solid rgba(52, 211, 153, 0.85);
+    box-shadow:
+        0 0 26px rgba(52, 211, 153, 0.45),
+        inset 0 0 18px rgba(52, 211, 153, 0.25);
+    transform: translate(-50%, -50%) scale(0.08);
+    opacity: 0.95;
+    transition: transform 480ms cubic-bezier(0.16, 1, 0.3, 1), opacity 480ms ease-out;
+}
+.phys-shockwave-ring.is-strict {
+    border-color: rgba(192, 132, 252, 0.92);
+    box-shadow:
+        0 0 30px rgba(168, 85, 247, 0.52),
+        inset 0 0 20px rgba(192, 132, 252, 0.30);
+}
+[data-theme="onyx-oled"] .phys-shockwave-ring {
+    border-color: rgba(255, 255, 255, 0.82);
+    box-shadow: 0 0 22px rgba(255, 255, 255, 0.28);
+}
+[data-theme="academic-light"] .phys-shockwave-ring {
+    border-color: rgba(24, 24, 27, 0.55);
+    box-shadow: 0 0 18px rgba(15, 23, 42, 0.16);
+}
+.phys-shockwave-ring.is-expanding {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0;
+}
+
+/* 3. DAILY CHALLENGE: GUMMIBAND-ANZIEHUNG & ZÄHLER-POP */
+.phys-daily-rubber-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9992;
+    overflow: hidden;
+}
+.phys-daily-rubber-clone {
+    position: fixed;
+    left: 0;
+    top: 0;
+    margin: 0;
+    pointer-events: none;
+    will-change: transform, opacity;
+    transition: none !important;
+    z-index: 9994;
+}
+@keyframes physCounterPop {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.26); }
+    68%  { transform: scale(0.94); }
+    100% { transform: scale(1); }
+}
+.phys-counter-pop {
+    display: inline-block;
+    animation: physCounterPop 360ms var(--spring-balatro);
+}
+
+/* 4. BLINK-SUDOKU: MAGNET-ABSTOSSUNG & RESONANZ-WELLE */
+#sudoku-grid {
+    overflow: visible !important;
+}
+.phys-magnet-repel {
+    transition: none !important;
+    will-change: transform;
+    z-index: 22;
+    border-color: #f43f5e !important;
+    box-shadow:
+        0 0 0 3px rgba(244, 63, 94, 0.34),
+        0 12px 24px -8px rgba(244, 63, 94, 0.45) !important;
+}
+@keyframes physSudokuResonance {
+    0%   { transform: translateY(0) scale(1); }
+    32%  { transform: translateY(-9px) scale(1.065); }
+    68%  { transform: translateY(1.5px) scale(0.985); }
+    100% { transform: translateY(0) scale(1); }
+}
+.phys-sudoku-resonance {
+    z-index: 20;
+    animation: physSudokuResonance 460ms var(--spring-balatro) !important;
+    border-color: #34d399 !important;
+    box-shadow:
+        0 0 0 3px rgba(52, 211, 153, 0.36),
+        0 14px 28px -8px rgba(52, 211, 153, 0.48) !important;
+}
+[data-theme="onyx-oled"] .phys-sudoku-resonance {
+    border-color: #ffffff !important;
+    box-shadow:
+        0 0 0 3px rgba(255, 255, 255, 0.30),
+        0 14px 26px -8px rgba(255, 255, 255, 0.25) !important;
+}
+[data-theme="academic-light"] .phys-sudoku-resonance {
+    border-color: #18181b !important;
+    box-shadow:
+        0 0 0 3px rgba(24, 24, 27, 0.22),
+        0 10px 22px -8px rgba(15, 23, 42, 0.25) !important;
+}
+/* ============================================================================
+   HERO-KARTEN FREI ÜBER DEN BOX-RAND SCHWEBEN LASSEN (KEIN CLIPPING)
+   ============================================================================ */
+.aceternity-bento-card:has(#hero-3d-wrapper) {
+    overflow: visible !important;
+    z-index: 20;
+}
+
+.aceternity-bento-card:has(#hero-3d-wrapper)::before {
+    border-radius: inherit;
+}
+
+.aceternity-bento-card:has(#hero-3d-wrapper) > .blur-2xl {
+    inset: 0;
+    height: auto;
+    clip-path: inset(0 round 1.5rem);
+}
+
+.hero-3d-container {
+    overflow: visible !important;
+}
+
+#page-home {
+    overflow-x: hidden;
+}

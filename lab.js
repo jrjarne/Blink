@@ -2273,6 +2273,18 @@
             }
 
             cascadeState.board[targetRow][col] = [...cascadeState.currentCard];
+            if (window.BlinkModePhysics) {
+                cascadeState.currentCard = cascadeState.nextCard;
+                cascadeState.nextCard = drawSmartCascadeCard();
+                cascadeState.isAnimating = true;
+                renderCascadeUI();
+                window.BlinkModePhysics.playCascadeDrop(targetRow, col, targetRow + 1, () => {
+                    cascadeState.isAnimating = false;
+                    playSound('play');
+                    resolveCascadeMatches(1);
+                });
+                return;
+            }
             cascadeState.currentCard = cascadeState.nextCard;
             cascadeState.nextCard = drawSmartCascadeCard();
             playSound('play');
@@ -2341,6 +2353,11 @@
  if (pill) pill.textContent = comboStep > 1 ? `Cascade ×${comboStep}! +${gained}` : `+${gained} Pkt.`;
             const stEl = document.getElementById('cas-status-text');
             if (stEl) stEl.textContent = `${matchedLines.length} Cluster aufgelöst${strictCount > 0 ? ' (inkl. strenges Cluster!)' : ''} — Karten rutschen nach...`;
+            if (window.BlinkModePhysics) {
+                const shockCells = new Set(cascadeState.clearingCells);
+                const shockStrict = strictCount > 0;
+                requestAnimationFrame(() => window.BlinkModePhysics.playCascadeShockwave(shockCells, shockStrict));
+            }
 
             renderCascadeUI();
 
@@ -2351,7 +2368,33 @@
                 });
                 cascadeState.clearingCells = new Set();
 
-                // Schwerkraft pro Spalte anwenden
+                // Schwerkraft pro Spalte anwenden (mit echter Fall-Physik)
+                if (window.BlinkModePhysics) {
+                    const drops = [];
+                    for (let c = 0; c < 5; c++) {
+                        const stack = [];
+                        for (let r = 4; r >= 0; r--) {
+                            if (cascadeState.board[r][c]) stack.push({ card: cascadeState.board[r][c], fromRow: r });
+                            cascadeState.board[r][c] = null;
+                        }
+                        stack.forEach((item, idx) => {
+                            const toRow = 4 - idx;
+                            cascadeState.board[toRow][c] = item.card;
+                            if (toRow > item.fromRow) drops.push({ row: toRow, col: c, rows: toRow - item.fromRow });
+                        });
+                    }
+                    if (drops.length > 0) {
+                        renderCascadeUI();
+                        window.BlinkModePhysics.playCascadeMultiDrop(drops, () => {
+                            cascadeState.isAnimating = false;
+                            resolveCascadeMatches(comboStep + 1);
+                        });
+                        return;
+                    }
+                    cascadeState.isAnimating = false;
+                    resolveCascadeMatches(comboStep + 1);
+                    return;
+                }
                 for (let c = 0; c < 5; c++) {
                     const stack = [];
                     for (let r = 4; r >= 0; r--) {
@@ -2565,6 +2608,8 @@
             dailyState.selectedIndices = [];
             dailyState.foundKeys = new Set();
             dailyState.mistakes = 0;
+            dailyState.isAnimating = false;
+            dailyState._rubberDone = false;
             dailyState.hintIndices = [];
 
             const seed = isPractice
@@ -2585,6 +2630,7 @@
         }
 
         function toggleDailyCard(idx) {
+            if (dailyState.isAnimating) return;
             const pos = dailyState.selectedIndices.indexOf(idx);
             if (pos >= 0) {
                 dailyState.selectedIndices.splice(pos, 1);
@@ -2650,6 +2696,18 @@
                 return;
             }
 
+            if (window.BlinkModePhysics && !dailyState._rubberDone) {
+                const hitIndices = [...dailyState.selectedIndices];
+                const hitStrict = isStrictCluster5(chosen);
+                dailyState.isAnimating = true;
+                window.BlinkModePhysics.playDailyRubberBand(hitIndices, hitStrict, () => {
+                    dailyState._rubberDone = true;
+                    dailyState.isAnimating = false;
+                    evaluateDailySelection();
+                });
+                return;
+            }
+            dailyState._rubberDone = false;
             dailyState.foundKeys.add(canonical);
             dailyState.hintIndices = [];
             dailyState.selectedIndices = [];
@@ -2884,7 +2942,11 @@
             }
             const idx = sudokuState.selectedCell;
             if (idx === null || idx < 0 || sudokuState.fixed[idx]) return;
+            const _prevSdkLines = window.BlinkModePhysics ? window.BlinkModePhysics.getSudokuCompletedLineKeys() : null;
             sudokuState.board[idx] = [sudokuState.picker.x, sudokuState.picker.y, sudokuState.picker.z];
+            if (window.BlinkModePhysics) {
+                requestAnimationFrame(() => window.BlinkModePhysics.onSudokuCardPlaced(idx, _prevSdkLines));
+            }
             sudokuState.notes[idx] = createEmptySudokuNote();
             playSound('play');
 

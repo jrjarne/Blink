@@ -967,6 +967,10 @@
 
             requestAnimationFrame(() => {
                 if (btn.offsetWidth === 0) return;
+            if (window.BlinkModePhysics) {
+                window.BlinkModePhysics.animatePill(pill, btn.offsetLeft, btn.offsetTop, btn.offsetWidth, btn.offsetHeight);
+                return;
+            }
                 pill.style.width = `${btn.offsetWidth}px`;
                 pill.style.height = `${btn.offsetHeight}px`;
                 pill.style.transform = `translate3d(${btn.offsetLeft}px, ${btn.offsetTop}px, 0)`;
@@ -1563,7 +1567,11 @@
                             const navRect = navBar.getBoundingClientRect();
                             const targetRect = btn.getBoundingClientRect();
                             indicator.style.width = `${Math.round(targetRect.width)}px`;
-                            indicator.style.left = `${Math.round(targetRect.left - navRect.left)}px`;
+                            if (window.BlinkModePhysics) {
+                        window.BlinkModePhysics.animateNavPill(indicator, targetRect.left - navRect.left, targetRect.width);
+                    } else {
+                        indicator.style.left = `${Math.round(targetRect.left - navRect.left)}px`;
+                    }
 
                             if (isMonochromeTheme) {
                                 indicator.style.backgroundColor = 'var(--border-focus)';

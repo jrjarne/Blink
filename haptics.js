@@ -975,6 +975,10 @@
         const navRect = navBar.getBoundingClientRect();
         const targetRect = btn.getBoundingClientRect();
         if (targetRect.width <= 0) return;
+        if (window.BlinkModePhysics) {
+            window.BlinkModePhysics.animateNavPill(indicator, targetRect.left - navRect.left, targetRect.width);
+            return;
+        }
         indicator.style.width = `${Math.round(targetRect.width)}px`;
         indicator.style.left = `${Math.round(targetRect.left - navRect.left)}px`;
     }
@@ -1747,4 +1751,787 @@
     } else {
         bootHeroPhysics();
     }
+})();
+// ============================================================================
+// ERWEITERTE PHYSIK — LIQUID STRETCH · CASCADE GRAVITY · DAILY · SUDOKU MAGNET
+// ============================================================================
+(function initBlinkModePhysics() {
+    if (window.__BLINK_MODE_PHYSICS_READY) return;
+    window.__BLINK_MODE_PHYSICS_READY = true;
+
+    const prefersReducedMotion = () =>
+        Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+    // ------------------------------------------------------------------------
+    // 1. „LIQUID STRETCH“ AUF ALLEN GLEITENDEN PILLS (DUAL-EDGE SPRING ENGINE)
+    // ------------------------------------------------------------------------
+    const pillStates = new WeakMap();
+    let lastResizeAt = 0;
+    window.addEventListener('resize', () => { lastResizeAt = performance.now(); }, { passive: true });
+
+    function stepEdge(val, vel, target, k, d, dt) {
+        const acc = (target - val) * k - vel * d;
+        const nv = vel + acc * dt;
+        return [val + nv * dt, nv];
+    }
+
+    function animateLiquidBox(el, targetX, targetY, targetW, targetH, isNav) {
+        if (!el || targetW <= 0) return;
+        const tx = Math.round(targetX);
+        const ty = Math.round(targetY);
+        const tw = Math.round(targetW);
+        const th = targetH !== null ? Math.round(targetH) : null;
+
+        let st = pillStates.get(el);
+        const isResizing = (performance.now() - lastResizeAt) < 140;
+        const hiddenNow = parseFloat(getComputedStyle(el).opacity || '1') < 0.05;
+
+        el.classList.add('is-liquid-spring');
+        if (isNav) el.style.left = '0px';
+
+        const applyBox = (l, r, top, h, sy) => {
+            const w = Math.max(16, r - l);
+            el.style.width = `${w.toFixed(2)}px`;
+            if (!isNav && h !== null) el.style.height = `${h.toFixed(2)}px`;
+            el.style.transform = `translate3d(${l.toFixed(2)}px, ${top.toFixed(2)}px, 0) scaleY(${sy.toFixed(4)})`;
+            el.style.opacity = '1';
+        };
+
+        if (!st || !st.initialized || isResizing || hiddenNow || prefersReducedMotion()) {
+            if (st && st.rafId) cancelAnimationFrame(st.rafId);
+            st = {
+                initialized: true,
+                left: tx, vLeft: 0,
+                right: tx + tw, vRight: 0,
+                top: ty, vTop: 0,
+                height: th,
+                tLeft: tx, tRight: tx + tw, tTop: ty, tHeight: th,
+                dir: 0, rafId: null, lastTime: 0
+            };
+            pillStates.set(el, st);
+            applyBox(tx, tx + tw, ty, th, 1);
+            return;
+        }
+
+        const prevCenter = (st.left + st.right) * 0.5;
+        const nextCenter = tx + tw * 0.5;
+        const delta = nextCenter - prevCenter;
+
+        // Idempotent: gleiches Ziel nicht neu anstoßen
+        if (
+            Math.abs(tx - st.tLeft) < 0.6 &&
+            Math.abs((tx + tw) - st.tRight) < 0.6 &&
+            Math.abs(ty - st.tTop) < 0.6
+        ) {
+            applyBox(st.left, st.right, st.top, st.height, 1);
+            return;
+        }
+
+        st.tLeft = tx;
+        st.tRight = tx + tw;
+        st.tTop = ty;
+        st.tHeight = th;
+        st.dir = Math.abs(delta) > 2 ? (delta > 0 ? 1 : -1) : 0;
+
+        // Sofort aktuellen Zustand synchron schreiben (verhindert 1-Frame-Sprung)
+        applyBox(st.left, st.right, st.top, st.height, 1);
+
+        if (st.rafId) return;
+        st.lastTime = 0;
+
+        const tick = (now) => {
+            if (!el.isConnected) { st.rafId = null; return; }
+            const dt = st.lastTime ? Math.min(0.026, Math.max(0.004, (now - st.lastTime) / 1000)) : 0.016;
+            st.lastTime = now;
+
+            // Vordere Kante schnellt vor, hintere Kante zieht elastisch nach (Tropfen-Stretch)
+            const kLead = 450, dLead = 25;
+            const kTrail = 165, dTrail = 19.5;
+            const kLeft = st.dir < 0 ? kLead : (st.dir > 0 ? kTrail : 340);
+            const dLeft = st.dir < 0 ? dLead : (st.dir > 0 ? dTrail : 24);
+            const kRight = st.dir > 0 ? kLead : (st.dir < 0 ? kTrail : 340);
+            const dRight = st.dir > 0 ? dLead : (st.dir < 0 ? dTrail : 24);
+
+            [st.left, st.vLeft] = stepEdge(st.left, st.vLeft, st.tLeft, kLeft, dLeft, dt);
+            [st.right, st.vRight] = stepEdge(st.right, st.vRight, st.tRight, kRight, dRight, dt);
+            [st.top, st.vTop] = stepEdge(st.top, st.vTop, st.tTop, 360, 26, dt);
+            if (!isNav && st.tHeight !== null && st.height !== null) {
+                st.height += (st.tHeight - st.height) * Math.min(1, dt * 18);
+            }
+
+            // Kanten dürfen sich nie überkreuzen
+            const minW = Math.min(st.tRight - st.tLeft, 24);
+            if (st.right - st.left < minW) {
+                const mid = (st.left + st.right) * 0.5;
+                st.left = mid - minW * 0.5;
+                st.right = mid + minW * 0.5;
+            }
+
+            // Volumenerhaltende leichte Stauchung in Y während des horizontalen Stretches
+            const curW = st.right - st.left;
+            const goalW = Math.max(24, st.tRight - st.tLeft);
+            const stretchRatio = Math.max(0, (curW - goalW) / Math.max(goalW, 54));
+            const scaleY = Math.max(0.84, 1 - stretchRatio * 0.125);
+
+            applyBox(st.left, st.right, st.top, st.height, scaleY);
+
+            const settled =
+                Math.abs(st.tLeft - st.left) < 0.25 &&
+                Math.abs(st.tRight - st.right) < 0.25 &&
+                Math.abs(st.tTop - st.top) < 0.25 &&
+                Math.abs(st.vLeft) < 1.2 &&
+                Math.abs(st.vRight) < 1.2;
+
+            if (settled) {
+                st.left = st.tLeft;
+                st.right = st.tRight;
+                st.top = st.tTop;
+                st.height = st.tHeight;
+                st.vLeft = 0;
+                st.vRight = 0;
+                st.vTop = 0;
+                st.rafId = null;
+                applyBox(st.left, st.right, st.top, st.height, 1);
+                return;
+            }
+            st.rafId = requestAnimationFrame(tick);
+        };
+        st.rafId = requestAnimationFrame(tick);
+    }
+
+    // ------------------------------------------------------------------------
+    // 2. CLUSTER-CASCADE: ECHTE SCHWERKRAFT, SQUASH & STRETCH, DRUCKWELLE
+    // ------------------------------------------------------------------------
+    function getCascadeCell(row, col) {
+        const grid = document.getElementById('cas-grid');
+        return grid ? grid.children[row * 5 + col] || null : null;
+    }
+
+    function getCascadeRowStepPx() {
+        const c0 = getCascadeCell(0, 0);
+        const c1 = getCascadeCell(1, 0);
+        if (c0 && c1) {
+            const dy = c1.getBoundingClientRect().top - c0.getBoundingClientRect().top;
+            if (dy > 20) return dy;
+        }
+        return c0 ? c0.getBoundingClientRect().height + 8 : 96;
+    }
+
+    function nudgeElementY(el, pushPx) {
+        if (!el || !el.isConnected) return;
+        let y = pushPx, vy = 0, last = 0;
+        el.classList.add('phys-cascade-shock');
+        const step = (now) => {
+            if (!el.isConnected) return;
+            const dt = last ? Math.min(0.028, (now - last) / 1000) : 0.016;
+            last = now;
+            [y, vy] = stepEdge(y, vy, 0, 420, 22, dt);
+            el.style.transform = `translate3d(0, ${y.toFixed(2)}px, 0)`;
+            if (Math.abs(y) < 0.12 && Math.abs(vy) < 1.2) {
+                el.style.transform = '';
+                el.classList.remove('phys-cascade-shock');
+                return;
+            }
+            requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+    }
+
+    function playCascadeMultiDrop(drops, onDone) {
+        if (!drops || drops.length === 0 || prefersReducedMotion()) {
+            if (typeof onDone === 'function') onDone();
+            return;
+        }
+        const stepY = getCascadeRowStepPx();
+        const startAt = performance.now();
+        let lastSnapSound = 0;
+
+        const bodies = drops.map((d) => {
+            const el = getCascadeCell(d.row, d.col);
+            const belowEl = (drops.length === 1 && d.row < 4) ? getCascadeCell(d.row + 1, d.col) : null;
+            const dist = Math.max(1, d.rows) * stepY;
+            const delay = drops.length === 1 ? 0 : (d.col * 16 + (4 - d.row) * 14);
+            if (el) {
+                el.classList.add('phys-cascade-falling');
+                el.style.transformOrigin = 'center bottom';
+                el.style.transform = `translate3d(0, ${(-dist).toFixed(1)}px, 0)`;
+            }
+            return {
+                el, belowEl, rows: d.rows,
+                delay, landed: false, done: false,
+                y: -dist, vy: drops.length === 1 ? 190 : 80,
+                sx: 1, vsx: 0, sy: 1, vsy: 0,
+                landedAt: 0
+            };
+        }).filter(b => b.el);
+
+        if (bodies.length === 0) {
+            if (typeof onDone === 'function') onDone();
+            return;
+        }
+
+        const G = drops.length === 1 ? 5600 : 4900;
+        let last = 0;
+
+        const tick = (now) => {
+            const dt = last ? Math.min(0.028, Math.max(0.004, (now - last) / 1000)) : 0.016;
+            last = now;
+            let allDone = true;
+
+            for (const b of bodies) {
+                if (b.done || !b.el.isConnected) continue;
+                allDone = false;
+
+                if (now - startAt < b.delay) continue;
+
+                if (!b.landed) {
+                    b.vy += G * dt;
+                    b.y += b.vy * dt;
+                    if (b.y >= 0) {
+                        b.y = 0;
+                        b.landed = true;
+                        b.landedAt = now;
+                        const impact = Math.min(1.35, Math.max(0.55, Math.sqrt(b.rows / 2.6)));
+                        b.sx = 1 + 0.14 * impact;
+                        b.sy = 1 - 0.15 * impact;
+                        b.vsx = 0.6 * impact;
+                        b.vsy = -0.7 * impact;
+
+                        if (now - lastSnapSound > 32 && window.BlinkHaptics) {
+                            lastSnapSound = now;
+                            window.BlinkHaptics.foley('cardSnap', Math.max(0.82, 1.12 - b.rows * 0.05));
+                            window.BlinkHaptics.vibrate(Math.round(5 + b.rows * 1.8));
+                        }
+                        if (b.belowEl) nudgeElementY(b.belowEl, 3.8 * impact);
+                    } else {
+                        const stretch = Math.min(0.07, (b.vy / 2200) * 0.06);
+                        b.el.style.transform = `translate3d(0, ${b.y.toFixed(1)}px, 0) scale(${(1 - stretch * 0.65).toFixed(3)}, ${(1 + stretch).toFixed(3)})`;
+                        continue;
+                    }
+                }
+
+                // Squash & Stretch Feder nach Aufprall
+                [b.sx, b.vsx] = stepEdge(b.sx, b.vsx, 1, 440, 20, dt);
+                [b.sy, b.vsy] = stepEdge(b.sy, b.vsy, 1, 440, 20, dt);
+                b.el.style.transform = `translate3d(0, 0, 0) scale(${b.sx.toFixed(4)}, ${b.sy.toFixed(4)})`;
+
+                if (now - b.landedAt > 155 || (Math.abs(1 - b.sx) < 0.004 && Math.abs(1 - b.sy) < 0.004 && Math.abs(b.vsy) < 0.05)) {
+                    b.done = true;
+                    b.el.style.transform = '';
+                    b.el.style.transformOrigin = '';
+                    b.el.classList.remove('phys-cascade-falling');
+                }
+            }
+
+            if (allDone) {
+                if (typeof onDone === 'function') onDone();
+            } else {
+                requestAnimationFrame(tick);
+            }
+        };
+        requestAnimationFrame(tick);
+    }
+
+    function playCascadeDrop(row, col, rowsFallen, onDone) {
+        playCascadeMultiDrop([{ row, col, rows: rowsFallen }], onDone);
+    }
+
+    function playCascadeShockwave(clearingSet, isStrict = false) {
+        if (!clearingSet || clearingSet.size === 0 || prefersReducedMotion()) return;
+        const grid = document.getElementById('cas-grid');
+        if (!grid) return;
+
+        // Schwerpunkt der aufgelösten Zellen berechnen
+        let sumX = 0, sumY = 0, cnt = 0;
+        clearingSet.forEach(k => {
+            const [r, c] = k.split(',').map(Number);
+            const el = getCascadeCell(r, c);
+            if (!el) return;
+            const rect = el.getBoundingClientRect();
+            sumX += rect.left + rect.width * 0.5;
+            sumY += rect.top + rect.height * 0.5;
+            cnt++;
+        });
+        if (cnt === 0) return;
+        const cx = sumX / cnt;
+        const cy = sumY / cnt;
+
+        // Optischer Druckwellen-Ring vom Explosionszentrum
+        const gridRect = grid.getBoundingClientRect();
+        const maxDia = Math.max(gridRect.width, gridRect.height) * 1.15;
+        const ring = document.createElement('div');
+        ring.className = `phys-shockwave-ring${isStrict ? ' is-strict' : ''}`;
+        ring.style.left = `${cx}px`;
+        ring.style.top = `${cy}px`;
+        ring.style.width = `${maxDia}px`;
+        ring.style.height = `${maxDia}px`;
+        document.body.appendChild(ring);
+        requestAnimationFrame(() => ring.classList.add('is-expanding'));
+        setTimeout(() => ring.remove(), 520);
+
+        // Nachbarkarten radial von der Druckwelle anstoßen (zeitversetzt nach Abstand)
+        const waveItems = [];
+        for (let r = 0; r < 5; r++) {
+            for (let c = 0; c < 5; c++) {
+                if (clearingSet.has(`${r},${c}`)) continue;
+                const card = (typeof cascadeState !== 'undefined' && cascadeState.board[r]) ? cascadeState.board[r][c] : null;
+                if (!card) continue;
+                const el = getCascadeCell(r, c);
+                if (!el) continue;
+                const rect = el.getBoundingClientRect();
+                const dx = (rect.left + rect.width * 0.5) - cx;
+                const dy = (rect.top + rect.height * 0.5) - cy;
+                const dist = Math.max(1, Math.hypot(dx, dy));
+                const amp = Math.max(3.5, 14.5 - dist * 0.032);
+                waveItems.push({
+                    el,
+                    delay: Math.min(165, dist * 0.44),
+                    kickVx: (dx / dist) * amp * 16,
+                    kickVy: (dy / dist) * amp * 16,
+                    kickVrot: (dx >= 0 ? 1 : -1) * (amp * 6.5),
+                    triggered: false, done: false,
+                    x: 0, vx: 0, y: 0, vy: 0, rot: 0, vrot: 0
+                });
+            }
+        }
+        if (waveItems.length === 0) return;
+
+        const t0 = performance.now();
+        let last = 0;
+        const tick = (now) => {
+            const dt = last ? Math.min(0.028, Math.max(0.004, (now - last) / 1000)) : 0.016;
+            last = now;
+            let active = false;
+
+            for (const w of waveItems) {
+                if (w.done || !w.el.isConnected) continue;
+                active = true;
+                if (!w.triggered) {
+                    if (now - t0 < w.delay) continue;
+                    w.triggered = true;
+                    w.vx = w.kickVx;
+                    w.vy = w.kickVy;
+                    w.vrot = w.kickVrot;
+                    w.el.classList.add('phys-cascade-shock');
+                }
+                [w.x, w.vx] = stepEdge(w.x, w.vx, 0, 290, 15, dt);
+                [w.y, w.vy] = stepEdge(w.y, w.vy, 0, 290, 15, dt);
+                [w.rot, w.vrot] = stepEdge(w.rot, w.vrot, 0, 260, 14, dt);
+                w.el.style.transform = `translate3d(${w.x.toFixed(2)}px, ${w.y.toFixed(2)}px, 0) rotateZ(${w.rot.toFixed(2)}deg)`;
+
+                if (now - t0 > w.delay + 340 || (Math.abs(w.x) < 0.12 && Math.abs(w.y) < 0.12 && Math.abs(w.vx) < 1 && Math.abs(w.vy) < 1)) {
+                    w.done = true;
+                    w.el.style.transform = '';
+                    w.el.classList.remove('phys-cascade-shock');
+                }
+            }
+            if (active) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    }
+
+    // ------------------------------------------------------------------------
+    // 3. DAILY CHALLENGE: GUMMIBAND-ANZIEHUNG ZUM SCHWERPUNKT & ZÄHLER-SNAP
+    // ------------------------------------------------------------------------
+    function playDailyRubberBand(indices, isStrict, onComplete) {
+        if (!indices || indices.length !== 5 || prefersReducedMotion()) {
+            if (typeof onComplete === 'function') onComplete();
+            return;
+        }
+
+        const sources = indices.map(i => document.getElementById(`daily-card-${i}`)).filter(Boolean);
+        if (sources.length !== 5) {
+            if (typeof onComplete === 'function') onComplete();
+            return;
+        }
+
+        const rects = sources.map(el => el.getBoundingClientRect());
+        const cx = rects.reduce((s, r) => s + r.left + r.width * 0.5, 0) / 5;
+        const cy = rects.reduce((s, r) => s + r.top + r.height * 0.5, 0) / 5;
+
+        const targetEl = document.getElementById('daily-progress-count') || document.getElementById('daily-found-list');
+        const targetRect = targetEl ? targetEl.getBoundingClientRect() : null;
+        const dstX = targetRect && targetRect.width > 0 ? targetRect.left + targetRect.width * 0.5 : cx;
+        const dstY = targetRect && targetRect.height > 0 ? targetRect.top + targetRect.height * 0.5 : cy - 80;
+
+        const isLight = document.documentElement.getAttribute('data-theme') === 'academic-light';
+        const isOnyx = document.documentElement.getAttribute('data-theme') === 'onyx-oled';
+        const bandColor = isLight ? '#18181b' : (isOnyx ? '#f4f4f5' : (isStrict ? '#22d3ee' : '#c084fc'));
+
+        const layer = document.createElement('div');
+        layer.className = 'phys-daily-rubber-layer';
+
+        const svgNS = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(svgNS, 'svg');
+        svg.setAttribute('width', String(window.innerWidth));
+        svg.setAttribute('height', String(window.innerHeight));
+        svg.style.position = 'absolute';
+        svg.style.inset = '0';
+
+        const knot = document.createElementNS(svgNS, 'circle');
+        knot.setAttribute('cx', String(cx));
+        knot.setAttribute('cy', String(cy));
+        knot.setAttribute('r', '5');
+        knot.setAttribute('fill', bandColor);
+        knot.setAttribute('opacity', '0.85');
+        svg.appendChild(knot);
+
+        const items = sources.map((src, i) => {
+            const r = rects[i];
+            const clone = src.cloneNode(true);
+            clone.removeAttribute('id');
+            clone.classList.add('phys-daily-rubber-clone');
+            clone.style.width = `${r.width}px`;
+            clone.style.height = `${r.height}px`;
+            clone.style.boxShadow = `0 18px 34px -10px rgba(0,0,0,0.55), 0 0 0 2px ${bandColor}`;
+            layer.appendChild(clone);
+            src.style.opacity = '0.22';
+
+            const band = document.createElementNS(svgNS, 'path');
+            band.setAttribute('fill', 'none');
+            band.setAttribute('stroke', bandColor);
+            band.setAttribute('stroke-width', '2.5');
+            band.setAttribute('stroke-linecap', 'round');
+            band.setAttribute('opacity', '0.78');
+            svg.appendChild(band);
+
+            const fanOff = (i - 2) * 7;
+            const fanRot = (i - 2) * 5.5;
+            return {
+                src, clone, band,
+                w: r.width, h: r.height,
+                x: r.left + r.width * 0.5,
+                y: r.top + r.height * 0.5,
+                vx: 0, vy: 0,
+                goalX: cx + fanOff,
+                goalY: cy + Math.abs(i - 2) * 2.5,
+                rot: 0, vrot: 0, goalRot: fanRot,
+                s: 1, vs: 0
+            };
+        });
+
+        layer.appendChild(svg);
+        document.body.appendChild(layer);
+
+        if (window.BlinkHaptics) {
+            window.BlinkHaptics.foley('cardLift', 1.08);
+            window.BlinkHaptics.vibrate(8);
+        }
+
+        const t0 = performance.now();
+        const PULL_MS = 285;
+        const ZIP_MS = 235;
+        let snappedAtCenter = false;
+        let last = 0;
+
+        const tick = (now) => {
+            const dt = last ? Math.min(0.028, Math.max(0.004, (now - last) / 1000)) : 0.016;
+            last = now;
+            const elapsed = now - t0;
+
+            if (elapsed < PULL_MS) {
+                // Phase 1: Hooke-Feder zieht alle 5 Karten samt Gummibändern zum Schwerpunkt
+                let avgDist = 0;
+                for (const it of items) {
+                    [it.x, it.vx] = stepEdge(it.x, it.vx, it.goalX, 235, 16, dt);
+                    [it.y, it.vy] = stepEdge(it.y, it.vy, it.goalY, 235, 16, dt);
+                    [it.rot, it.vrot] = stepEdge(it.rot, it.vrot, it.goalRot, 210, 15, dt);
+                    [it.s, it.vs] = stepEdge(it.s, it.vs, 0.84, 210, 16, dt);
+
+                    const dx = cx - it.x;
+                    const dy = cy - it.y;
+                    const dist = Math.hypot(dx, dy);
+                    avgDist += dist;
+
+                    // Elastische Gummiband-Kurve mit leichter Seitenbiegung
+                    const mx = (it.x + cx) * 0.5 - dy * 0.08;
+                    const my = (it.y + cy) * 0.5 + dx * 0.08;
+                    it.band.setAttribute('d', `M ${it.x.toFixed(1)} ${it.y.toFixed(1)} Q ${mx.toFixed(1)} ${my.toFixed(1)} ${cx.toFixed(1)} ${cy.toFixed(1)}`);
+                    it.band.setAttribute('stroke-width', Math.max(1.2, Math.min(4.2, 1.4 + dist * 0.011)).toFixed(2));
+
+                    it.clone.style.transform =
+                        `translate3d(${(it.x - it.w * 0.5).toFixed(1)}px, ${(it.y - it.h * 0.5).toFixed(1)}px, 0) ` +
+                        `rotateZ(${it.rot.toFixed(2)}deg) scale(${it.s.toFixed(3)})`;
+                }
+                const knotR = Math.min(18, 5 + Math.max(0, 12 - avgDist / 38));
+                knot.setAttribute('r', knotR.toFixed(1));
+                requestAnimationFrame(tick);
+                return;
+            }
+
+            if (!snappedAtCenter) {
+                snappedAtCenter = true;
+                svg.style.opacity = '0';
+                svg.style.transition = 'opacity 110ms ease';
+                if (window.BlinkHaptics) {
+                    window.BlinkHaptics.foley('cardSnap', isStrict ? 1.15 : 1.02);
+                    window.BlinkHaptics.vibrate(10);
+                }
+                // Ausgangspositionen für Phase 2 fixieren
+                for (const it of items) {
+                    it.zipStartX = it.x;
+                    it.zipStartY = it.y;
+                    it.zipStartS = it.s;
+                }
+            }
+
+            // Phase 2: Gebündeltes 5er-Cluster schnellt bogenförmig in den Zähler
+            const p = Math.min(1, (elapsed - PULL_MS) / ZIP_MS);
+            const ease = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+            const arcLift = Math.sin(p * Math.PI) * 34;
+
+            for (const it of items) {
+                const curX = it.zipStartX + (dstX - it.zipStartX) * ease;
+                const curY = it.zipStartY + (dstY - it.zipStartY) * ease - arcLift;
+                const curS = it.zipStartS * (1 - ease * 0.72);
+                const curOp = p > 0.65 ? Math.max(0, 1 - (p - 0.65) / 0.35) : 1;
+                it.clone.style.opacity = curOp.toFixed(3);
+                it.clone.style.transform =
+                    `translate3d(${(curX - it.w * 0.5).toFixed(1)}px, ${(curY - it.h * 0.5).toFixed(1)}px, 0) ` +
+                    `rotateZ(${(it.rot * (1 - ease)).toFixed(2)}deg) scale(${curS.toFixed(3)})`;
+            }
+
+            if (p < 1) {
+                requestAnimationFrame(tick);
+            } else {
+                layer.remove();
+                sources.forEach(s => { s.style.opacity = ''; });
+                if (targetEl) {
+                    targetEl.classList.remove('phys-counter-pop');
+                    void targetEl.offsetWidth;
+                    targetEl.classList.add('phys-counter-pop');
+                    setTimeout(() => targetEl.classList.remove('phys-counter-pop'), 380);
+                }
+                if (typeof onComplete === 'function') onComplete();
+            }
+        };
+        requestAnimationFrame(tick);
+    }
+
+    // ------------------------------------------------------------------------
+    // 4. 5×5-BLINK-SUDOKU: MAGNET-ABSTOSSUNG & SYNCHRONE RESONANZ-WELLE
+    // ------------------------------------------------------------------------
+    function getSudokuLines() {
+        const lines = [];
+        for (let r = 0; r < 5; r++) lines.push({ key: `r${r}`, label: `Zeile ${r + 1} komplett!`, indices: [0, 1, 2, 3, 4].map(c => r * 5 + c) });
+        for (let c = 0; c < 5; c++) lines.push({ key: `c${c}`, label: `Spalte ${c + 1} komplett!`, indices: [0, 1, 2, 3, 4].map(r => r * 5 + c) });
+        lines.push({ key: 'd0', label: 'Diagonale komplett!', indices: [0, 6, 12, 18, 24] });
+        lines.push({ key: 'd1', label: 'Diagonale komplett!', indices: [4, 8, 12, 16, 20] });
+        return lines;
+    }
+
+    function getSudokuCompletedLineKeys() {
+        const set = new Set();
+        if (typeof sudokuState === 'undefined' || !Array.isArray(sudokuState.board)) return set;
+        if (typeof isValidCluster5 !== 'function') return set;
+        getSudokuLines().forEach(line => {
+            const cards = line.indices.map(i => sudokuState.board[i]);
+            if (cards.every(Boolean) && isValidCluster5(cards)) set.add(line.key);
+        });
+        return set;
+    }
+
+    function flashMagneticFieldArcs(placedEl, conflictEls) {
+        const pRect = placedEl.getBoundingClientRect();
+        const px = pRect.left + pRect.width * 0.5;
+        const py = pRect.top + pRect.height * 0.5;
+
+        const svgNS = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(svgNS, 'svg');
+        svg.setAttribute('width', String(window.innerWidth));
+        svg.setAttribute('height', String(window.innerHeight));
+        svg.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9993;transition:opacity 340ms ease;';
+
+        conflictEls.slice(0, 4).forEach(el => {
+            const r = el.getBoundingClientRect();
+            const ox = r.left + r.width * 0.5;
+            const oy = r.top + r.height * 0.5;
+            const dx = ox - px;
+            const dy = oy - py;
+            const mx = (px + ox) * 0.5;
+            const my = (py + oy) * 0.5;
+
+            [-1, 1].forEach(sign => {
+                const path = document.createElementNS(svgNS, 'path');
+                const ctrlX = mx - dy * 0.18 * sign;
+                const ctrlY = my + dx * 0.18 * sign;
+                path.setAttribute('d', `M ${px.toFixed(1)} ${py.toFixed(1)} Q ${ctrlX.toFixed(1)} ${ctrlY.toFixed(1)} ${ox.toFixed(1)} ${oy.toFixed(1)}`);
+                path.setAttribute('fill', 'none');
+                path.setAttribute('stroke', '#f43f5e');
+                path.setAttribute('stroke-width', '2');
+                path.setAttribute('stroke-dasharray', '5,4');
+                path.setAttribute('opacity', '0.72');
+                svg.appendChild(path);
+            });
+        });
+
+        document.body.appendChild(svg);
+        requestAnimationFrame(() => { svg.style.opacity = '0'; });
+        setTimeout(() => svg.remove(), 380);
+    }
+
+    function triggerMagnetRepulsion(placedEl, conflictEls) {
+        const pRect = placedEl.getBoundingClientRect();
+        const px = pRect.left + pRect.width * 0.5;
+        const py = pRect.top + pRect.height * 0.5;
+
+        flashMagneticFieldArcs(placedEl, conflictEls);
+
+        let sumPushX = 0, sumPushY = 0;
+        const bodies = [];
+
+        conflictEls.forEach(el => {
+            const r = el.getBoundingClientRect();
+            const dx = (r.left + r.width * 0.5) - px;
+            const dy = (r.top + r.height * 0.5) - py;
+            const dist = Math.max(1, Math.hypot(dx, dy));
+            const ux = dx / dist;
+            const uy = dy / dist;
+            sumPushX -= ux;
+            sumPushY -= uy;
+
+            el.classList.add('phys-magnet-repel');
+            bodies.push({
+                el, x: 0, y: 0, rot: 0,
+                vx: ux * 235, vy: uy * 235,
+                vrot: (ux >= 0 ? 1 : -1) * 95
+            });
+        });
+
+        const pDist = Math.max(0.01, Math.hypot(sumPushX, sumPushY));
+        placedEl.classList.add('phys-magnet-repel');
+        bodies.push({
+            el: placedEl, x: 0, y: 0, rot: 0,
+            vx: (sumPushX / pDist) * 215,
+            vy: (sumPushY / pDist) * 215,
+            vrot: ((sumPushX / pDist) >= 0 ? 1 : -1) * 85
+        });
+
+        if (window.BlinkHaptics) {
+            window.BlinkHaptics.foley('return', 0.85);
+            window.BlinkHaptics.vibrate([10, 26, 8]);
+        }
+
+        const t0 = performance.now();
+        let last = 0;
+        const tick = (now) => {
+            const dt = last ? Math.min(0.028, Math.max(0.004, (now - last) / 1000)) : 0.016;
+            last = now;
+            let active = false;
+
+            for (const b of bodies) {
+                if (!b.el.isConnected) continue;
+                [b.x, b.vx] = stepEdge(b.x, b.vx, 0, 340, 14, dt);
+                [b.y, b.vy] = stepEdge(b.y, b.vy, 0, 340, 14, dt);
+                [b.rot, b.vrot] = stepEdge(b.rot, b.vrot, 0, 310, 14, dt);
+                b.el.style.transform = `translate3d(${b.x.toFixed(2)}px, ${b.y.toFixed(2)}px, 0) rotateZ(${b.rot.toFixed(2)}deg)`;
+
+                if (now - t0 < 400 && (Math.abs(b.x) > 0.15 || Math.abs(b.y) > 0.15 || Math.abs(b.vx) > 1.5 || Math.abs(b.vy) > 1.5)) {
+                    active = true;
+                }
+            }
+
+            if (active) {
+                requestAnimationFrame(tick);
+            } else {
+                bodies.forEach(b => {
+                    if (!b.el.isConnected) return;
+                    b.el.style.transform = '';
+                    b.el.classList.remove('phys-magnet-repel');
+                });
+            }
+        };
+        requestAnimationFrame(tick);
+    }
+
+    function onSudokuCardPlaced(placedIdx, prevCompletedLines) {
+        if (prefersReducedMotion()) return;
+        if (typeof sudokuState === 'undefined' || !sudokuState.board[placedIdx]) return;
+        const grid = document.getElementById('sudoku-grid');
+        if (!grid || !grid.children[placedIdx]) return;
+
+        const placed = sudokuState.board[placedIdx];
+        const placedEl = grid.children[placedIdx];
+        const lines = getSudokuLines();
+
+        // 1. Konflikte auf gemeinsamen Linien (Zeile/Spalte/Diagonale) & exakte Duplikate finden
+        const conflictIdxSet = new Set();
+        lines.forEach(line => {
+            if (!line.indices.includes(placedIdx)) return;
+            line.indices.forEach(otherIdx => {
+                if (otherIdx === placedIdx) return;
+                const other = sudokuState.board[otherIdx];
+                if (!other) return;
+                if (other[0] === placed[0] || other[1] === placed[1] || other[2] === placed[2]) {
+                    conflictIdxSet.add(otherIdx);
+                }
+            });
+        });
+        sudokuState.board.forEach((other, otherIdx) => {
+            if (otherIdx !== placedIdx && other && other[0] === placed[0] && other[1] === placed[1] && other[2] === placed[2]) {
+                conflictIdxSet.add(otherIdx);
+            }
+        });
+
+        if (conflictIdxSet.size > 0) {
+            const conflictEls = [...conflictIdxSet].map(i => grid.children[i]).filter(Boolean);
+            if (conflictEls.length > 0) {
+                triggerMagnetRepulsion(placedEl, conflictEls);
+            }
+            return;
+        }
+
+        // 2. Neu vollendete gültige Linien → synchrone Resonanz-Welle
+        const prev = prevCompletedLines || new Set();
+        const newlyCompleted = lines.filter(line => {
+            if (prev.has(line.key) || !line.indices.includes(placedIdx)) return false;
+            const cards = line.indices.map(i => sudokuState.board[i]);
+            return cards.every(Boolean) && typeof isValidCluster5 === 'function' && isValidCluster5(cards);
+        });
+
+        if (newlyCompleted.length > 0) {
+            const pRow = Math.floor(placedIdx / 5), pCol = placedIdx % 5;
+            newlyCompleted.forEach((line, lIdx) => {
+                const ordered = [...line.indices].sort((a, b) => {
+                    const da = Math.hypot(Math.floor(a / 5) - pRow, (a % 5) - pCol);
+                    const db = Math.hypot(Math.floor(b / 5) - pRow, (b % 5) - pCol);
+                    return da - db;
+                });
+                ordered.forEach((cellIdx, stepIdx) => {
+                    setTimeout(() => {
+                        const cellEl = grid.children[cellIdx];
+                        if (!cellEl) return;
+                        cellEl.classList.remove('phys-sudoku-resonance');
+                        void cellEl.offsetWidth;
+                        cellEl.classList.add('phys-sudoku-resonance');
+                        setTimeout(() => cellEl.classList.remove('phys-sudoku-resonance'), 500);
+                        if (lIdx === 0 && window.BlinkHaptics) {
+                            window.BlinkHaptics.foley('detent', 0.94 + stepIdx * 0.13);
+                        }
+                    }, stepIdx * 65);
+                });
+            });
+
+            if (window.BlinkHaptics) {
+                const badgeText = newlyCompleted.length > 1
+                    ? `${newlyCompleted.length} Linien komplett!`
+                    : newlyCompleted[0].label;
+                window.BlinkHaptics.floatBadge(placedEl, badgeText, 'emerald');
+                window.BlinkHaptics.vibrate([8, 22, 12]);
+            }
+        } else if (window.BlinkHaptics) {
+            window.BlinkHaptics.stampPop(placedEl);
+        }
+    }
+
+    window.BlinkModePhysics = {
+        animatePill: (el, x, y, w, h) => animateLiquidBox(el, x, y, w, h, false),
+        animateNavPill: (el, x, w) => animateLiquidBox(el, x, 0, w, null, true),
+        playCascadeDrop,
+        playCascadeMultiDrop,
+        playCascadeShockwave,
+        playDailyRubberBand,
+        getSudokuCompletedLineKeys,
+        onSudokuCardPlaced
+    };
 })();
