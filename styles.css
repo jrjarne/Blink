@@ -3192,3 +3192,28 @@ mjx-container[display="true"] {
   #match-analysis-modal > div { padding: 16px !important; border-radius: 20px !important; max-height: 88dvh !important; }
   #ma-quality-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
 }
+/* Fixierte Fenstergröße für das Codierungs-Modal (Grundlegend & Erweitert identisch) */
+#mapping-modal > div {
+  height: min(585px, 88dvh) !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#mapping-modal > div > div:first-child,
+#mapping-modal > div > div:last-child {
+  flex-shrink: 0;
+}
+
+#mapping-modal > div > div:nth-child(2) {
+  flex: 1 1 auto;
+  min-height: 0 !important;
+  overflow-y: auto;
+}
+
+#mapping-modal thead th {
+  white-space: nowrap;
+}
+
+#mapping-modal tbody tr {
+  height: 56px;
+}

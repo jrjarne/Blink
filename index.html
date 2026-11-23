@@ -2123,9 +2123,36 @@
                 </label>
             </div>
 
-            <div class="flex justify-end pt-2 border-t border-slate-800">
-                <button onclick="toggleSettingsModal()" class="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs">Fertig & Schließen</button>
-            </div>
+            <div class="space-y-2.5 pt-2 border-t border-slate-800 text-xs">
+    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mono">4. Profil sichern &amp; wiederherstellen</label>
+    <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+      <p class="text-[11px] text-slate-400 leading-snug">
+        Speichert Name, Elo, Rekorde, KIs und Design lokal doppelt ab. Mit dem Backup-Code überträgst du deinen Stand auch auf andere Geräte oder Browser.
+      </p>
+      <div class="grid grid-cols-2 gap-2">
+        <button type="button" onclick="copyProfileBackupCode()" class="py-2 px-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-slate-200 font-bold text-[11px] transition">
+          Backup-Code kopieren
+        </button>
+        <button type="button" onclick="downloadProfileBackupFile()" class="py-2 px-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-slate-200 font-bold text-[11px] transition">
+          Als Datei sichern
+        </button>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <input id="profile-backup-input" type="text" placeholder="Backup-Code hier einfügen..." class="flex-1 min-w-0 bg-slate-900 border border-slate-700 focus:border-cyan-400 rounded-xl px-2.5 py-1.5 text-[11px] mono text-white placeholder-slate-500 focus:outline-none">
+        <button type="button" onclick="restoreProfileBackupCode()" class="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-200 font-bold text-[11px] transition shrink-0">
+          Laden
+        </button>
+      </div>
+      <label class="block text-center py-1.5 rounded-xl border border-dashed border-white/15 hover:border-cyan-400/50 text-[11px] text-slate-400 hover:text-slate-200 cursor-pointer transition">
+        Oder Backup-Datei (.json) importieren
+        <input type="file" accept=".json,application/json" onchange="importProfileBackupFile(this)" class="hidden">
+      </label>
+    </div>
+  </div>
+
+  <div class="flex justify-end pt-2 border-t border-slate-800">
+    <button onclick="toggleSettingsModal()" class="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs">Fertig & Schließen</button>
+  </div>
         </div>
     </div>
 <!-- MODAL 2: MAPPING -->
@@ -2247,5 +2274,6 @@
 <script src="models.js"></script>
 <script src="lab.js"></script>
 <script src="haptics.js"></script>
+<script src="profile-sync.js"></script>
 </body>
 </html>
