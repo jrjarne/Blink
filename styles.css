@@ -2755,3 +2755,429 @@ div:has(> #adv-layer-tabs) {
 [data-theme="academic-light"] .apple-inset-name-input {
     color: #111111 !important;
 }
+/* ============================================================================
+   MOBILE & TABLET RESPONSIVE OPTIMIERUNG (SMARTPHONE-LAYOUT)
+   ============================================================================ */
+
+/* Dynamische Viewport-Höhe (verhindert Abschneiden durch mobile Browser-Leisten) */
+html, body {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Breite LaTeX-Formeln horizontal scrollbar machen statt Seite zu sprengen */
+mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  padding: 4px 0;
+}
+
+/* Touch-Geräte: Scrollen auf nicht-ziehbaren Karten erlauben & klebenden Hover verhindern */
+@media (hover: none) and (pointer: coarse) {
+  #card-list-grid > button,
+  #adv-cards-grid > div,
+  [id^="daily-card-"],
+  #cas-current-card {
+    touch-action: pan-y !important;
+  }
+
+  .game-card:hover,
+  [id^="vh-card-"]:hover,
+  [id^="daily-card-"]:hover,
+  #card-list-grid > button:hover,
+  #adv-cards-grid > div:hover {
+    --card-lift: 0px;
+    --card-scale: 1;
+  }
+
+  .aceternity-bento-card[onclick]:hover {
+    transform: none !important;
+  }
+}
+
+/* ============================================================================
+   TABLET & MOBILE (< 1024px): 3D-/2D-SPLIT-ANSICHTEN
+   ============================================================================ */
+@media (max-width: 1023px) {
+  #basic-split-workspace,
+  #adv-split-workspace {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Überschreibt die festen Inline-Breiten (48% / 46%) aus index.html */
+  #panel-3d,
+  #panel-adv-3d {
+    width: 100% !important;
+    height: 44dvh !important;
+    min-height: 290px !important;
+    flex-shrink: 0 !important;
+  }
+
+  #panel-2d,
+  #panel-adv-2d {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 440px !important;
+    flex: none !important;
+    overflow: visible !important;
+  }
+}
+
+/* ============================================================================
+   SMARTPHONE (< 768px): HEADER, NAVIGATION, STARTSEITE, SPIELE & MODALS
+   ============================================================================ */
+@media (max-width: 767px) {
+  /* 1. HEADER: Sauberes 2-Zeilen-Layout (Oben Brand + Aktionen, unten Nav) */
+  body > header {
+    padding: 8px 10px 6px !important;
+  }
+
+  .floating-nav-pill {
+    flex-wrap: wrap !important;
+    border-radius: 1.25rem !important;
+    padding: 8px 12px !important;
+    row-gap: 8px !important;
+    column-gap: 8px !important;
+  }
+
+  .floating-nav-pill > div:first-child {
+    order: 1;
+  }
+
+  .floating-nav-pill > div:last-child {
+    order: 2;
+    gap: 8px !important;
+  }
+
+  #main-nav-bar {
+    order: 3;
+    width: 100% !important;
+    justify-content: space-between !important;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 2px;
+  }
+
+  #main-nav-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  #main-nav-bar .nav-item-clean {
+    font-size: 11px !important;
+    padding: 5px 8px !important;
+    flex: 1 0 auto;
+    text-align: center;
+    letter-spacing: 0.03em;
+  }
+
+  /* 2. SUB-NAVIGATIONSLEISTEN: Einzeilig & per Daumen wischbar statt mehrzeiliger Ovale */
+  #models-shared-bar,
+  #game-top-tabs-bar,
+  #sparring-top-bar,
+  #page-basic-model > div:first-child,
+  #page-advanced-model > div:first-child,
+  #page-lesson > div:first-child,
+  #page-lab > div:first-child {
+    padding: 6px 10px !important;
+    gap: 6px !important;
+  }
+
+  #models-mode-tabs,
+  #game-mode-tabs,
+  #lesson-mode-tabs,
+  #lab-mode-tabs,
+  #adv-struct-tabs,
+  #basic-layout-tabs,
+  #basic-2d-tabs {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    max-width: 100% !important;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 9999px !important;
+  }
+
+  #models-mode-tabs::-webkit-scrollbar,
+  #game-mode-tabs::-webkit-scrollbar,
+  #lesson-mode-tabs::-webkit-scrollbar,
+  #lab-mode-tabs::-webkit-scrollbar,
+  #adv-struct-tabs::-webkit-scrollbar,
+  #basic-layout-tabs::-webkit-scrollbar,
+  #basic-2d-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  #models-mode-tabs button,
+  #game-mode-tabs button,
+  #lesson-mode-tabs button,
+  #lab-mode-tabs button,
+  #adv-struct-tabs button,
+  #basic-layout-tabs button,
+  #basic-2d-tabs button {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    font-size: 11px !important;
+    padding: 5px 10px !important;
+  }
+
+  /* Schicht-X-Leiste kompakt */
+  div:has(> #basic-layer-tabs),
+  div:has(> #adv-layer-tabs) {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  /* 3. STARTSEITE (#page-home) & HERO-3D-KARTEN */
+  #page-home {
+    padding: 12px 12px 28px !important;
+  }
+
+  #page-home > div {
+    gap: 16px !important;
+  }
+
+  #page-home .aceternity-bento-card {
+    padding: 18px 16px !important;
+    min-height: auto !important;
+  }
+
+  .aceternity-hero-title {
+    font-size: clamp(1.6rem, 7.2vw, 2.2rem) !important;
+    line-height: 1.18 !important;
+  }
+
+  .hero-3d-container {
+    height: 205px !important;
+    overflow: hidden;
+  }
+
+  .hero-card-group {
+    left: -8px !important;
+    width: 108px !important;
+    height: 150px !important;
+  }
+
+  .hero-slot.left {
+    transform: translateX(-66px) translateZ(-26px) translateY(14px) rotateZ(-10deg) !important;
+  }
+
+  .hero-slot.center {
+    transform: translateX(36px) translateZ(60px) translateY(20px) rotateZ(0deg) !important;
+  }
+
+  .hero-slot.right {
+    transform: translateX(80px) translateZ(-12px) translateY(24px) rotateZ(15deg) !important;
+  }
+
+/* 4. 3D-MODELLE: Overlays entzerren (nur Kamera-Leiste oben rechts, nicht die Karte unten) */
+  #panel-3d > div.absolute[class*="top-2.5"][class*="right-2.5"],
+  #panel-adv-3d > div.absolute[class*="top-2.5"][class*="right-2.5"] {
+    top: 52px !important;
+    right: 8px !important;
+    left: auto !important;
+    padding: 3px !important;
+    gap: 2px !important;
+  }
+
+  #panel-3d > div.absolute[class*="top-2.5"][class*="right-2.5"] button,
+  #panel-adv-3d > div.absolute[class*="top-2.5"][class*="right-2.5"] button {
+    padding: 3px 6px !important;
+    font-size: 10px !important;
+  }
+
+  #node-tooltip,
+  #panel-adv-3d > div.absolute[class*="bottom-2.5"][class*="left-2.5"] {
+    top: auto !important;
+    bottom: 8px !important;
+    left: 8px !important;
+    right: 8px !important;
+    max-width: none !important;
+  }
+
+  #info-box-3d,
+  #panel-adv-3d > div.absolute[class*="left-2.5"][class*="top-2.5"] {
+    top: 8px !important;
+    left: 8px !important;
+    max-width: calc(100% - 16px) !important;
+  }
+  /* 5. BLINK-ARENA (#game-view-arena) */
+  #page-game > div.overflow-y-auto,
+  #page-lab > div.overflow-y-auto,
+  #page-lesson > div.overflow-y-auto {
+    padding: 10px 10px calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* Gegner- & Spieler-Leiste kompakt */
+  #game-view-arena .fu-card {
+    border-radius: 1.25rem !important;
+  }
+
+  #opponent-zone {
+    gap: 8px !important;
+  }
+
+  #game-view-arena .fu-card.px-4 {
+    padding: 10px 12px !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  #player-name-input {
+    width: 110px !important;
+  }
+
+  #game-timer-display {
+    font-size: 0.9rem !important;
+  }
+
+  /* Spielfeld-Container & Mittelstapel passend für 2–3 Stapel nebeneinander */
+  #game-view-arena .min-h-\[470px\] {
+    min-height: auto !important;
+    padding: 14px 10px !important;
+  }
+
+  #center-pile-0,
+  #center-pile-1,
+  #center-pile-2 {
+    width: clamp(90px, 27vw, 130px) !important;
+    padding: 7px !important;
+    border-width: 3px !important;
+    border-radius: 14px !important;
+  }
+
+  #center-pile-0:parent,
+  #game-view-arena .gap-6 {
+    gap: 10px !important;
+  }
+
+  /* Handkarten & Nachziehstapel */
+  #player-hand-container {
+    min-height: 118px !important;
+    gap: 6px !important;
+    padding-top: 8px !important;
+    padding-bottom: 4px !important;
+  }
+
+  #player-hand-container .game-card {
+    width: clamp(64px, 24vw, 96px) !important;
+    padding: 6px !important;
+    border-radius: 12px !important;
+  }
+
+  #player-draw-pile-btn {
+    width: 72px !important;
+    border-radius: 14px !important;
+  }
+
+  #player-deck-count {
+    font-size: 1.4rem !important;
+  }
+
+  /* 6. DAS VERHÖR (#game-view-verhoer) */
+  #vh-banner-text {
+    white-space: normal !important;
+    font-size: 11.5px !important;
+    line-height: 1.35 !important;
+  }
+
+  #vh-action-banner {
+    border-left: none !important;
+    padding-left: 0 !important;
+    width: 100%;
+  }
+
+  #vh-deck-btn,
+  #vh-discard-pile {
+    width: 96px !important;
+    border-radius: 14px !important;
+  }
+
+  #vh-interrogation-panel {
+    align-items: flex-start !important;
+    overflow-y: auto !important;
+    padding: 12px !important;
+  }
+
+  /* 7. SUDOKU, CASCADE, DAILY & ENDGAME */
+  #sudoku-grid,
+  #cas-grid,
+  #cas-col-triggers {
+    gap: 4px !important;
+  }
+
+  #daily-cards-grid {
+    gap: 6px !important;
+  }
+
+  #eg-piles-container {
+    gap: 10px !important;
+  }
+
+  #eg-piles-container > div {
+    max-width: 30vw;
+  }
+
+  #eg-hand-container {
+    min-height: 118px !important;
+    gap: 6px !important;
+  }
+
+  #cas-current-card {
+    width: 72px !important;
+  }
+
+  /* 8. KURS & LABOR */
+  #page-lesson .aceternity-bento-card,
+  #page-lab .aceternity-bento-card {
+    padding: 16px 14px !important;
+  }
+
+  /* 9. MODALS & TOASTS */
+  #settings-modal,
+  #mapping-modal,
+  #game-info-modal,
+  #elo-overview-modal {
+    padding: 10px !important;
+  }
+
+  #settings-modal > div,
+  #mapping-modal > div,
+  #game-info-modal > div,
+  #elo-overview-modal > div {
+    padding: 16px !important;
+    border-radius: 20px !important;
+    max-height: 88dvh !important;
+    overflow-y: auto !important;
+  }
+
+  /* Codierungstabelle sauber scrollbar statt gequetscht */
+  #mapping-modal table {
+    table-layout: auto !important;
+    min-width: 460px;
+  }
+
+  #sonner-toaster {
+    left: 12px !important;
+    right: 12px !important;
+    bottom: 12px !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+}
+
+/* Extra-schmale Smartphones (< 400px) */
+@media (max-width: 399px) {
+  #main-nav-bar .nav-item-clean {
+    font-size: 10px !important;
+    padding: 5px 5px !important;
+  }
+
+  .floating-nav-pill {
+    padding: 7px 10px !important;
+  }
+}
