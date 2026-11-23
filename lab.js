@@ -295,7 +295,7 @@
         function adjustActiveAIEloFromHuman(delta) {
             const ai = getActiveTrainedAI();
             if (!ai) return;
-            ai.elo = Math.max(400, Math.min(2400, ai.elo + delta));
+            ai.elo = Math.max(400, ai.elo + delta);
             saveAIRosterState();
         }
 
@@ -455,7 +455,7 @@
             if (smoothUpdate) {
                 const rawDelta = Math.round((targetElo - oldElo) * 0.45);
                 const clampedDelta = Math.max(-15, Math.min(35, rawDelta));
-                ai.elo = Math.max(500, Math.min(2150, oldElo + clampedDelta));
+                ai.elo = Math.max(500, oldElo + clampedDelta);
             } else {
                 ai.elo = targetElo;
             }

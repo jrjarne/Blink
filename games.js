@@ -186,7 +186,7 @@ const BOT_DIFFICULTY_PRESETS = {
             { tier: 'emerald',     name: 'Emerald',     range: '1350 – 1549 Elo',min: 1350, max: 1549 },
             { tier: 'diamond',     name: 'Diamond',     range: '1550 – 1749 Elo',min: 1550, max: 1749 },
             { tier: 'master',      name: 'Master',      range: '1750 – 1949 Elo',min: 1750, max: 1949 },
-            { tier: 'grandmaster', name: 'Grandmaster', range: '≥ 1950 Elo',     min: 1950, max: 9999 }
+            { tier: 'grandmaster', name: 'Grandmaster', range: '≥ 1950 Elo', min: 1950, max: Infinity }
         ];
 
         function toggleEloOverviewModal() {
@@ -327,7 +327,7 @@ const BOT_DIFFICULTY_PRESETS = {
             if (didWin && delta < 2) delta = 2;
             if (!didWin && delta > -2) delta = -2;
 
-            playerEloState.elo = Math.max(400, Math.min(2400, playerEloState.elo + delta));
+            playerEloState.elo = Math.max(400, playerEloState.elo + delta);
             if (didWin) playerEloState.wins++; else playerEloState.losses++;
             playerEloState.history.push(playerEloState.elo);
             if (playerEloState.history.length > 50) playerEloState.history.shift();
@@ -343,7 +343,7 @@ const BOT_DIFFICULTY_PRESETS = {
                 if (ai) afterOppElo = ai.elo;
             } else if (gameState.mode === 'online') {
                 oppDelta = -delta;
-                afterOppElo = Math.max(400, Math.min(2400, beforeOppElo + oppDelta));
+                afterOppElo = Math.max(400, beforeOppElo + oppDelta);
                 p2pState.oppElo = afterOppElo;
             }
 

@@ -167,7 +167,7 @@ function timeToBaseElo(normSec) {
     [145, 550],
     [180, 450]
   ];
-  if (normSec <= anchors[0][0]) return anchors[0][1];
+  if (normSec <= anchors[0][0]) return anchors[0][1] + (anchors[0][0] - normSec) * 35;
   for (let i = 1; i < anchors.length; i++) {
     const [t1, e1] = anchors[i - 1];
     const [t2, e2] = anchors[i];
@@ -236,7 +236,7 @@ function buildMatchAnalysisReport(meta) {
   const lossAdj = didWin ? 0 : -40;
   const excessRestockPenalty = matchAnalysisState.restocks > 5 ? -(matchAnalysisState.restocks - 5) * 40 : 0;
 
-  const perfElo = Math.max(450, Math.min(2400, Math.round(baseTimeElo + mistakeAdj + flowBonus + lossAdj + excessRestockPenalty)));
+  const perfElo = Math.max(450, Math.round(baseTimeElo + mistakeAdj + flowBonus + lossAdj + excessRestockPenalty));
 
   // Eigenschafts-Profil (Anzahl / Farbe / Symbol)
   const props = { x: 0, y: 0, z: 0, cluster: 0 };
