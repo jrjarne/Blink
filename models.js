@@ -214,7 +214,47 @@
             advState.renderer.setSize(advContainer.clientWidth, advContainer.clientHeight);
         }
 
+        function toggleAdv3DInfoBox() {
+            const body = document.getElementById('adv-3d-opts');
+            const label = document.getElementById('adv-info-box-toggle-text');
+            const btn = document.getElementById('btn-toggle-adv-3d-opts');
+            if (!body) return;
+            const shouldExpand = body.classList.contains('hidden');
+            body.classList.toggle('hidden', !shouldExpand);
+            if (label) label.textContent = shouldExpand ? 'Schließen' : 'Optionen';
+            if (btn) btn.classList.toggle('is-open', shouldExpand);
+        }
+
+        function toggleAdvTooltipBox() {
+            const preview = document.getElementById('adv-tt-card-preview');
+            const status = document.getElementById('adv-tt-status');
+            const btn = document.getElementById('btn-toggle-adv-tooltip');
+            if (!preview || !status) return;
+            const isHidden = preview.classList.contains('hidden');
+            preview.classList.toggle('hidden', !isHidden);
+            status.classList.toggle('hidden', !isHidden);
+            if (btn) {
+                const span = btn.querySelector('span');
+                if (span) span.textContent = isHidden ? 'Minimieren' : 'Vorschau';
+                btn.classList.toggle('is-open', !isHidden);
+            }
+        }
+
+        function toggleAdvFilterDrawer() {
+            const drawer = document.getElementById('adv-filter-drawer');
+            const btn = document.getElementById('btn-toggle-adv-filter');
+            if (!drawer) return;
+            const willOpen = drawer.classList.contains('hidden');
+            drawer.classList.toggle('hidden', !willOpen);
+            if (btn) btn.classList.toggle('is-open', willOpen);
+            playSound('tick');
+        }
+
         function setAdvCameraView(mode, instant = false) {
+            ['iso', 'xy', 'xz', 'yz'].forEach(m => {
+                const b = document.getElementById(`adv-cam-${m}`);
+                if (b) b.classList.toggle('is-active', m === mode);
+            });
             if (!advState.controls) return;
             const targetLook = new THREE.Vector3(0, 0, 0);
             const targetPos = new THREE.Vector3();
@@ -402,6 +442,11 @@
         }
 
         function highlightAdvLine(kind) {
+            playSound('tick');
+            ['diag1', 'diag2', 'row0', 'col0', 'all'].forEach(k => {
+                const b = document.getElementById(`adv-hl-${k}`);
+                if (b) b.classList.toggle('is-active', k === kind);
+            });
             const cards = getAdvActiveCards();
             if (kind === 'all' || cards.length < 25) {
                 advState.highlightedLineKeys = null;
@@ -466,6 +511,9 @@
                     };
                     noteEl.textContent = notes[advState.cubeHighlight] || '';
                 }
+            } else if (advState.structureMode === 'all') {
+                if (titleEl) titleEl.textContent = 'Vollraum F₅³ (Auszug: 25 von 125 Karten)';
+                if (badgeEl) badgeEl.textContent = '• 125 Vektoren · 5×5×5 Gitter';
             } else if (advState.structureMode === 'line') {
                 if (titleEl) titleEl.textContent = '1D Strenges Cluster: Affine Gerade C = { x + t·d (mod 5) } (5 Karten)';
                 if (subEl) subEl.textContent = 'x = (0,2,1), d = (1,2,2) nullfrei → dim(U) = 1';

@@ -105,6 +105,457 @@ const BOT_DIFFICULTY_PRESETS = {
             }
         }
 
+        // ============================================================================
+        // SPIELER-PROFIL (MENSCHLICHE CHARAKTERE IM POKÉMON-VEKTORSTIL)
+        // ============================================================================
+        const PLAYER_SKINS = [
+            { id: 's1', hex: '#fde2cf', label: 'Sehr hell' },
+            { id: 's2', hex: '#f6c8a8', label: 'Hell' },
+            { id: 's3', hex: '#e5aa7e', label: 'Warm' },
+            { id: 's4', hex: '#c78758', label: 'Mittel' },
+            { id: 's5', hex: '#995e3a', label: 'Dunkel' },
+            { id: 's6', hex: '#6a3e26', label: 'Tiefbraun' }
+        ];
+
+        const PLAYER_HAIR_COLORS = [
+            '#1e293b', '#5c3a21', '#a16207', '#eab308',
+            '#dc2626', '#cbd5e1', '#22d3ee', '#a855f7'
+        ];
+
+        const PLAYER_OUTFIT_COLORS = [
+            '#22d3ee', '#fb7185', '#34d399', '#a855f7',
+            '#facc15', '#fb923c', '#3b82f6', '#52525b'
+        ];
+
+        const PLAYER_HAIRSTYLES = [
+            { id: 'spiky',    name: 'Strubbelig' },
+            { id: 'short',    name: 'Kurz' },
+            { id: 'parted',   name: 'Scheitel' },
+            { id: 'bob',      name: 'Bob' },
+            { id: 'ponytail', name: 'Zopf' },
+            { id: 'bun',      name: 'Dutt' },
+            { id: 'curly',    name: 'Locken' },
+            { id: 'long',     name: 'Lang' }
+        ];
+
+        const PLAYER_EXPRESSIONS = [
+            { id: 'smile', name: 'Lächeln' },
+            { id: 'grin',  name: 'Grinsen' },
+            { id: 'wink',  name: 'Zwinkern' },
+            { id: 'focus', name: 'Fokus' }
+        ];
+
+        const PLAYER_ACCESSORIES = [
+            { id: 'none',       name: 'Ohne' },
+            { id: 'glasses',    name: 'Brille' },
+            { id: 'cap',        name: 'Cap' },
+            { id: 'headphones', name: 'Audio' },
+            { id: 'beanie',     name: 'Beanie' },
+            { id: 'shades',     name: 'Cool' }
+        ];
+
+        const DEFAULT_PLAYER_PROFILE = {
+            skin: '#f6c8a8',
+            hair: 'spiky',
+            hairColor: '#1e293b',
+            outfitColor: '#22d3ee',
+            expr: 'smile',
+            acc: 'none'
+        };
+
+        function sanitizePlayerProfile(raw) {
+            const p = raw && typeof raw === 'object' ? raw : {};
+            const validHex = (v, fb) => (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v)) ? v : fb;
+            return {
+                skin: validHex(p.skin, DEFAULT_PLAYER_PROFILE.skin),
+                hair: PLAYER_HAIRSTYLES.some(h => h.id === p.hair) ? p.hair : DEFAULT_PLAYER_PROFILE.hair,
+                hairColor: validHex(p.hairColor, DEFAULT_PLAYER_PROFILE.hairColor),
+                outfitColor: validHex(p.outfitColor, DEFAULT_PLAYER_PROFILE.outfitColor),
+                expr: PLAYER_EXPRESSIONS.some(e => e.id === p.expr) ? p.expr : DEFAULT_PLAYER_PROFILE.expr,
+                acc: PLAYER_ACCESSORIES.some(a => a.id === p.acc) ? p.acc : DEFAULT_PLAYER_PROFILE.acc
+            };
+        }
+
+        function loadPlayerProfileState() {
+            try {
+                const raw = localStorage.getItem('blink_player_avatar_v1');
+                if (raw) return sanitizePlayerProfile(JSON.parse(raw));
+            } catch (e) {}
+            return { ...DEFAULT_PLAYER_PROFILE };
+        }
+
+        const playerProfileState = loadPlayerProfileState();
+
+        function savePlayerProfileState() {
+            try {
+                localStorage.setItem('blink_player_avatar_v1', JSON.stringify(playerProfileState));
+            } catch (e) {}
+        }
+
+        function getPlayerProfile() {
+            return { ...playerProfileState };
+        }
+
+        function getPlayerAvatarSVG(prof = playerProfileState, size = 44) {
+            const p = sanitizePlayerProfile(prof);
+            const s = p.skin;
+            const hc = p.hairColor;
+            const oc = p.outfitColor;
+            const hasHat = p.acc === 'cap' || p.acc === 'beanie';
+
+            // 1. Hintere Haar-Ebene (hinter Ohren, Hals & Schultern)
+            let backHair = '';
+            if (p.hair === 'long') {
+                backHair = `<path d="M14 27 C10 38 11 51 15 60 L49 60 C53 51 54 38 50 27 C48 16 40 12 32 12 C24 12 16 16 14 27 Z" fill="${hc}" stroke="#0f172a" stroke-width="2" stroke-linejoin="round"/>`;
+            } else if (p.hair === 'bob') {
+                backHair = `<path d="M14 28 C11 38 13 49 20 51 L44 51 C51 49 53 38 50 28 C48 17 40 13 32 13 C24 13 16 17 14 28 Z" fill="${hc}" stroke="#0f172a" stroke-width="2" stroke-linejoin="round"/>`;
+            } else if (p.hair === 'ponytail') {
+                backHair = `
+                    <path d="M44 22 C54 19 60 29 56 42 C53 46 47 44 47 36 C47 31 45 27 43 25 Z" fill="${hc}" stroke="#0f172a" stroke-width="2" stroke-linejoin="round"/>
+                    <ellipse cx="45.5" cy="23.5" rx="2.6" ry="3.4" transform="rotate(24 45.5 23.5)" fill="${oc}" stroke="#0f172a" stroke-width="1.6"/>
+                    <circle cx="32" cy="28" r="17.5" fill="${hc}" stroke="#0f172a" stroke-width="2"/>`;
+            } else if (p.hair === 'bun') {
+                backHair = `${hasHat ? '' : `
+                    <circle cx="32" cy="11.5" r="7.2" fill="${hc}" stroke="#0f172a" stroke-width="2"/>
+                    <path d="M26 15.5 Q32 17.5 38 15.5" fill="none" stroke="${oc}" stroke-width="2.4" stroke-linecap="round"/>`}
+                    <circle cx="32" cy="28" r="17.2" fill="${hc}" stroke="#0f172a" stroke-width="2"/>`;
+            } else if (p.hair === 'curly') {
+                backHair = `
+                    <circle cx="15" cy="28" r="7" fill="${hc}" stroke="#0f172a" stroke-width="2"/>
+                    <circle cx="49" cy="28" r="7" fill="${hc}" stroke="#0f172a" stroke-width="2"/>
+                    <circle cx="15" cy="37" r="6" fill="${hc}" stroke="#0f172a" stroke-width="2"/>
+                    <circle cx="49" cy="37" r="6" fill="${hc}" stroke="#0f172a" stroke-width="2"/>
+                    <circle cx="21" cy="18" r="7.5" fill="${hc}" stroke="#0f172a" stroke-width="2"/>
+                    <circle cx="43" cy="18" r="7.5" fill="${hc}" stroke="#0f172a" stroke-width="2"/>
+                    <circle cx="32" cy="15.5" r="8" fill="${hc}" stroke="#0f172a" stroke-width="2"/>`;
+            }
+
+            // 2. Trainer-Jacke / Hoodie & Hals
+            const body = `
+                <path d="M12 62 C12 51.5 20.5 47.5 32 47.5 C43.5 47.5 52 51.5 52 62 Z" fill="${oc}" stroke="#0f172a" stroke-width="2" stroke-linejoin="round"/>
+                <path d="M25.5 48 L32 56.5 L38.5 48 Z" fill="#ffffff" opacity="0.92" stroke="#0f172a" stroke-width="1.6" stroke-linejoin="round"/>
+                <line x1="32" y1="56.5" x2="32" y2="62" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+                <rect x="28" y="43.5" width="8" height="6.8" rx="3" fill="${s}" stroke="#0f172a" stroke-width="1.8"/>`;
+
+            // 3. Ohren, Kopf & dezente Wangenröte (gleicher Stil wie AI_LOGOS)
+            const head = `
+                <circle cx="15.5" cy="34.5" r="3.6" fill="${s}" stroke="#0f172a" stroke-width="2"/>
+                <circle cx="48.5" cy="34.5" r="3.6" fill="${s}" stroke="#0f172a" stroke-width="2"/>
+                <ellipse cx="32" cy="33.5" rx="16.2" ry="14.8" fill="${s}" stroke="#0f172a" stroke-width="2"/>
+                <ellipse cx="20.8" cy="38" rx="2.8" ry="1.5" fill="#fb7185" opacity="0.48"/>
+                <ellipse cx="43.2" cy="38" rx="2.8" ry="1.5" fill="#fb7185" opacity="0.48"/>`;
+
+            // 4. Augen & Gesichtsausdruck
+            let face = '';
+            if (p.expr === 'grin') {
+                face = `
+                    <circle cx="24.8" cy="33.2" r="3.2" fill="#0f172a"/><circle cx="25.9" cy="32" r="1.15" fill="#ffffff"/>
+                    <circle cx="39.2" cy="33.2" r="3.2" fill="#0f172a"/><circle cx="40.3" cy="32" r="1.15" fill="#ffffff"/>
+                    <path d="M27.2 38.8 Q32 44.6 36.8 38.8 Z" fill="#ffffff" stroke="#0f172a" stroke-width="1.6" stroke-linejoin="round"/>`;
+            } else if (p.expr === 'wink') {
+                face = `
+                    <circle cx="24.8" cy="33.2" r="3.2" fill="#0f172a"/><circle cx="25.9" cy="32" r="1.15" fill="#ffffff"/>
+                    <path d="M36 33.4 Q39.2 30.2 42.4 33.4" fill="none" stroke="#0f172a" stroke-width="2.1" stroke-linecap="round"/>
+                    <path d="M28.2 39.5 Q32 42.8 35.8 39.5" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linecap="round"/>`;
+            } else if (p.expr === 'focus') {
+                face = `
+                    <path d="M21.2 28.4 L28 29.9" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M42.8 28.4 L36 29.9" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round"/>
+                    <circle cx="24.8" cy="33.6" r="3.0" fill="#0f172a"/><circle cx="25.8" cy="32.5" r="1.05" fill="#ffffff"/>
+                    <circle cx="39.2" cy="33.6" r="3.0" fill="#0f172a"/><circle cx="40.2" cy="32.5" r="1.05" fill="#ffffff"/>
+                    <path d="M28.8 40.3 Q32.5 41.6 35.6 39.4" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linecap="round"/>`;
+            } else {
+                face = `
+                    <circle cx="24.8" cy="33.2" r="3.2" fill="#0f172a"/><circle cx="25.9" cy="32" r="1.15" fill="#ffffff"/>
+                    <circle cx="39.2" cy="33.2" r="3.2" fill="#0f172a"/><circle cx="40.3" cy="32" r="1.15" fill="#ffffff"/>
+                    <path d="M28.2 39.6 Q32 42.8 35.8 39.6" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linecap="round"/>`;
+            }
+
+            // 5. Vordere Frisur / Pony (sitzt bei Cap/Beanie sauber unter der Krempe)
+            let frontHair = '';
+            if (hasHat) {
+                frontHair = `
+                    <path d="M15.5 28 C16 24 19 22 23 23 L19 30 Z" fill="${hc}" stroke="#0f172a" stroke-width="1.6" stroke-linejoin="round"/>
+                    <path d="M48.5 28 C48 24 45 22 41 23 L45 30 Z" fill="${hc}" stroke="#0f172a" stroke-width="1.6" stroke-linejoin="round"/>`;
+            } else if (p.hair === 'spiky') {
+                frontHair = `
+                    <path d="M15 31 C13 21 18 14 25 15 L23 9 L32 14 L38 8 L40 15 C47 14 51 21 49 31 L46 25 L41 29 L36 22 L30 29 L25 23 L19 28 Z" fill="${hc}" stroke="#0f172a" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M23 19 Q31 15 39 18" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.28"/>`;
+            } else if (p.hair === 'short') {
+                frontHair = `
+                    <path d="M15.5 31 C15 19 22 14 32 14 C42 14 49 19 48.5 31 C46 25 41 23 36 24 L33 27 L30 24 C24 23 18 25 15.5 31 Z" fill="${hc}" stroke="#0f172a" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M23 19 Q32 16 41 19" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.28"/>`;
+            } else if (p.hair === 'parted') {
+                frontHair = `
+                    <path d="M15.5 31 C14.5 19 22 13.5 32 13.5 C42 13.5 49.5 19 48.5 31 C45 25 39 22.5 31 23.5 C26 24.5 22 27.5 15.5 31 Z" fill="${hc}" stroke="#0f172a" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M36 15 Q34 20 31 23.5" fill="none" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/>
+                    <path d="M22 19 Q28 16.5 34 18" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.28"/>`;
+            } else if (p.hair === 'bob') {
+                frontHair = `
+                    <path d="M15.5 31 C15.5 18 22 13.5 32 13.5 C42 13.5 48.5 18 48.5 31 L45 26.5 L19 26.5 Z" fill="${hc}" stroke="#0f172a" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M23 19 Q32 16.5 41 19" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.28"/>`;
+            } else if (p.hair === 'ponytail' || p.hair === 'bun') {
+                frontHair = `
+                    <path d="M15.5 31 C15.5 18.5 22.5 14 32 14 C41.5 14 48.5 18.5 48.5 31 C44.5 24 38.5 21.5 32 23.5 C25.5 21.5 19.5 24 15.5 31 Z" fill="${hc}" stroke="#0f172a" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M23 18.5 Q32 16 41 18.5" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.28"/>`;
+            } else if (p.hair === 'curly') {
+                frontHair = `
+                    <circle cx="20" cy="22.5" r="5.5" fill="${hc}" stroke="#0f172a" stroke-width="2"/>
+                    <circle cx="28" cy="20.5" r="6" fill="${hc}" stroke="#0f172a" stroke-width="2"/>
+                    <circle cx="37" cy="20.5" r="6" fill="${hc}" stroke="#0f172a" stroke-width="2"/>
+                    <circle cx="44" cy="22.5" r="5.5" fill="${hc}" stroke="#0f172a" stroke-width="2"/>`;
+            } else if (p.hair === 'long') {
+                frontHair = `
+                    <path d="M15 33 C14.5 18.5 22 13.5 32 13.5 C42 13.5 49.5 18.5 49 33 C46 26 40 22.5 32 23.5 C24 22.5 18 26 15 33 Z" fill="${hc}" stroke="#0f172a" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M22.5 19 Q32 16 41.5 19" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.28"/>`;
+            }
+
+            // 6. Accessoire-Ebene
+            let acc = '';
+            if (p.acc === 'glasses') {
+                acc = `
+                    <circle cx="24.8" cy="33.2" r="5.6" fill="rgba(255,255,255,0.22)" stroke="#0f172a" stroke-width="1.9"/>
+                    <circle cx="39.2" cy="33.2" r="5.6" fill="rgba(255,255,255,0.22)" stroke="#0f172a" stroke-width="1.9"/>
+                    <line x1="30.4" y1="33.2" x2="33.6" y2="33.2" stroke="#0f172a" stroke-width="1.9"/>
+                    <line x1="16" y1="32.2" x2="19.2" y2="32.8" stroke="#0f172a" stroke-width="1.7"/>
+                    <line x1="48" y1="32.2" x2="44.8" y2="32.8" stroke="#0f172a" stroke-width="1.7"/>`;
+            } else if (p.acc === 'shades') {
+                acc = `
+                    <rect x="18" y="29" width="12.5" height="8.2" rx="3" fill="#0f172a" stroke="#0f172a" stroke-width="1.6"/>
+                    <rect x="33.5" y="29" width="12.5" height="8.2" rx="3" fill="#0f172a" stroke="#0f172a" stroke-width="1.6"/>
+                    <line x1="30.5" y1="32" x2="33.5" y2="32" stroke="#0f172a" stroke-width="2"/>
+                    <line x1="20.5" y1="34.8" x2="24.5" y2="30.8" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round" opacity="0.55"/>
+                    <line x1="36" y1="34.8" x2="40" y2="30.8" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round" opacity="0.55"/>`;
+            } else if (p.acc === 'cap') {
+                acc = `
+                    <path d="M15 24.5 C15.5 14 23 10.5 32 10.5 C41 10.5 48.5 14 49 24.5 Z" fill="${oc}" stroke="#0f172a" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M23 23.5 C24 15.5 27.5 13 32 13 C36.5 13 40 15.5 41 23.5 Z" fill="#ffffff" opacity="0.92" stroke="#0f172a" stroke-width="1.5"/>
+                    <path d="M28.5 19.5 Q32 16.5 35.5 19.5" fill="none" stroke="${oc}" stroke-width="2.2" stroke-linecap="round"/>
+                    <path d="M12.5 24.8 Q32 20.5 51.5 24.8 Q32 27.6 12.5 24.8 Z" fill="${oc}" stroke="#0f172a" stroke-width="2" stroke-linejoin="round"/>`;
+            } else if (p.acc === 'beanie') {
+                acc = `
+                    <path d="M15.5 24.5 C16 14 22.5 10 32 10 C41.5 10 48 14 48.5 24.5 Z" fill="${oc}" stroke="#0f172a" stroke-width="2" stroke-linejoin="round"/>
+                    <circle cx="32" cy="8.2" r="3.4" fill="${oc}" stroke="#0f172a" stroke-width="1.8"/>
+                    <rect x="14.5" y="20.5" width="35" height="6" rx="3" fill="${oc}" stroke="#0f172a" stroke-width="2"/>
+                    <line x1="22" y1="21" x2="22" y2="26" stroke="#0f172a" stroke-width="1.4" opacity="0.55"/>
+                    <line x1="32" y1="21" x2="32" y2="26" stroke="#0f172a" stroke-width="1.4" opacity="0.55"/>
+                    <line x1="42" y1="21" x2="42" y2="26" stroke="#0f172a" stroke-width="1.4" opacity="0.55"/>`;
+            } else if (p.acc === 'headphones') {
+                acc = `
+                    <path d="M14 32 C14 14 22 9.5 32 9.5 C42 9.5 50 14 50 32" fill="none" stroke="#0f172a" stroke-width="4.4" stroke-linecap="round"/>
+                    <path d="M14 32 C14 14 22 9.5 32 9.5 C42 9.5 50 14 50 32" fill="none" stroke="${oc}" stroke-width="2" stroke-linecap="round"/>
+                    <rect x="10.2" y="28.5" width="5.8" height="12.5" rx="2.9" fill="${oc}" stroke="#0f172a" stroke-width="2"/>
+                    <rect x="48" y="28.5" width="5.8" height="12.5" rx="2.9" fill="${oc}" stroke="#0f172a" stroke-width="2"/>`;
+            }
+
+            return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" class="block">${backHair}${body}${head}${face}${frontHair}${acc}</svg>`;
+        }
+
+        function getOpponentAvatarSVG(size = 36) {
+            if (gameState.mode === 'online' && p2pState.connected && p2pState.oppProfile) {
+                return getPlayerAvatarSVG(p2pState.oppProfile, size);
+            }
+            if (gameState.useTrainedBrain && typeof getActiveTrainedAI === 'function' && typeof getAILogoSVG === 'function') {
+                const ai = getActiveTrainedAI();
+                if (ai) {
+                    const col = typeof getAIDominantColor === 'function' ? getAIDominantColor(ai) : '#fb7185';
+                    return getAILogoSVG(ai.logoId, col, size);
+                }
+            }
+            return '';
+        }
+
+        function updatePlayerProfileField(key, value) {
+            const next = sanitizePlayerProfile({ ...playerProfileState, [key]: value });
+            Object.assign(playerProfileState, next);
+            savePlayerProfileState();
+            playSound('tick');
+            syncPlayerProfileUI();
+            renderProfileModalUI();
+            p2pSyncPlayerProfile();
+        }
+
+        function randomizePlayerProfile() {
+            const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+            Object.assign(playerProfileState, {
+                skin: pick(PLAYER_SKINS).hex,
+                hair: pick(PLAYER_HAIRSTYLES).id,
+                hairColor: pick(PLAYER_HAIR_COLORS),
+                outfitColor: pick(PLAYER_OUTFIT_COLORS),
+                expr: pick(PLAYER_EXPRESSIONS).id,
+                acc: pick(PLAYER_ACCESSORIES).id
+            });
+            savePlayerProfileState();
+            playSound('flip');
+            syncPlayerProfileUI();
+            renderProfileModalUI();
+            p2pSyncPlayerProfile();
+        }
+
+        function p2pSyncPlayerProfile() {
+            if (typeof p2pState !== 'undefined' && p2pState.connected) {
+                p2pSend({ type: 'ELO_SYNC', elo: playerEloState.elo, name: getPlayerName(), profile: getPlayerProfile() });
+            }
+        }
+
+        function toggleProfileModal() {
+            const modal = document.getElementById('profile-modal');
+            const isOpening = modal && modal.classList.contains('hidden');
+            if (isOpening) {
+                playSound('tick');
+                renderProfileModalUI();
+            }
+            toggleModalState('profile-modal');
+        }
+
+        function openProfileFromSettings() {
+            const settings = document.getElementById('settings-modal');
+            if (settings && !settings.classList.contains('hidden')) {
+                toggleModalState('settings-modal');
+            }
+            setTimeout(() => toggleProfileModal(), 160);
+        }
+
+        function syncPlayerProfileUI() {
+            const prof = playerProfileState;
+            const col = prof.outfitColor || '#22d3ee';
+            const pName = getPlayerName();
+
+            const headerBtn = document.getElementById('header-profile-btn');
+            if (headerBtn) {
+                headerBtn.innerHTML = getPlayerAvatarSVG(prof, 28);
+                headerBtn.style.borderColor = `${col}88`;
+                headerBtn.style.background = `${col}1c`;
+                headerBtn.title = `${pName} (Profil & Charakter ändern)`;
+            }
+
+            const arenaAvatar = document.getElementById('player-avatar-slot');
+            if (arenaAvatar) {
+                arenaAvatar.innerHTML = getPlayerAvatarSVG(prof, 38);
+                arenaAvatar.style.borderColor = `${col}99`;
+                arenaAvatar.style.background = `${col}20`;
+            }
+
+            const vhMini = document.getElementById('vh-player-mini-avatar');
+            const vhName = document.getElementById('vh-player-name-lbl');
+            if (vhMini) vhMini.innerHTML = getPlayerAvatarSVG(prof, 16);
+            if (vhName) vhName.textContent = pName;
+
+            const labAvatar = document.getElementById('lab-player-avatar-slot');
+            if (labAvatar) {
+                labAvatar.innerHTML = getPlayerAvatarSVG(prof, 32);
+                labAvatar.style.borderColor = `${col}88`;
+                labAvatar.style.background = `${col}1c`;
+            }
+        }
+
+        function syncOpponentAvatarUI() {
+            const slot = document.getElementById('opponent-avatar-slot');
+            if (!slot) return;
+
+            if (gameState.mode === 'online' && p2pState.connected && p2pState.oppProfile) {
+                const col = p2pState.oppProfile.outfitColor || '#fb7185';
+                slot.innerHTML = getPlayerAvatarSVG(p2pState.oppProfile, 38);
+                slot.style.borderColor = `${col}99`;
+                slot.style.background = `${col}20`;
+                return;
+            }
+            if (gameState.useTrainedBrain && typeof getActiveTrainedAI === 'function' && typeof getAILogoSVG === 'function') {
+                const ai = getActiveTrainedAI();
+                if (ai) {
+                    const col = typeof getAIDominantColor === 'function' ? getAIDominantColor(ai) : '#fb7185';
+                    slot.innerHTML = getAILogoSVG(ai.logoId, col, 36);
+                    slot.style.borderColor = `${col}99`;
+                    slot.style.background = `${col}20`;
+                    return;
+                }
+            }
+            slot.style.borderColor = '';
+            slot.style.background = '';
+            slot.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8.01" y2="16"></line><line x1="16" y1="16" x2="16.01" y2="16"></line></svg>`;
+        }
+
+        function renderProfileModalUI() {
+            const prof = playerProfileState;
+            const col = prof.outfitColor || '#22d3ee';
+            const pName = getPlayerName();
+            const rank = getEloRankInfo(playerEloState.elo);
+
+            const hdrBadge = document.getElementById('profile-header-badge');
+            if (hdrBadge) hdrBadge.innerHTML = getPlayerAvatarSVG(prof, 30);
+
+            const prevAvatar = document.getElementById('profile-preview-avatar');
+            if (prevAvatar) {
+                prevAvatar.innerHTML = getPlayerAvatarSVG(prof, 84);
+                prevAvatar.style.borderColor = `${col}99`;
+                prevAvatar.style.background = `radial-gradient(circle at 50% 35%, ${col}30, rgba(15,23,42,0.45))`;
+            }
+
+            const prevName = document.getElementById('profile-preview-name');
+            if (prevName) prevName.textContent = pName;
+
+            const prevElo = document.getElementById('profile-preview-elo');
+            if (prevElo) {
+                prevElo.innerHTML = `${getEloRankSVG(rank.tier, 13)}<span>${rank.name} · ${playerEloState.elo}</span>`;
+                prevElo.className = `inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] mono font-bold ${rank.cls}`;
+            }
+
+            const nameInp = document.getElementById('profile-name-input');
+            if (nameInp && document.activeElement !== nameInp) nameInp.value = pName;
+
+            const skinGrid = document.getElementById('profile-skin-grid');
+            if (skinGrid) {
+                skinGrid.innerHTML = PLAYER_SKINS.map(sk => `
+                    <button type="button" onclick="updatePlayerProfileField('skin', '${sk.hex}')" title="${sk.label}"
+                        class="profile-swatch ${prof.skin.toLowerCase() === sk.hex.toLowerCase() ? 'is-selected' : ''}"
+                        style="background:${sk.hex}"></button>
+                `).join('');
+            }
+
+            const exprGrid = document.getElementById('profile-expr-grid');
+            if (exprGrid) {
+                exprGrid.innerHTML = PLAYER_EXPRESSIONS.map(ex => `
+                    <button type="button" onclick="updatePlayerProfileField('expr', '${ex.id}')"
+                        class="profile-chip ${prof.expr === ex.id ? 'is-selected' : ''}">${ex.name}</button>
+                `).join('');
+            }
+
+            const hairGrid = document.getElementById('profile-hair-grid');
+            if (hairGrid) {
+                hairGrid.innerHTML = PLAYER_HAIRSTYLES.map(h => `
+                    <button type="button" onclick="updatePlayerProfileField('hair', '${h.id}')"
+                        class="profile-hair-btn ${prof.hair === h.id ? 'is-selected' : ''}">
+                        ${getPlayerAvatarSVG({ ...prof, hair: h.id, acc: prof.acc === 'cap' || prof.acc === 'beanie' ? 'none' : prof.acc }, 38)}
+                        <span class="profile-hair-label">${h.name}</span>
+                    </button>
+                `).join('');
+            }
+
+            const renderColorGrid = (elId, list, currentHex, fieldKey) => {
+                const el = document.getElementById(elId);
+                if (!el) return;
+                el.innerHTML = list.map(hex => `
+                    <button type="button" onclick="updatePlayerProfileField('${fieldKey}', '${hex}')"
+                        class="profile-swatch ${currentHex.toLowerCase() === hex.toLowerCase() ? 'is-selected' : ''}"
+                        style="background:${hex}"></button>
+                `).join('') + `
+                    <label title="Eigene Farbe wählen" class="profile-swatch profile-swatch-custom">
+                        <span>+</span>
+                        <input type="color" value="${currentHex}" oninput="updatePlayerProfileField('${fieldKey}', this.value)" class="opacity-0 absolute inset-0 cursor-pointer">
+                    </label>`;
+            };
+            renderColorGrid('profile-haircolor-grid', PLAYER_HAIR_COLORS, prof.hairColor, 'hairColor');
+            renderColorGrid('profile-outfitcolor-grid', PLAYER_OUTFIT_COLORS, prof.outfitColor, 'outfitColor');
+
+            const accGrid = document.getElementById('profile-acc-grid');
+            if (accGrid) {
+                accGrid.innerHTML = PLAYER_ACCESSORIES.map(a => `
+                    <button type="button" onclick="updatePlayerProfileField('acc', '${a.id}')"
+                        class="profile-chip ${prof.acc === a.id ? 'is-selected' : ''}">${a.name}</button>
+                `).join('');
+            }
+        }
+
         function syncPlayerNameUI() {
             const pName = getPlayerName();
             const arenaInp = document.getElementById('player-name-input');
@@ -119,6 +570,12 @@ const BOT_DIFFICULTY_PRESETS = {
             if (barPlayer) barPlayer.textContent = pName;
             if (labHeading) labHeading.textContent = `${pName} · Spieler-Elo`;
             if (barOpp && oppLabelEl) barOpp.textContent = oppLabelEl.textContent || 'Bot';
+            const profInp = document.getElementById('profile-name-input');
+            const profPrevName = document.getElementById('profile-preview-name');
+            if (profInp && document.activeElement !== profInp) profInp.value = pName;
+            if (profPrevName) profPrevName.textContent = pName;
+            syncPlayerProfileUI();
+            syncOpponentAvatarUI();
         }
 
         window.addEventListener('DOMContentLoaded', () => syncPlayerNameUI());
@@ -206,27 +663,32 @@ const BOT_DIFFICULTY_PRESETS = {
             const pTier = getEloRankInfo(pElo).tier;
             const activeAI = typeof getActiveTrainedAI === 'function' ? getActiveTrainedAI() : null;
             const aiTier = activeAI ? getEloRankInfo(activeAI.elo).tier : null;
+            const playerAvatar = (typeof getPlayerAvatarSVG === 'function' && typeof playerProfileState !== 'undefined')
+                ? getPlayerAvatarSVG(playerProfileState, 15)
+                : '';
 
             list.innerHTML = ELO_RANK_TIERS.map(t => {
                 const isPlayer = t.tier === pTier;
                 const isAI = activeAI && t.tier === aiTier;
                 const rankStyle = getEloRankInfo(Math.max(t.min, 500)).cls;
                 return `
-                    <div class="rounded-2xl border px-3.5 py-2.5 flex items-center justify-between gap-3 transition ${isPlayer ? 'border-cyan-400/70 bg-cyan-500/10' : 'border-white/[0.07] bg-slate-950/75'}">
-                        <div class="flex items-center gap-3 min-w-0">
-                            <div class="w-8 h-8 rounded-xl bg-slate-900 border border-white/10 flex items-center justify-center shrink-0">
-                                ${getEloRankSVG(t.tier, 20)}
-                            </div>
-                            <div class="min-w-0">
-                                <div class="flex items-center gap-2 flex-wrap">
-                                    <span class="text-xs font-extrabold text-white">${t.name}</span>
-                                    ${isPlayer ? `<span class="px-2 py-0.5 rounded-full bg-cyan-400 text-slate-950 text-[9.5px] mono font-extrabold">${getPlayerName()} · ${pElo}</span>` : ''}
-                                    ${isAI ? `<span class="px-2 py-0.5 rounded-full bg-emerald-400/20 border border-emerald-400/40 text-emerald-300 text-[9.5px] mono font-bold">${activeAI.name} · ${activeAI.elo}</span>` : ''}
+                    <div class="apple-elo-card ${isPlayer ? 'is-player-tier' : ''}">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <span class="apple-elo-icon-box">${getEloRankSVG(t.tier, 20)}</span>
+                                <div class="min-w-0">
+                                    <div class="text-xs font-extrabold text-white leading-tight truncate">${t.name}</div>
+                                    <div class="text-[10.5px] mono text-slate-400 leading-tight mt-0.5">${t.range}</div>
                                 </div>
-                                <div class="text-[10.5px] mono text-slate-400">${t.range}</div>
                             </div>
+                            <span class="px-2 py-0.5 rounded-full border text-[9px] mono font-bold shrink-0 ${rankStyle}">${t.name}</span>
                         </div>
-                        <span class="px-2 py-0.5 rounded-full border text-[9.5px] mono font-bold shrink-0 ${rankStyle}">${t.name}</span>
+                        ${(isPlayer || isAI) ? `
+                            <div class="flex flex-wrap items-center gap-1.5 pt-2 mt-2 apple-elo-badges-row">
+                                ${isPlayer ? `<span class="inline-flex items-center gap-1 ${playerAvatar ? 'pl-1 pr-2' : 'px-2'} py-0.5 rounded-full bg-cyan-400 text-slate-950 text-[9.5px] mono font-extrabold">${playerAvatar}<span>${getPlayerName()} · ${pElo}</span></span>` : ''}
+                                ${isAI ? `<span class="px-2 py-0.5 rounded-full bg-emerald-400/20 border border-emerald-400/40 text-emerald-300 text-[9.5px] mono font-bold">${activeAI.name} · ${activeAI.elo}</span>` : ''}
+                            </div>
+                        ` : ''}
                     </div>
                 `;
             }).join('');
@@ -293,7 +755,7 @@ const BOT_DIFFICULTY_PRESETS = {
             eloGrid.innerHTML = `
                 <div class="rounded-2xl bg-slate-950/85 border border-white/[0.08] p-3.5 text-left space-y-1.5">
                     <div class="flex items-center justify-between gap-1">
-                        <span class="text-[10px] uppercase tracking-wider text-slate-500 mono truncate">${getPlayerName()}</span>
+                        <span class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-slate-400 mono truncate">${getPlayerAvatarSVG(playerProfileState, 18)}<span class="truncate">${getPlayerName()}</span></span>
                         <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[9.5px] mono font-bold ${pRank.cls}">${getEloRankSVG(pRank.tier, 12)}${pRank.name}</span>
                     </div>
                     <div class="flex items-baseline gap-2">
@@ -304,7 +766,7 @@ const BOT_DIFFICULTY_PRESETS = {
                 </div>
                 <div class="rounded-2xl bg-slate-950/85 border border-white/[0.08] p-3.5 text-left space-y-1.5">
                     <div class="flex items-center justify-between gap-1">
-                        <span class="text-[10px] uppercase tracking-wider text-slate-500 mono truncate">${oppLabel}</span>
+                        <span class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-slate-400 mono truncate">${getOpponentAvatarSVG(18)}<span class="truncate">${oppLabel}</span></span>
                         <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[9.5px] mono font-bold ${oRank.cls}">${getEloRankSVG(oRank.tier, 12)}${oRank.name}</span>
                     </div>
                     <div class="flex items-baseline gap-2">
@@ -2281,7 +2743,8 @@ p2pSendStateSync('', 'neutral');
             roomCode: '',
             connected: false,
             oppElo: null,
-            oppName: ''
+            oppName: '',
+            oppProfile: null
         };
 
         function generateP2PCode() {
@@ -2396,7 +2859,7 @@ p2pSendStateSync('', 'neutral');
                     ? 'Gegner verbunden! Klicke auf „Spielen“, um das Online-Duell zu starten.'
                     : 'Mit Host verbunden! Warte auf den Spielstart...';
                 showSonnerToast(hint, 'success');
-                p2pSend({ type: 'ELO_SYNC', elo: playerEloState.elo, name: getPlayerName() });
+                p2pSend({ type: 'ELO_SYNC', elo: playerEloState.elo, name: getPlayerName(), profile: getPlayerProfile() });
                 if (p2pState.role === 'host') {
                     p2pSend({ type: 'RULE_SYNC', ruleMode: gameState.ruleMode });
                 }
@@ -2426,6 +2889,8 @@ p2pSendStateSync('', 'neutral');
             p2pState.roomCode = '';
             p2pState.oppElo = null;
             p2pState.oppName = '';
+            p2pState.oppProfile = null;
+            syncOpponentAvatarUI();
             p2pUpdateUI('Getrennt', 'idle');
             renderEloBadgesInArena();
             if (!silent) showSonnerToast('Verbindung getrennt.', 'neutral');
@@ -2461,6 +2926,7 @@ p2pSendStateSync('', 'neutral');
             if (msg.type === 'ELO_SYNC') {
                 if (typeof msg.elo === 'number') p2pState.oppElo = msg.elo;
                 if (typeof msg.name === 'string' && msg.name.trim()) p2pState.oppName = msg.name.trim().slice(0, 18);
+                if (msg.profile && typeof msg.profile === 'object') p2pState.oppProfile = sanitizePlayerProfile(msg.profile);
                 p2pUpdateUI();
                 renderEloBadgesInArena();
                 return;
@@ -2619,7 +3085,7 @@ p2pSendStateSync('', 'neutral');
 
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                ['settings-modal', 'mapping-modal', 'game-info-modal', 'elo-overview-modal'].forEach(id => {
+                ['settings-modal', 'profile-modal', 'mapping-modal', 'game-info-modal', 'elo-overview-modal'].forEach(id => {
                     const m = document.getElementById(id);
                     if (m && !m.classList.contains('hidden')) toggleModalState(id);
                 });

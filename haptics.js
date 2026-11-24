@@ -1122,7 +1122,7 @@
     if (window.__BLINK_2027_READY) return;
     window.__BLINK_2027_READY = true;
 
-    const MODAL_IDS = ['settings-modal', 'mapping-modal', 'game-info-modal', 'elo-overview-modal'];
+    const MODAL_IDS = ['settings-modal', 'profile-modal', 'mapping-modal', 'game-info-modal', 'elo-overview-modal'];
     const PAGE_IDS = ['home', 'basic-model', 'advanced-model', 'lab', 'game', 'lesson'];
 
 

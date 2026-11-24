@@ -27,7 +27,7 @@
         function initGameModesIfNeeded() {
             if (labState.gameModesInitialized) return;
             labState.gameModesInitialized = true;
-            vhStartNewGame(true);
+            vhInitLobby();
             initDailyChallenge(false);
             startSudokuGame(10, 'Leicht');
             loadEndgamePuzzle(0);
@@ -1281,7 +1281,8 @@
             aiMemory: { knownPlayerCards: [], lastBotThought: '' },
             logs: [],
             startTime: 0,
-            winInfo: null
+            winInfo: null,
+            botTimer: null
         };
 
         function vhTopDiscard() {
@@ -1293,7 +1294,52 @@
             if (vhState.logs.length > 25) vhState.logs.pop();
         }
 
+        function vhInitLobby() {
+            if (vhState.botTimer) {
+                clearTimeout(vhState.botTimer);
+                vhState.botTimer = null;
+            }
+            vhState.isRunning = false;
+            vhState.turn = 'player';
+            vhState.phase = 'idle';
+            vhState.deck = [];
+            vhState.discardHistory = [];
+            vhState.playerHand = [];
+            vhState.aiHand = [];
+            vhState.playerTrios = [];
+            vhState.aiTrios = [];
+            vhState.selectedIdx = null;
+            vhState.draggedHandIdx = null;
+            vhState.sktDraftIndices = [];
+            vhState.recalledKey = null;
+            vhState.pendingCard = null;
+            vhState.pendingIdx = null;
+            vhState.intType = null;
+            vhState.intStep = null;
+            vhState.winInfo = null;
+            vhState.logs = [`<span class="text-slate-400">Bereit — klicke auf „Spielen“, um zu starten.</span>`];
+            renderVerhoerStandaloneUI();
+        }
+
+        function vhAbortGame() {
+            if (!vhState.isRunning) return;
+            if (vhState.botTimer) {
+                clearTimeout(vhState.botTimer);
+                vhState.botTimer = null;
+            }
+            if (typeof stopGameMusic === 'function') stopGameMusic();
+            playSound('tick');
+            vhInitLobby();
+            if (typeof showSonnerToast === 'function') {
+                showSonnerToast('Verhör-Partie beendet.', 'neutral');
+            }
+        }
+
         function vhStartNewGame(silent = false) {
+            if (vhState.botTimer) {
+                clearTimeout(vhState.botTimer);
+                vhState.botTimer = null;
+            }
             const deck125 = shuffleArray(CARDS_125);
             const firstDiscard = deck125.pop();
             vhState.isRunning = true;
@@ -1725,7 +1771,11 @@
             vhState.intStep = null;
             vhState.sktDraftIndices = [];
             renderVerhoerStandaloneUI();
-            setTimeout(() => vhExecuteBotTurn(), 900);
+            if (vhState.botTimer) clearTimeout(vhState.botTimer);
+            vhState.botTimer = setTimeout(() => {
+                vhState.botTimer = null;
+                vhExecuteBotTurn();
+            }, 900);
         }
 
         function vhExecuteBotTurn() {
@@ -1835,7 +1885,7 @@
 
         function renderVerhoerStandaloneUI() {
             // 1. Schritt-Leiste & klares Handlungs-Banner
-            const activeStep = vhState.turn === 'ai' || vhState.phase === 'interrogation' ? 3 : (vhState.phase === 'draw' ? 1 : 2);
+            const activeStep = vhState.phase === 'idle' ? 0 : (vhState.turn === 'ai' || vhState.phase === 'interrogation' ? 3 : (vhState.phase === 'draw' ? 1 : 2));
             [1, 2, 3].forEach(n => {
                 const el = document.getElementById(`vh-step-${n}`);
                 if (!el) return;
@@ -1848,8 +1898,17 @@
 
             const bannerTxt = document.getElementById('vh-banner-text');
             const bannerDot = document.getElementById('vh-banner-dot');
+            const startBtn = document.getElementById('vh-btn-start');
+            const abortBtn = document.getElementById('vh-btn-abort');
+            const lobbyOv = document.getElementById('vh-lobby-overlay');
+            if (startBtn) startBtn.classList.toggle('hidden', vhState.isRunning);
+            if (abortBtn) abortBtn.classList.toggle('hidden', !vhState.isRunning);
+            if (lobbyOv) lobbyOv.classList.toggle('hidden', vhState.phase !== 'idle');
+
             if (bannerTxt) {
-                if (vhState.phase === 'ended') {
+                if (vhState.phase === 'idle') {
+                    bannerTxt.textContent = 'Klicke auf „Spielen“, um gegen den Taktik-Bot anzutreten.';
+                } else if (vhState.phase === 'ended') {
                     bannerTxt.textContent = vhState.winInfo?.didWin ? 'Partie gewonnen — perfektes 5er-Cluster!' : 'Der Taktik-Bot hat ein 5er-Cluster vollendet.';
                 } else if (vhState.turn === 'ai') {
                     bannerTxt.textContent = 'Taktik-Bot ist am Zug und plant seinen Abwurf...';

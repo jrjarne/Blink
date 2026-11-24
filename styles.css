@@ -3702,3 +3702,1428 @@ mjx-container[display="true"] {
     animation: none !important;
     transition: none !important;
 }
+/* ============================================================================
+   APPLE SETTINGS SHEET — BREITES 2-SPALTEN-LAYOUT & VISUELLE THEME-VORSCHAU
+   ============================================================================ */
+.apple-settings-sheet {
+    background: rgba(11, 16, 28, 0.84) !important;
+    border: 1px solid rgba(255, 255, 255, 0.13) !important;
+}
+[data-theme="onyx-oled"] .apple-settings-sheet {
+    background: rgba(20, 20, 23, 0.92) !important;
+    border-color: rgba(255, 255, 255, 0.10) !important;
+}
+[data-theme="academic-light"] .apple-settings-sheet {
+    background: rgba(242, 243, 239, 0.92) !important;
+    border-color: rgba(24, 24, 27, 0.11) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        0 30px 70px -20px rgba(15, 23, 42, 0.24) !important;
+}
+
+.apple-set-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+[data-theme="academic-light"] .apple-set-header {
+    border-bottom-color: rgba(24, 24, 27, 0.09);
+}
+
+.apple-set-title-badge {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: linear-gradient(180deg, rgba(34, 211, 238, 0.22) 0%, rgba(34, 211, 238, 0.08) 100%);
+    border: 1px solid rgba(34, 211, 238, 0.34);
+    color: #67e8f9;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+[data-theme="onyx-oled"] .apple-set-title-badge {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.05) 100%);
+    border-color: rgba(255, 255, 255, 0.16);
+    color: #f4f4f5;
+}
+[data-theme="academic-light"] .apple-set-title-badge {
+    background: #ffffff;
+    border-color: rgba(24, 24, 27, 0.10);
+    color: #18181b;
+    box-shadow: 0 2px 8px -2px rgba(15, 23, 42, 0.12);
+}
+
+.apple-set-section-label {
+    padding-left: 6px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+/* Visuelle Apple-Erscheinungsbild-Karten */
+.apple-theme-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 8px 9px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1.5px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    transition: border-color 180ms ease, background-color 180ms ease, box-shadow 200ms ease, transform 160ms var(--spring-apple);
+}
+.apple-theme-card:hover {
+    background: rgba(255, 255, 255, 0.055);
+    border-color: rgba(255, 255, 255, 0.18);
+}
+.apple-theme-card.is-theme-active {
+    background: rgba(34, 211, 238, 0.08);
+    border-color: #22d3ee;
+    box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.14);
+}
+[data-theme="onyx-oled"] .apple-theme-card.is-theme-active {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: #ededed;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.11);
+}
+[data-theme="academic-light"] .apple-theme-card {
+    background: rgba(255, 255, 255, 0.62);
+    border-color: rgba(24, 24, 27, 0.10);
+}
+[data-theme="academic-light"] .apple-theme-card:hover {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(24, 24, 27, 0.24);
+}
+[data-theme="academic-light"] .apple-theme-card.is-theme-active {
+    background: #ffffff;
+    border-color: #18181b;
+    box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.10), 0 6px 16px -8px rgba(15, 23, 42, 0.18);
+}
+
+.apple-theme-preview {
+    position: relative;
+    width: 100%;
+    height: 62px;
+    border-radius: 10px;
+    padding: 7px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
+.apple-theme-preview .tp-bar {
+    height: 11px;
+    border-radius: 9999px;
+    padding: 0 5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.apple-theme-preview .tp-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 9999px;
+}
+.apple-theme-preview .tp-pill {
+    width: 24px;
+    height: 4px;
+    border-radius: 9999px;
+    opacity: 0.7;
+}
+.apple-theme-preview .tp-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 5px;
+    flex: 1;
+    margin-top: 6px;
+}
+.apple-theme-preview .tp-card {
+    border-radius: 5px;
+}
+
+/* Echte Farben je Mini-Vorschau (unabhängig vom aktiven Theme) */
+.theme-preview-onyx {
+    background: #0c0c0e !important;
+    border-color: #27272a !important;
+}
+.theme-preview-onyx .tp-bar {
+    background: #17171a !important;
+    border: 1px solid #27272a;
+}
+.theme-preview-onyx .tp-dot,
+.theme-preview-onyx .tp-pill {
+    background: #ededed !important;
+}
+.theme-preview-onyx .tp-card {
+    background: #18181b !important;
+    border: 1px solid #2a2a2e;
+}
+
+.theme-preview-midnight {
+    background: radial-gradient(circle at 25% 10%, rgba(34, 211, 238, 0.34), transparent 62%), #04060b !important;
+    border-color: rgba(34, 211, 238, 0.30) !important;
+}
+.theme-preview-midnight .tp-bar {
+    background: rgba(15, 23, 42, 0.90) !important;
+    border: 1px solid rgba(34, 211, 238, 0.28);
+}
+.theme-preview-midnight .tp-dot,
+.theme-preview-midnight .tp-pill {
+    background: #22d3ee !important;
+}
+.theme-preview-midnight .tp-card {
+    background: rgba(15, 23, 42, 0.88) !important;
+    border: 1px solid rgba(56, 189, 248, 0.24);
+}
+
+.theme-preview-light {
+    background: #e6e7e3 !important;
+    border-color: #cfd1cb !important;
+}
+.theme-preview-light .tp-bar {
+    background: #ffffff !important;
+    border: 1px solid #d4d6d0;
+}
+.theme-preview-light .tp-dot,
+.theme-preview-light .tp-pill {
+    background: #18181b !important;
+}
+.theme-preview-light .tp-card {
+    background: #f7f8f5 !important;
+    border: 1px solid #d4d6d0;
+}
+
+.apple-theme-check {
+    position: absolute;
+    right: 5px;
+    bottom: 5px;
+    width: 18px;
+    height: 18px;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #22d3ee;
+    color: #04060b;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 180ms ease, transform 220ms var(--spring-balatro);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.apple-theme-card.is-theme-active .apple-theme-check {
+    opacity: 1;
+    transform: scale(1);
+}
+[data-theme="onyx-oled"] .apple-theme-check {
+    background: #ededed;
+    color: #0c0c0e;
+}
+[data-theme="academic-light"] .apple-theme-check {
+    background: #18181b;
+    color: #ffffff;
+}
+
+.apple-theme-name {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: center;
+    line-height: 1.2;
+}
+
+/* Inset-Group-Zeilen & SF-Icon-Kacheln */
+.apple-set-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 50px;
+    padding: 10px 14px !important;
+}
+.apple-set-volume-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 11px 14px 13px !important;
+}
+
+.apple-set-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.apple-set-icon.icon-blue    { background: rgba(56, 189, 248, 0.16); color: #38bdf8; }
+.apple-set-icon.icon-purple  { background: rgba(168, 85, 247, 0.16); color: #c084fc; }
+.apple-set-icon.icon-emerald { background: rgba(52, 211, 153, 0.16); color: #34d399; }
+.apple-set-icon.icon-rose    { background: rgba(251, 113, 133, 0.16); color: #fb7185; }
+.apple-set-icon.icon-amber   { background: rgba(251, 191, 36, 0.16); color: #fbbf24; }
+
+[data-theme="onyx-oled"] .apple-set-icon {
+    background: rgba(255, 255, 255, 0.08);
+    color: #e4e4e7;
+}
+[data-theme="academic-light"] .apple-set-icon.icon-blue    { background: rgba(2, 132, 199, 0.11); color: #0284c7; }
+[data-theme="academic-light"] .apple-set-icon.icon-purple  { background: rgba(126, 34, 206, 0.10); color: #7e22ce; }
+[data-theme="academic-light"] .apple-set-icon.icon-emerald { background: rgba(5, 150, 105, 0.11); color: #059669; }
+[data-theme="academic-light"] .apple-set-icon.icon-rose    { background: rgba(225, 29, 72, 0.10); color: #e11d48; }
+[data-theme="academic-light"] .apple-set-icon.icon-amber   { background: rgba(217, 119, 6, 0.11); color: #d97706; }
+
+.apple-set-test-btn {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #e2e8f0;
+}
+.apple-set-test-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+[data-theme="academic-light"] .apple-set-test-btn {
+    background: rgba(24, 24, 27, 0.06);
+    border-color: rgba(24, 24, 27, 0.12);
+    color: #18181b;
+}
+[data-theme="academic-light"] .apple-set-test-btn:hover {
+    background: rgba(24, 24, 27, 0.12);
+}
+
+@media (max-width: 639px) {
+    .apple-theme-preview {
+        height: 48px;
+        padding: 5px;
+    }
+    .apple-theme-name {
+        font-size: 10.5px;
+    }
+}
+/* ============================================================================
+   APPLE PROFIL-SHEET — MENSCHLICHER CHARAKTER-EDITOR (ALLE 3 THEMES)
+   ============================================================================ */
+#profile-modal > div {
+    backdrop-filter: blur(32px) saturate(190%) !important;
+    -webkit-backdrop-filter: blur(32px) saturate(190%) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        0 34px 80px -20px rgba(0, 0, 0, 0.82) !important;
+}
+
+.profile-preview-stage {
+    background: rgba(6, 10, 20, 0.62);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+[data-theme="onyx-oled"] .profile-preview-stage {
+    background: #101012;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme="academic-light"] .profile-preview-stage {
+    background: rgba(255, 255, 255, 0.86);
+    border-color: rgba(24, 24, 27, 0.10);
+    box-shadow: inset 0 1px 0 #ffffff, 0 4px 14px -8px rgba(15, 23, 42, 0.10);
+}
+
+.apple-profile-well {
+    background: rgba(6, 10, 20, 0.56);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+[data-theme="onyx-oled"] .apple-profile-well {
+    background: #101012;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme="academic-light"] .apple-profile-well {
+    background: rgba(255, 255, 255, 0.84);
+    border-color: rgba(24, 24, 27, 0.10);
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.profile-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 9999px;
+    border: 2px solid rgba(255, 255, 255, 0.22);
+    cursor: pointer;
+    position: relative;
+    transition: transform 150ms var(--spring-balatro), border-color 150ms ease, box-shadow 150ms ease;
+}
+.profile-swatch:hover {
+    transform: scale(1.1);
+}
+.profile-swatch.is-selected {
+    transform: scale(1.14);
+    border-color: #ffffff;
+    box-shadow: 0 0 0 2.5px rgba(34, 211, 238, 0.65);
+}
+[data-theme="onyx-oled"] .profile-swatch.is-selected {
+    box-shadow: 0 0 0 2.5px rgba(255, 255, 255, 0.45);
+}
+[data-theme="academic-light"] .profile-swatch {
+    border-color: rgba(24, 24, 27, 0.18);
+}
+[data-theme="academic-light"] .profile-swatch.is-selected {
+    border-color: #18181b;
+    box-shadow: 0 0 0 2.5px rgba(24, 24, 27, 0.20);
+}
+
+.profile-swatch-custom {
+    border-style: dashed;
+    border-color: rgba(148, 163, 184, 0.55);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    overflow: hidden;
+}
+
+.profile-hair-btn {
+    padding: 6px 4px 5px;
+    border-radius: 14px;
+    border: 1.5px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.025);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    cursor: pointer;
+    transition: border-color 160ms ease, background-color 160ms ease, transform 150ms var(--spring-apple);
+}
+.profile-hair-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.18);
+}
+.profile-hair-btn.is-selected {
+    border-color: #22d3ee;
+    background: rgba(34, 211, 238, 0.12);
+    box-shadow: 0 0 0 2.5px rgba(34, 211, 238, 0.16);
+}
+[data-theme="onyx-oled"] .profile-hair-btn.is-selected {
+    border-color: #ededed;
+    background: rgba(255, 255, 255, 0.09);
+    box-shadow: 0 0 0 2.5px rgba(255, 255, 255, 0.11);
+}
+[data-theme="academic-light"] .profile-hair-btn {
+    background: rgba(255, 255, 255, 0.65);
+    border-color: rgba(24, 24, 27, 0.10);
+}
+[data-theme="academic-light"] .profile-hair-btn.is-selected {
+    background: #ffffff;
+    border-color: #18181b;
+    box-shadow: 0 0 0 2.5px rgba(24, 24, 27, 0.10);
+}
+
+.profile-hair-label {
+    font-size: 9.5px;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-secondary);
+    line-height: 1.1;
+}
+.profile-hair-btn.is-selected .profile-hair-label {
+    color: var(--text-primary);
+    font-weight: 700;
+}
+
+.profile-chip {
+    padding: 7px 6px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
+}
+.profile-chip:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text-primary);
+}
+.profile-chip.is-selected {
+    background: linear-gradient(180deg, rgba(34, 211, 238, 0.22) 0%, rgba(34, 211, 238, 0.09) 100%);
+    border-color: rgba(34, 211, 238, 0.55);
+    color: #ffffff;
+    font-weight: 700;
+}
+[data-theme="onyx-oled"] .profile-chip.is-selected {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.07) 100%);
+    border-color: rgba(255, 255, 255, 0.34);
+    color: #ffffff;
+}
+[data-theme="academic-light"] .profile-chip {
+    background: rgba(255, 255, 255, 0.68);
+    border-color: rgba(24, 24, 27, 0.10);
+    color: #585854;
+}
+[data-theme="academic-light"] .profile-chip.is-selected {
+    background: #18181b;
+    border-color: #18181b;
+    color: #ffffff;
+}
+
+@media (max-width: 767px) {
+    #profile-modal { padding: 10px !important; }
+    #profile-modal > div { padding: 16px !important; border-radius: 20px !important; max-height: 90dvh !important; }
+}
+/* ============================================================================
+   APPLE SHEETS — CODIERUNG · SPIELREGELN · ELO-RANGLISTE (ALLE 3 THEMES)
+   ============================================================================ */
+
+/* 1. Recessed-Well-Schiene auch für das Regelmenü-Segmented-Control */
+#game-info-mode-tabs {
+    background: rgba(4, 7, 14, 0.72) !important;
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+    box-shadow:
+        inset 0 1.5px 3px rgba(0, 0, 0, 0.55),
+        0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+[data-theme="onyx-oled"] #game-info-mode-tabs {
+    background: #0a0a0c !important;
+    border-color: rgba(255, 255, 255, 0.07) !important;
+}
+[data-theme="academic-light"] #game-info-mode-tabs {
+    background: rgba(216, 218, 212, 0.76) !important;
+    border-color: rgba(24, 24, 27, 0.08) !important;
+    box-shadow:
+        inset 0 1px 2.5px rgba(15, 23, 42, 0.11),
+        0 1px 0 rgba(255, 255, 255, 0.85) !important;
+}
+
+/* 2. Codierungsmenü: kompakte Apple-Sheet-Höhe (überschreibt alte 585px-Fixhöhe) */
+#mapping-modal > div.apple-mapping-sheet {
+    height: auto !important;
+    max-height: 92dvh !important;
+    display: block !important;
+}
+#mapping-modal > div.apple-mapping-sheet > div:nth-child(2) {
+    flex: none !important;
+    overflow-y: visible !important;
+}
+
+.apple-mapping-table-wrap {
+    padding: 0 !important;
+    min-height: 326px;
+}
+.apple-mapping-table {
+    width: 100%;
+    min-width: 500px;
+}
+.apple-mapping-table thead tr {
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.apple-mapping-table thead th {
+    padding: 10px 8px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+.apple-mapping-table tbody tr {
+    height: 48px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    transition: background-color 140ms ease;
+}
+.apple-mapping-table tbody tr:last-child {
+    border-bottom: none;
+}
+.apple-mapping-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.035);
+}
+.apple-map-col-sep {
+    border-right: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+[data-theme="academic-light"] .apple-mapping-table thead tr {
+    background: rgba(24, 24, 27, 0.03);
+    border-bottom-color: rgba(24, 24, 27, 0.08);
+}
+[data-theme="academic-light"] .apple-mapping-table tbody tr {
+    border-bottom-color: rgba(24, 24, 27, 0.07);
+}
+[data-theme="academic-light"] .apple-mapping-table tbody tr:hover {
+    background: rgba(24, 24, 27, 0.028);
+}
+[data-theme="academic-light"] .apple-map-col-sep {
+    border-right-color: rgba(24, 24, 27, 0.08);
+}
+
+.apple-coord-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    height: 24px;
+    padding: 0 7px;
+    border-radius: 9999px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    font-weight: 800;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: #e2e8f0;
+}
+.apple-coord-pill.is-cyan    { background: rgba(34, 211, 238, 0.14); border-color: rgba(34, 211, 238, 0.34); color: #67e8f9; }
+.apple-coord-pill.is-purple  { background: rgba(168, 85, 247, 0.16); border-color: rgba(192, 132, 252, 0.36); color: #d8b4fe; }
+.apple-coord-pill.is-emerald { background: rgba(52, 211, 153, 0.14); border-color: rgba(52, 211, 153, 0.34); color: #6ee7b7; }
+[data-theme="onyx-oled"] .apple-coord-pill {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: #f4f4f5;
+}
+[data-theme="academic-light"] .apple-coord-pill {
+    background: rgba(24, 24, 27, 0.06);
+    border-color: rgba(24, 24, 27, 0.12);
+    color: #18181b;
+}
+
+.apple-sym-chip {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    flex-shrink: 0;
+}
+[data-theme="academic-light"] .apple-sym-chip {
+    background: #ffffff;
+    border-color: rgba(24, 24, 27, 0.12);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+/* 3. Regelmenü: Apple Inset Rows & Phasen-Badges */
+.apple-rule-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    padding: 12px 14px !important;
+}
+.apple-rule-compact-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px !important;
+}
+.apple-phase-pill {
+    min-width: 28px;
+    height: 24px;
+    padding: 0 6px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 800;
+    background: rgba(251, 191, 36, 0.14);
+    border: 1px solid rgba(251, 191, 36, 0.34);
+    color: #fcd34d;
+}
+[data-theme="onyx-oled"] .apple-phase-pill {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.16);
+    color: #f4f4f5;
+}
+[data-theme="academic-light"] .apple-phase-pill {
+    background: rgba(24, 24, 27, 0.07);
+    border-color: rgba(24, 24, 27, 0.14);
+    color: #18181b;
+}
+
+/* 4. Elo-Rangliste: 3×3 Apple Cards */
+.apple-elo-card {
+    padding: 12px 13px;
+    border-radius: 16px;
+    background: rgba(8, 12, 22, 0.62);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.apple-elo-card.is-player-tier {
+    background: linear-gradient(180deg, rgba(34, 211, 238, 0.14) 0%, rgba(34, 211, 238, 0.04) 100%);
+    border-color: rgba(34, 211, 238, 0.55);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0 0 2.5px rgba(34, 211, 238, 0.12);
+}
+[data-theme="onyx-oled"] .apple-elo-card {
+    background: #101012;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme="onyx-oled"] .apple-elo-card.is-player-tier {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: #ededed;
+    box-shadow: 0 0 0 2.5px rgba(255, 255, 255, 0.10);
+}
+[data-theme="academic-light"] .apple-elo-card {
+    background: rgba(255, 255, 255, 0.86);
+    border-color: rgba(24, 24, 27, 0.10);
+    box-shadow: inset 0 1px 0 #ffffff, 0 4px 12px -8px rgba(15, 23, 42, 0.10);
+}
+[data-theme="academic-light"] .apple-elo-card.is-player-tier {
+    background: #ffffff;
+    border-color: #18181b;
+    box-shadow: 0 0 0 2.5px rgba(24, 24, 27, 0.10), 0 6px 16px -8px rgba(15, 23, 42, 0.18);
+}
+
+.apple-elo-icon-box {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+}
+[data-theme="academic-light"] .apple-elo-icon-box {
+    background: #f2f3ef;
+    border-color: rgba(24, 24, 27, 0.10);
+}
+.apple-elo-badges-row {
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+[data-theme="academic-light"] .apple-elo-badges-row {
+    border-top-color: rgba(24, 24, 27, 0.08);
+}
+/* ============================================================================
+   REGELBUTTONS IN ALLEN 6 MODI · FIXE GRÖSSE FÜR CODIERUNG & REGELMENÜ
+   ============================================================================ */
+
+/* Einheitlicher Apple-Pill-Button für „Regeln“ in allen 6 Spielmodi */
+.game-rules-pill-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    color: #cbd5e1;
+}
+.game-rules-pill-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+}
+[data-theme="academic-light"] .game-rules-pill-btn {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(24, 24, 27, 0.12);
+    color: #333330;
+}
+[data-theme="academic-light"] .game-rules-pill-btn:hover {
+    background: #ffffff;
+    border-color: #18181b;
+    color: #111111;
+}
+
+/* Codierungsmenü: exakt gleiche Fenster- & Tabellenhöhe bei Grundlegend & Erweitert */
+#mapping-modal > div.apple-mapping-sheet {
+    height: auto !important;
+    max-height: 92dvh !important;
+}
+.apple-mapping-table-wrap {
+    height: 328px !important;
+    min-height: 328px !important;
+    max-height: 328px !important;
+    overflow-y: hidden !important;
+}
+.apple-mapping-table {
+    table-layout: fixed;
+}
+.apple-mapping-table tbody tr {
+    height: 48px !important;
+}
+
+/* Regelmenü: saubere 6-Modi-Schiene & konstante Höhe beim Durchschalten */
+.apple-rules-tabs-scroll {
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+.apple-rules-tabs-scroll::-webkit-scrollbar {
+    display: none;
+}
+.apple-rules-body {
+    min-height: 295px;
+}
+@media (max-width: 767px) {
+    .apple-rules-body {
+        min-height: 0;
+    }
+    .apple-mapping-table-wrap {
+        height: auto !important;
+        min-height: 328px !important;
+        max-height: none !important;
+    }
+}
+/* ============================================================================
+   MODELL-REITER 2027 UPGRADE — LIQUID GLASS HUDS · SPLIT-VIEW · THEME-MATRIZEN
+   ============================================================================ */
+
+/* 1. Kontext-adaptives Ambient-Lichtfeld für beide Modell-Seiten */
+body[data-page="basic-model"] {
+    --ambient-c1: rgba(34, 211, 238, 0.13);
+    --ambient-c2: rgba(56, 189, 248, 0.08);
+}
+body[data-page="advanced-model"] {
+    --ambient-c1: rgba(168, 85, 247, 0.14);
+    --ambient-c2: rgba(34, 211, 238, 0.08);
+}
+
+/* 2. iPadOS Split-View-Trenner mit mittigem Griff & Liquid-Glass-Badge */
+.split-resizer-bar {
+    width: 1px;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme="academic-light"] .split-resizer-bar {
+    background-color: rgba(24, 24, 27, 0.10);
+}
+.split-resizer-bar::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 4px;
+    height: 44px;
+    border-radius: 9999px;
+    transform: translate(-50%, -50%);
+    background: rgba(148, 163, 184, 0.36);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    transition: height 180ms var(--spring-apple), background-color 180ms ease, box-shadow 180ms ease;
+    pointer-events: none;
+}
+.split-resizer-bar:hover::after,
+.split-resizer-bar.dragging::after {
+    height: 64px;
+    background: var(--border-focus);
+    box-shadow: 0 0 12px var(--border-focus);
+}
+[data-theme="academic-light"] .split-resizer-bar::after {
+    background: rgba(24, 24, 27, 0.22);
+    border-color: rgba(255, 255, 255, 0.7);
+}
+#split-drag-badge,
+#adv-split-drag-badge {
+    border-radius: 9999px !important;
+    padding: 4px 10px !important;
+    background: rgba(10, 16, 30, 0.86) !important;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #ffffff !important;
+}
+[data-theme="academic-light"] #split-drag-badge,
+[data-theme="academic-light"] #adv-split-drag-badge {
+    background: rgba(255, 255, 255, 0.94) !important;
+    border-color: rgba(24, 24, 27, 0.14);
+    color: #111111 !important;
+}
+
+/* 3. Schwebende Apple Liquid-Glass 3D-HUDs, Kamera-Leiste & Toggles */
+.apple-model-hud {
+    overflow: visible;
+}
+.apple-hud-divider {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+[data-theme="academic-light"] .apple-hud-divider {
+    border-top-color: rgba(24, 24, 27, 0.09);
+}
+
+.apple-hud-count {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 9999px;
+    background: rgba(34, 211, 238, 0.14);
+    border: 1px solid rgba(34, 211, 238, 0.30);
+    color: #67e8f9;
+    white-space: nowrap;
+}
+.apple-hud-count.is-purple {
+    background: rgba(168, 85, 247, 0.16);
+    border-color: rgba(192, 132, 252, 0.34);
+    color: #d8b4fe;
+}
+[data-theme="onyx-oled"] .apple-hud-count,
+[data-theme="onyx-oled"] .apple-hud-count.is-purple {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: #ededed;
+}
+[data-theme="academic-light"] .apple-hud-count,
+[data-theme="academic-light"] .apple-hud-count.is-purple {
+    background: rgba(24, 24, 27, 0.06);
+    border-color: rgba(24, 24, 27, 0.12);
+    color: #18181b;
+}
+
+.apple-hud-toggle-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #e2e8f0;
+}
+.apple-hud-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+}
+.apple-hud-toggle-btn .apple-hud-chevron {
+    transition: transform 220ms var(--spring-apple);
+}
+.apple-hud-toggle-btn.is-open .apple-hud-chevron {
+    transform: rotate(180deg);
+}
+[data-theme="academic-light"] .apple-hud-toggle-btn {
+    background: rgba(255, 255, 255, 0.86);
+    border-color: rgba(24, 24, 27, 0.12);
+    color: #18181b;
+}
+[data-theme="academic-light"] .apple-hud-toggle-btn:hover {
+    background: #ffffff;
+    border-color: rgba(24, 24, 27, 0.28);
+}
+
+.apple-hud-group .apple-hud-opt-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 11px !important;
+}
+
+.apple-legend-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 7px;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    color: #cbd5e1;
+}
+[data-theme="academic-light"] .apple-legend-chip {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(24, 24, 27, 0.10);
+    color: #333330;
+}
+
+/* Kamera-Pill-Leiste */
+.apple-cam-btn {
+    color: #94a3b8;
+    border: 1px solid transparent;
+}
+.apple-cam-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.07);
+}
+.apple-cam-btn.is-active {
+    background: linear-gradient(180deg, rgba(34, 211, 238, 0.24) 0%, rgba(34, 211, 238, 0.10) 100%);
+    border-color: rgba(34, 211, 238, 0.36);
+    color: #ffffff;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+.apple-cam-rail.is-purple .apple-cam-btn.is-active {
+    background: linear-gradient(180deg, rgba(168, 85, 247, 0.26) 0%, rgba(168, 85, 247, 0.10) 100%);
+    border-color: rgba(192, 132, 252, 0.40);
+}
+[data-theme="onyx-oled"] .apple-cam-btn.is-active,
+[data-theme="onyx-oled"] .apple-cam-rail.is-purple .apple-cam-btn.is-active {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.07) 100%);
+    border-color: rgba(255, 255, 255, 0.20);
+    color: #ffffff;
+}
+[data-theme="academic-light"] .apple-cam-btn {
+    color: #585854;
+}
+[data-theme="academic-light"] .apple-cam-btn:hover {
+    color: #111111;
+    background: rgba(24, 24, 27, 0.05);
+}
+[data-theme="academic-light"] .apple-cam-btn.is-active,
+[data-theme="academic-light"] .apple-cam-rail.is-purple .apple-cam-btn.is-active {
+    background: #ffffff;
+    border-color: rgba(24, 24, 27, 0.12);
+    color: #111111;
+    box-shadow: 0 2px 8px -2px rgba(15, 23, 42, 0.14);
+}
+
+/* 4. Filter-Chips (Erweitertes Modell), 6×6-Matrix, Zyklus-Ketten & Such-Pill */
+.apple-filter-chip {
+    padding: 4px 10px;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgba(255, 255, 255, 0.04);
+    color: #cbd5e1;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.apple-filter-chip:hover {
+    background: rgba(255, 255, 255, 0.10);
+    color: #ffffff;
+}
+.apple-filter-chip.is-active,
+.apple-filter-chip.is-accent {
+    background: linear-gradient(180deg, rgba(168, 85, 247, 0.24) 0%, rgba(168, 85, 247, 0.09) 100%);
+    border-color: rgba(192, 132, 252, 0.42);
+    color: #ffffff;
+    font-weight: 700;
+}
+[data-theme="onyx-oled"] .apple-filter-chip.is-active,
+[data-theme="onyx-oled"] .apple-filter-chip.is-accent {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.07) 100%);
+    border-color: rgba(255, 255, 255, 0.24);
+    color: #ffffff;
+}
+[data-theme="academic-light"] .apple-filter-chip {
+    background: rgba(255, 255, 255, 0.80);
+    border-color: rgba(24, 24, 27, 0.10);
+    color: #444441;
+}
+[data-theme="academic-light"] .apple-filter-chip.is-active,
+[data-theme="academic-light"] .apple-filter-chip.is-accent {
+    background: #18181b;
+    border-color: #18181b;
+    color: #ffffff;
+}
+
+.apple-mat-cell {
+    width: 100%;
+    padding: 5px 4px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    background: rgba(255, 255, 255, 0.05);
+    color: #f8fafc;
+    font-size: 9.5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: border-color 140ms ease, background-color 140ms ease;
+}
+.apple-mat-cell:hover {
+    background: rgba(255, 255, 255, 0.11);
+    border-color: rgba(34, 211, 238, 0.45);
+}
+.apple-mat-cell.is-active {
+    background: rgba(34, 211, 238, 0.22);
+    border-color: #22d3ee;
+    color: #ffffff;
+    font-weight: 800;
+}
+.apple-mat-empty {
+    padding: 5px 4px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.015);
+    color: rgba(148, 163, 184, 0.45);
+}
+[data-theme="academic-light"] .apple-mat-cell {
+    background: #ffffff;
+    border-color: rgba(24, 24, 27, 0.12);
+    color: #18181b;
+}
+[data-theme="academic-light"] .apple-mat-cell.is-active {
+    background: #18181b;
+    border-color: #18181b;
+    color: #ffffff;
+}
+[data-theme="academic-light"] .apple-mat-empty {
+    background: rgba(24, 24, 27, 0.025);
+    border-color: rgba(24, 24, 27, 0.07);
+    color: #9e9e99;
+}
+
+.apple-chain-card {
+    padding: 12px 13px;
+    border-radius: 14px;
+    background: rgba(8, 12, 22, 0.52);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+[data-theme="onyx-oled"] .apple-chain-card {
+    background: #101012;
+}
+[data-theme="academic-light"] .apple-chain-card {
+    background: rgba(255, 255, 255, 0.80);
+    border-color: rgba(24, 24, 27, 0.10);
+}
+.apple-chain-chip {
+    padding: 2.5px 7px;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #e2e8f0;
+}
+.apple-chain-chip.is-card {
+    background: rgba(34, 211, 238, 0.10);
+    border-color: rgba(34, 211, 238, 0.25);
+    color: #e0f2fe;
+}
+.apple-chain-chip.is-loop {
+    background: rgba(52, 211, 153, 0.14);
+    border-color: rgba(52, 211, 153, 0.30);
+    color: #6ee7b7;
+    font-weight: 700;
+}
+[data-theme="onyx-oled"] .apple-chain-chip.is-card,
+[data-theme="onyx-oled"] .apple-chain-chip.is-loop {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: #f4f4f5;
+}
+[data-theme="academic-light"] .apple-chain-chip {
+    background: #ffffff;
+    border-color: rgba(24, 24, 27, 0.12);
+    color: #18181b;
+}
+[data-theme="academic-light"] .apple-chain-chip.is-card,
+[data-theme="academic-light"] .apple-chain-chip.is-loop {
+    background: rgba(24, 24, 27, 0.06);
+    border-color: rgba(24, 24, 27, 0.16);
+    color: #111111;
+}
+
+.apple-search-pill input {
+    background: rgba(6, 10, 20, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    box-shadow: inset 0 1.5px 3px rgba(0, 0, 0, 0.45);
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+.apple-search-pill input:focus {
+    border-color: var(--border-focus);
+    box-shadow: inset 0 1.5px 3px rgba(0, 0, 0, 0.45), 0 0 0 3px rgba(34, 211, 238, 0.14);
+}
+[data-theme="onyx-oled"] .apple-search-pill input {
+    background: #0c0c0e;
+    border-color: rgba(255, 255, 255, 0.10);
+}
+[data-theme="academic-light"] .apple-search-pill input {
+    background: rgba(255, 255, 255, 0.90);
+    border-color: rgba(24, 24, 27, 0.12);
+    color: #111111 !important;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+[data-theme="academic-light"] .apple-search-pill input:focus {
+    border-color: #18181b;
+    box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.08);
+}
+
+/* 2D-Container mit konsequenten 20px-Radien */
+#card-2d-ring,
+#card-2d-bipartite,
+#card-2d-matrix,
+#adv-view-grid {
+    border-radius: 20px !important;
+}
+/* ============================================================================
+   FIX: SPIELKARTEN IN ALLEN MODELL-ANSICHTEN IMMER REINWEISS (ALLE 3 THEMES)
+   ============================================================================ */
+#basic-matrices-workspace #card-list-grid > button,
+#adv-view-grid #adv-cards-grid > div,
+#tt-card-preview,
+#adv-tt-card-preview {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+}
+
+#basic-matrices-workspace #card-list-grid > button:not(.border-cyan-400):not(.border-amber-400) {
+    border-color: #cbd5e1 !important;
+}
+
+#basic-matrices-workspace #card-list-grid > button:hover {
+    border-color: #22d3ee !important;
+}
+[data-theme="onyx-oled"] #basic-matrices-workspace #card-list-grid > button:hover {
+    border-color: #ededed !important;
+}
+[data-theme="academic-light"] #basic-matrices-workspace #card-list-grid > button:hover {
+    border-color: #18181b !important;
+}
+/* ============================================================================
+   GRUNDLEGENDES MODELL: VOLLRAUM (180) LIQUID-GLASS TOGGLE-BUTTON
+   ============================================================================ */
+.apple-fullspace-btn {
+    background: rgba(6, 10, 20, 0.72);
+    backdrop-filter: blur(14px) saturate(170%);
+    -webkit-backdrop-filter: blur(14px) saturate(170%);
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    color: #94a3b8;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 4px 12px -6px rgba(0, 0, 0, 0.45);
+}
+.apple-fullspace-btn:hover {
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.22);
+    background: rgba(15, 23, 42, 0.85);
+}
+.apple-fullspace-btn.is-active {
+    background: linear-gradient(180deg, rgba(34, 211, 238, 0.24) 0%, rgba(34, 211, 238, 0.10) 100%);
+    border-color: rgba(34, 211, 238, 0.45);
+    color: #ffffff;
+    font-weight: 700;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.28),
+        0 0 18px -4px rgba(34, 211, 238, 0.48);
+}
+
+[data-theme="onyx-oled"] .apple-fullspace-btn {
+    background: #0e0e11;
+    border-color: rgba(255, 255, 255, 0.10);
+    color: #a1a1aa;
+}
+[data-theme="onyx-oled"] .apple-fullspace-btn:hover {
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.22);
+}
+[data-theme="onyx-oled"] .apple-fullspace-btn.is-active {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.07) 100%);
+    border-color: rgba(255, 255, 255, 0.28);
+    color: #ffffff;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+[data-theme="academic-light"] .apple-fullspace-btn {
+    background: rgba(255, 255, 255, 0.82);
+    border-color: rgba(24, 24, 27, 0.12);
+    color: #585854;
+    box-shadow: 0 2px 8px -4px rgba(15, 23, 42, 0.12);
+}
+[data-theme="academic-light"] .apple-fullspace-btn:hover {
+    background: #ffffff;
+    border-color: rgba(24, 24, 27, 0.28);
+    color: #111111;
+}
+[data-theme="academic-light"] .apple-fullspace-btn.is-active {
+    background: #18181b;
+    border-color: #18181b;
+    color: #ffffff;
+    box-shadow: 0 4px 12px -4px rgba(15, 23, 42, 0.28);
+}
+/* ============================================================================
+   MULTIPLAYER 2.0 — QR-CODE · VERHÖR ONLINE · KURSRAUM & KAHOOT-PODIUM
+   ============================================================================ */
+.mp-live-pill-btn {
+    background: linear-gradient(180deg, rgba(34, 211, 238, 0.18) 0%, rgba(34, 211, 238, 0.06) 100%);
+    border: 1px solid rgba(34, 211, 238, 0.36);
+    color: #e0f2fe;
+}
+.mp-live-pill-btn:hover {
+    background: linear-gradient(180deg, rgba(34, 211, 238, 0.28) 0%, rgba(34, 211, 238, 0.12) 100%);
+    border-color: rgba(34, 211, 238, 0.58);
+    color: #ffffff;
+}
+.mp-live-pill-btn.is-connected {
+    background: linear-gradient(180deg, rgba(52, 211, 153, 0.24) 0%, rgba(52, 211, 153, 0.09) 100%);
+    border-color: rgba(52, 211, 153, 0.55);
+    color: #d1fae5;
+}
+[data-theme="onyx-oled"] .mp-live-pill-btn {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.16);
+    color: #ededed;
+}
+[data-theme="onyx-oled"] .mp-live-pill-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+[data-theme="academic-light"] .mp-live-pill-btn {
+    background: #ffffff;
+    border-color: rgba(24, 24, 27, 0.16);
+    color: #18181b;
+    box-shadow: 0 2px 8px -3px rgba(15, 23, 42, 0.12);
+}
+[data-theme="academic-light"] .mp-live-pill-btn:hover {
+    border-color: #18181b;
+}
+
+/* QR-Code Rahmen (immer hoher Kontrast für iPad-/Smartphone-Kameras) */
+.mp-qr-frame {
+    padding: 8px;
+    border-radius: 16px;
+    background: #ffffff;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    box-shadow: 0 12px 28px -10px rgba(0, 0, 0, 0.45);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 180ms var(--spring-apple), box-shadow 180ms ease;
+}
+.mp-qr-frame:hover {
+    transform: scale(1.03);
+    box-shadow: 0 16px 34px -10px rgba(34, 211, 238, 0.32);
+}
+
+.mp-share-card {
+    border-radius: 16px;
+    padding: 12px;
+    background: rgba(8, 12, 22, 0.62);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+}
+[data-theme="onyx-oled"] .mp-share-card {
+    background: #101012;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme="academic-light"] .mp-share-card {
+    background: rgba(255, 255, 255, 0.88);
+    border-color: rgba(24, 24, 27, 0.10);
+}
+
+/* Live-Kursraum-Leiste über Daily Challenge & Blink-Sudoku */
+.cr-live-bar {
+    border-radius: 16px;
+    padding: 10px 14px;
+    background: linear-gradient(90deg, rgba(34, 211, 238, 0.13) 0%, rgba(168, 85, 247, 0.11) 100%);
+    border: 1px solid rgba(34, 211, 238, 0.34);
+    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+}
+[data-theme="onyx-oled"] .cr-live-bar {
+    background: #141417;
+    border-color: rgba(255, 255, 255, 0.14);
+}
+[data-theme="academic-light"] .cr-live-bar {
+    background: #ffffff;
+    border-color: rgba(24, 24, 27, 0.14);
+    box-shadow: 0 4px 16px -8px rgba(15, 23, 42, 0.12);
+}
+
+/* Teilnehmer-Chips in der Kursraum-Lobby */
+.cr-player-tile {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    animation: fadeUpIn 240ms var(--spring-balatro) forwards;
+}
+[data-theme="academic-light"] .cr-player-tile {
+    background: #ffffff;
+    border-color: rgba(24, 24, 27, 0.10);
+}
+
+/* Kahoot-Siegerpodium (Platz 2 · Platz 1 · Platz 3) */
+.cr-podium-stage {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    align-items: end;
+    padding: 10px 4px 0;
+}
+.cr-podium-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 6px;
+}
+.cr-podium-block {
+    width: 100%;
+    border-radius: 16px 16px 10px 10px;
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    animation: fadeUpIn 420ms var(--spring-balatro) forwards;
+}
+.cr-podium-block.rank-1 {
+    min-height: 112px;
+    background: linear-gradient(180deg, rgba(250, 204, 21, 0.28) 0%, rgba(217, 119, 6, 0.12) 100%);
+    border-color: rgba(250, 204, 21, 0.55);
+}
+.cr-podium-block.rank-2 {
+    min-height: 88px;
+    background: linear-gradient(180deg, rgba(226, 232, 240, 0.22) 0%, rgba(148, 163, 184, 0.08) 100%);
+    border-color: rgba(226, 232, 240, 0.42);
+}
+.cr-podium-block.rank-3 {
+    min-height: 74px;
+    background: linear-gradient(180deg, rgba(251, 146, 60, 0.22) 0%, rgba(194, 65, 12, 0.09) 100%);
+    border-color: rgba(251, 146, 60, 0.45);
+}
+[data-theme="academic-light"] .cr-podium-block.rank-1 {
+    background: linear-gradient(180deg, #fef08a 0%, #fde68a 100%);
+    border-color: #eab308;
+}
+[data-theme="academic-light"] .cr-podium-block.rank-2 {
+    background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%);
+    border-color: #94a3b8;
+}
+[data-theme="academic-light"] .cr-podium-block.rank-3 {
+    background: linear-gradient(180deg, #ffedd5 0%, #fed7aa 100%);
+    border-color: #f97316;
+}
+
+/* Ranglisten-Zeilen */
+.cr-lb-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 13px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+.cr-lb-row.is-me {
+    background: rgba(34, 211, 238, 0.13);
+    border-color: rgba(34, 211, 238, 0.48);
+}
+[data-theme="onyx-oled"] .cr-lb-row.is-me {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.34);
+}
+[data-theme="academic-light"] .cr-lb-row {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(24, 24, 27, 0.09);
+}
+[data-theme="academic-light"] .cr-lb-row.is-me {
+    background: #ffffff;
+    border-color: #18181b;
+    box-shadow: 0 0 0 2px rgba(24, 24, 27, 0.10);
+}
+
+/* Synchroner 3–2–1 Countdown */
+@keyframes crCountPop {
+    0%   { opacity: 0; transform: scale(0.45); }
+    45%  { opacity: 1; transform: scale(1.12); }
+    100% { opacity: 1; transform: scale(1); }
+}
+.cr-countdown-num {
+    animation: crCountPop 420ms var(--spring-balatro) forwards;
+}
+
+#mp-qr-zoom-modal > div,
+#vh-online-modal > div,
+#cr-modal > div {
+    backdrop-filter: blur(32px) saturate(190%) !important;
+    -webkit-backdrop-filter: blur(32px) saturate(190%) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        0 34px 80px -20px rgba(0, 0, 0, 0.82) !important;
+}

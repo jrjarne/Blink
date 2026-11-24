@@ -1015,7 +1015,9 @@
             const dot = document.getElementById('models-meta-dot');
             const metaText = document.getElementById('models-meta-text');
             if (dot) dot.className = `w-1.5 h-1.5 rounded-full ${isAdv ? 'bg-purple-400' : 'bg-cyan-400'}`;
-            if (metaText) metaText.textContent = isAdv ? 'Vektorraum F₅³ · 125 Karten' : '5×6×6 Raum · 60 Spielkarten';
+            if (metaText) metaText.textContent = isAdv
+                ? 'Vektorraum F₅³ · 125 Karten'
+                : (state.showFullSpace ? '5×6×6 Vollraum · 180 Karten' : '5×6×6 Raum · 60 Spielkarten');
 
             moveSlidingPill('models-mode-tabs', `model-tab-${modelPageId}`);
         }
@@ -1132,6 +1134,7 @@
             cycleLayer: 0,
             colorMode: 'y',
             showEmptyNodes: true,
+            showFullSpace: false,
             showCycleLines: true,
             showGridBox: true,
             highlightedCard: null,
@@ -1168,8 +1171,51 @@
             }
         }
 
-        function toggleGameInfoModal() {
+        const GAME_INFO_TABS = ['arena', 'verhoer', 'daily', 'sudoku', 'endgame', 'cascade'];
+        const GAME_INFO_SUBTITLES = {
+            arena:   'Blink-Arena · Standard- (2 Stapel) & Cluster-Regeln (3 Stapel)',
+            verhoer: 'Das Verhör · Taktisches Cluster-Duell im F₅³ (125 Karten)',
+            daily:   'Daily Challenge · Alle versteckten 5er-Cluster im 4×3-Feld',
+            sudoku:  'Blink-Sudoku · 5×5 Magisches Quadrat im F₅³',
+            endgame: 'Endgame-Puzzles · Perfekte Zugfolge ohne Deadlock',
+            cascade: 'Cluster-Cascade · 5×5 Fallspiel mit Kettenreaktionen'
+        };
+
+        function setGameInfoModalTab(tab = 'arena', silent = false) {
+            const validTab = GAME_INFO_TABS.includes(tab) ? tab : 'arena';
+            if (!silent) playSound('tick');
+
+            GAME_INFO_TABS.forEach(t => {
+                const btn = document.getElementById(`game-info-tab-${t}`);
+                const view = document.getElementById(`game-info-view-${t}`);
+                if (btn) btn.className = `relative z-10 px-3 py-1 rounded-full text-[11px] transition-colors ${t === validTab ? 'pill-btn-active' : 'pill-btn-idle'}`;
+                if (view) view.classList.toggle('hidden', t !== validTab);
+            });
+
+            const pill = document.getElementById('game-info-sliding-pill');
+            const isPurple = ['verhoer', 'sudoku', 'cascade'].includes(validTab);
+            if (pill) {
+                pill.classList.toggle('sliding-pill-cyan', !isPurple);
+                pill.classList.toggle('sliding-pill-purple', isPurple);
+            }
+
+            const sub = document.getElementById('game-info-subtitle');
+            if (sub) sub.textContent = GAME_INFO_SUBTITLES[validTab] || '';
+
+            requestAnimationFrame(() => moveSlidingPill('game-info-mode-tabs', `game-info-tab-${validTab}`));
+            safeRenderMathJax();
+        }
+
+        function toggleGameInfoModal(preferredTab = null) {
+            const modal = document.getElementById('game-info-modal');
+            const isOpening = modal && modal.classList.contains('hidden');
             toggleModalState('game-info-modal');
+            if (isOpening) {
+                const activeGame = (typeof preferredTab === 'string' && GAME_INFO_TABS.includes(preferredTab))
+                    ? preferredTab
+                    : ((typeof labState !== 'undefined' && GAME_INFO_TABS.includes(labState.activeGameTab)) ? labState.activeGameTab : 'arena');
+                setGameInfoModalTab(activeGame, true);
+            }
             safeRenderMathJax();
         }
 
@@ -1185,23 +1231,12 @@
                 const btn = document.getElementById(`theme-btn-${t}`);
                 if (!btn) return;
                 const isActive = t === themeId;
-                btn.className = isActive
-                    ? 'p-3 rounded-xl border-2 border-cyan-400 bg-slate-950 text-left flex items-center justify-between transition'
-                    : 'p-3 rounded-xl border border-slate-800 bg-slate-900 hover:border-slate-600 text-left flex items-center justify-between transition';
-                
-                // "Aktiv"-Anzeige im Modal aktualisieren
-                let badge = btn.querySelector('.theme-active-badge');
-                if (isActive && !badge) {
-                    const span = document.createElement('span');
-                    span.className = 'theme-active-badge text-[10px] mono font-bold text-cyan-400';
-                    span.textContent = 'Aktiv';
-                    btn.appendChild(span);
-                } else if (!isActive && badge) {
-                    badge.remove();
-                }
+                btn.classList.toggle('is-theme-active', isActive);
+                btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
             });
             buildGridAndAxes();
             if (advState.initialized) buildAdvGridAndAxes();
+            if (typeof render2DCycleGraphs === 'function') render2DCycleGraphs();
         }
 
         function toggleGameCoords(checked) {
@@ -1213,6 +1248,7 @@
             state.show3DLabels = checked;
             buildGridAndAxes();
             if (advState.initialized) buildAdvGridAndAxes();
+            if (typeof render2DCycleGraphs === 'function') render2DCycleGraphs();
         }
 
         function initNavigationAndModal() {
@@ -1261,29 +1297,28 @@
             const tbody = document.getElementById('modal-table-body');
             if (tbody) {
                 tbody.innerHTML = rows.map(r => `
-                    <tr class="hover:bg-slate-800/50">
-                        <td class="py-2.5 px-3 font-medium text-white">${r.anzW}</td>
-                        <td class="py-2.5 px-3 border-r border-slate-800 mono font-bold ${isAdv ? 'text-purple-300' : 'text-cyan-300'}">${r.anzI}</td>
-                        <td class="py-2.5 px-3 font-medium text-white">
-                            <span class="inline-flex flex-col items-center justify-center gap-1">
-                                <span class="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm" style="background:${PALETTE_Y[r.colI].hex}"></span>
-                                <span class="text-[11px]">${r.colW}</span>
+                    <tr>
+                        <td class="pl-4 pr-2 font-semibold text-white">${r.anzW}</td>
+                        <td class="apple-map-col-sep text-center px-2 mono font-bold text-[13px] ${isAdv ? 'text-purple-300' : 'text-cyan-300'}">${r.anzI}</td>
+                        <td class="pl-4 pr-2 font-medium text-white">
+                            <span class="inline-flex items-center gap-2">
+                                <span class="w-3.5 h-3.5 rounded-full border border-white/25 shadow-sm shrink-0" style="background:${PALETTE_Y[r.colI].hex}"></span>
+                                <span>${r.colW}</span>
                             </span>
                         </td>
-                        <td class="py-2.5 px-3 border-r border-slate-800 mono font-bold text-emerald-300">${r.colI}</td>
-                        <td class="py-2.5 px-3 font-medium text-white">
-                            <span class="inline-flex flex-col items-center justify-center gap-1">
-                                ${getSymbolSVG(r.symI, '#F8FAFC', 16, '#0f172a', 1.0)}
-                                <span class="text-[11px]">${r.symW}</span>
+                        <td class="apple-map-col-sep text-center px-2 mono font-bold text-[13px] text-emerald-300">${r.colI}</td>
+                        <td class="pl-4 pr-2 font-medium text-white">
+                            <span class="inline-flex items-center gap-2">
+                                ${getSymbolSVG(r.symI, '#F8FAFC', 15, '#0f172a', 1.25)}
+                                <span>${r.symW}</span>
                             </span>
                         </td>
-                        <td class="py-2.5 px-3 mono font-bold text-slate-200">${r.symI}</td>
+                        <td class="text-center pl-2 pr-3 mono font-bold text-[13px] text-slate-200">${r.symI}</td>
                     </tr>
                 `).join('');
             }
 
             const sub = document.getElementById('mapping-modal-subtitle');
-            const note = document.getElementById('mapping-modal-note');
             if (sub) {
                 sub.textContent = isAdv
                     ? 'Erweitertes Modell (125 Karten)'
@@ -1466,8 +1501,12 @@
         }
 
         function applyRouteFromHash(isInitial = false) {
-            const raw = (window.location.hash || '').replace(/^#\/?/, '').trim().toLowerCase();
-            const parts = raw ? raw.split('/').filter(Boolean) : [];
+            const fullHash = (window.location.hash || '').replace(/^#\/?/, '').trim();
+            const qIdx = fullHash.indexOf('?');
+            const pathOnly = (qIdx >= 0 ? fullHash.slice(0, qIdx) : fullHash).toLowerCase();
+            const queryStr = qIdx >= 0 ? fullHash.slice(qIdx + 1) : '';
+            const params = new URLSearchParams(queryStr);
+            const parts = pathOnly ? pathOnly.split('/').filter(Boolean) : [];
             const main = parts[0] || 'start';
             const sub = parts[1] || '';
 
@@ -1493,6 +1532,11 @@
                 _isApplyingHashRoute = false;
             }
             syncUrlHash(isInitial);
+
+            if ((params.get('join') || params.get('room')) && window.BlinkMultiplayer && typeof window.BlinkMultiplayer.handleDeepLink === 'function') {
+                const targetSub = sub || 'arena';
+                setTimeout(() => window.BlinkMultiplayer.handleDeepLink(targetSub, params), isInitial ? 260 : 60);
+            }
         }
 
         window.addEventListener('hashchange', () => {
@@ -1876,15 +1920,16 @@
                                              (state.filterZ === null || state.filterZ === z);
 
                         const isHighlightedCard = state.highlightedCard && state.highlightedCard.x === x && state.highlightedCard.y === y && state.highlightedCard.z === z;
-                        const isHighlightedByProp = state.highlightedProp && isCard && (state.cycleLayer === x) &&
+                        const renderAsFullSphere = isCard || state.showFullSpace;
+                        const isHighlightedByProp = state.highlightedProp && renderAsFullSphere && (state.cycleLayer === x) &&
                             ((state.highlightedProp.type === 'Y' && state.highlightedProp.index === y) ||
                              (state.highlightedProp.type === 'Z' && state.highlightedProp.index === z));
                         const isEmphasized = isHighlightedCard || isHighlightedByProp;
 
-                        if (!isCard && !state.showEmptyNodes && !isHighlightedCard) continue;
+                        if (!renderAsFullSphere && !state.showEmptyNodes && !isHighlightedCard) continue;
                         const pos = gridToWorld(x, y, z);
 
-                        if (isCard) {
+                        if (renderAsFullSphere) {
                             if (matchesSlice) visibleCount++;
                             let hexColor = PALETTE_Y[y].hex;
                             if (state.colorMode === 'x') hexColor = PALETTE_X[x].hex;
@@ -1907,7 +1952,7 @@
                             const mesh = new THREE.Mesh(cardSphereGeo, mat);
                             mesh.position.copy(pos);
                             if (isEmphasized) mesh.scale.set(1.38, 1.38, 1.38);
-                            mesh.userData = { x, y, z, isCard: true, matchesSlice, hexColor };
+                            mesh.userData = { x, y, z, isCard: true, isRealCard: isCard, matchesSlice, hexColor };
                             nodesGroup.add(mesh);
 
                             if (isEmphasized) {
@@ -1926,7 +1971,7 @@
                 }
             }
 
-            if (state.showCycleLines) {
+            if (state.showCycleLines && !state.showFullSpace) {
                 for (let x = 0; x < 5; x++) {
                     if (state.filterX !== null && state.filterX !== x) continue;
                     const cycles = computeLayerCycles(x);
@@ -1946,7 +1991,9 @@
             }
 
             gridGroup.visible = state.showGridBox;
-            document.getElementById('visible-counter').textContent = `${visibleCount} / 60`;
+            const totalTarget = state.showFullSpace ? 180 : 60;
+            const counterEl = document.getElementById('visible-counter');
+            if (counterEl) counterEl.textContent = `${visibleCount} / ${totalTarget}`;
             update3DLegend();
         }
 
@@ -1958,9 +2005,9 @@
             else items = PALETTE_Z.map((p, i) => ({ hex: p.threeHex, name: `Z=${i} ${p.name}` }));
 
             legendEl.innerHTML = items.map(item => `
-                <div class="flex items-center gap-1 bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700/70">
-                    <span class="w-2.5 h-2.5 rounded-full" style="background:${item.hex}"></span>
-                    <span class="text-slate-300">${item.name}</span>
+                <div class="apple-legend-chip">
+                    <span class="w-2 h-2 rounded-full shrink-0" style="background:${item.hex}"></span>
+                    <span>${item.name}</span>
                 </div>
             `).join('');
         }
@@ -1979,9 +2026,11 @@
         function toggle3DInfoBox(forceExpand = null) {
             const body = document.getElementById('info-box-3d-body');
             const label = document.getElementById('info-box-3d-toggle-text');
+            const btn = document.getElementById('btn-toggle-3d-opts');
             const shouldExpand = forceExpand !== null ? forceExpand : body.classList.contains('hidden');
             body.classList.toggle('hidden', !shouldExpand);
-            label.textContent = shouldExpand ? 'Einklappen ▴' : 'Optionen ▾';
+            if (label) label.textContent = shouldExpand ? 'Schließen' : 'Optionen';
+            if (btn) btn.classList.toggle('is-open', shouldExpand);
         }
 
         function toggleTooltipBox() {
@@ -1991,7 +2040,11 @@
             const isHidden = preview.classList.contains('hidden');
             preview.classList.toggle('hidden', !isHidden);
             status.classList.toggle('hidden', !isHidden);
-            btn.textContent = isHidden ? 'Minimieren ▾' : 'Vorschau ▴';
+            if (btn) {
+                const span = btn.querySelector('span');
+                if (span) span.textContent = isHidden ? 'Minimieren' : 'Vorschau';
+                btn.classList.toggle('is-open', !isHidden);
+            }
         }
 
         function animateCameraLerp(cam, ctrl, targetPos, targetLookAt, duration = 420) {
@@ -2030,6 +2083,10 @@
         }
 
         function setCameraView(mode, instant = false) {
+            ['iso', 'xy', 'xz', 'yz'].forEach(m => {
+                const b = document.getElementById(`basic-cam-${m}`);
+                if (b) b.classList.toggle('is-active', m === mode);
+            });
             const aspect = container.clientWidth / Math.max(container.clientHeight, 1);
             const distScale = aspect < 1.05 ? 1.24 : 1.0;
             const targetLook = new THREE.Vector3(0, -0.3, 0);
@@ -2138,9 +2195,35 @@
             return false;
         }
 
+        function get2DSvgPalette() {
+            const isLight = state.theme === 'academic-light';
+            const isOnyx = state.theme === 'onyx-oled';
+            return {
+                isLight,
+                headerFill: isLight ? '#ffffff' : (isOnyx ? '#18181b' : '#0b1220'),
+                headerStroke: isLight ? '#cfd1cb' : (isOnyx ? '#2c2c30' : 'rgba(255,255,255,0.10)'),
+                headerY: isLight ? '#18181b' : (isOnyx ? '#ededed' : '#38bdf8'),
+                headerMid: isLight ? '#585854' : (isOnyx ? '#a1a1aa' : '#fcd34d'),
+                headerZ: isLight ? '#18181b' : '#e2e8f0',
+                nodeFill: isLight ? '#ffffff' : (isOnyx ? '#141416' : '#0f172a'),
+                badgeFill: isLight ? '#ffffff' : (isOnyx ? '#141416' : '#090d16'),
+                badgeActiveFill: isLight ? '#18181b' : (isOnyx ? '#27272a' : '#1e293b'),
+                textMain: isLight ? '#18181b' : '#f8fafc',
+                textSub: isLight ? '#585854' : '#94a3b8',
+                textActive: isLight ? '#ffffff' : (isOnyx ? '#ffffff' : '#fde047'),
+                activeStroke: isLight ? '#18181b' : '#ffffff',
+                symFill: isLight ? '#18181b' : '#F8FAFC',
+                symStroke: isLight ? '#ffffff' : '#0f172a',
+                zNodeStroke: isLight ? '#a1a1aa' : (isOnyx ? '#52525b' : '#94a3b8'),
+                ringStroke1: isLight ? '#18181b' : (isOnyx ? '#a1a1aa' : '#38bdf8'),
+                ringStroke2: isLight ? '#71717a' : (isOnyx ? '#71717a' : '#c084fc')
+            };
+        }
+
         function renderBipartiteSVG(layer, layerCards) {
             const svg = document.getElementById('svg-bipartite');
             if (!svg) return;
+            const pal = get2DSvgPalette();
             const hasAnyHighlight = Boolean(state.highlightedCard || state.highlightedProp);
             const leftX = 95, rightX = 445, startY = 58, stepY = 62;
 
@@ -2148,12 +2231,12 @@
             layerCards.forEach(([x, y, z]) => incidentColorsForZ[z].push(y));
 
             let html = `
-                <rect x="10" y="6" width="170" height="24" rx="6" fill="#0f172a" stroke="#1e293b"/>
-                <text x="95" y="22" text-anchor="middle" fill="#38bdf8" font-size="10.5" font-weight="bold" class="mono">KNOTEN: 6 FARBEN (Y)</text>
-                <rect x="188" y="6" width="164" height="24" rx="6" fill="#0f172a" stroke="#1e293b"/>
-                <text x="270" y="22" text-anchor="middle" fill="#facc15" font-size="10.5" font-weight="bold" class="mono">KANTEN: 12 KARTEN (X,Y,Z)</text>
-                <rect x="360" y="6" width="170" height="24" rx="6" fill="#0f172a" stroke="#1e293b"/>
-                <text x="445" y="22" text-anchor="middle" fill="#e2e8f0" font-size="10.5" font-weight="bold" class="mono">KNOTEN: 6 SYMBOLE (Z)</text>
+                <rect x="10" y="6" width="170" height="24" rx="12" fill="${pal.headerFill}" stroke="${pal.headerStroke}"/>
+                <text x="95" y="21.5" text-anchor="middle" fill="${pal.headerY}" font-size="10" font-weight="bold" class="mono">KNOTEN: 6 FARBEN (Y)</text>
+                <rect x="188" y="6" width="164" height="24" rx="12" fill="${pal.headerFill}" stroke="${pal.headerStroke}"/>
+                <text x="270" y="21.5" text-anchor="middle" fill="${pal.headerMid}" font-size="10" font-weight="bold" class="mono">KANTEN: 12 KARTEN</text>
+                <rect x="360" y="6" width="170" height="24" rx="12" fill="${pal.headerFill}" stroke="${pal.headerStroke}"/>
+                <text x="445" y="21.5" text-anchor="middle" fill="${pal.headerZ}" font-size="10" font-weight="bold" class="mono">KNOTEN: 6 SYMBOLE (Z)</text>
             `;
 
             const badgePositions = [];
@@ -2161,11 +2244,11 @@
                 const y1 = startY + y * stepY;
                 const y2 = startY + z * stepY;
                 const active = isCardHighlighted(x, y, z);
-                const strokeColor = active ? '#ffffff' : PALETTE_Y[y].hex;
-                const opacity = hasAnyHighlight ? (active ? 1.0 : 0.16) : 0.82;
+                const strokeColor = active ? pal.activeStroke : PALETTE_Y[y].hex;
+                const opacity = hasAnyHighlight ? (active ? 1.0 : 0.16) : (pal.isLight ? 0.78 : 0.84);
                 const ctrlX1 = leftX + 120, ctrlX2 = rightX - 120;
 
-                html += `<path d="M ${leftX} ${y1} C ${ctrlX1} ${y1}, ${ctrlX2} ${y2}, ${rightX} ${y2}" fill="none" stroke="${strokeColor}" stroke-width="${active ? 4.2 : 2.5}" stroke-opacity="${opacity}" class="svg-edge-line" />`;
+                html += `<path d="M ${leftX} ${y1} C ${ctrlX1} ${y1}, ${ctrlX2} ${y2}, ${rightX} ${y2}" fill="none" stroke="${strokeColor}" stroke-width="${active ? 4.0 : 2.4}" stroke-opacity="${opacity}" class="svg-edge-line" />`;
 
                 const t = 0.24 + ((y * 2 + z) % 7) * 0.085;
                 const mt = 1 - t;
@@ -2183,9 +2266,9 @@
                        onmouseenter="highlightCardAcrossViews(${x},${y},${z}, false)"
                        onmouseout="if(!this.contains(event.relatedTarget)) clearHighlights()"
                        onclick="highlightCardAcrossViews(${x},${y},${z}, true)">
-                        <rect x="${bx - 36}" y="${by - 11}" width="72" height="22" rx="6" fill="${active ? '#1e293b' : '#090d16'}" stroke="${active ? '#ffffff' : PALETTE_Y[y].strokeHex}" stroke-width="${active ? 2.4 : 1.6}" />
-                        <svg x="${bx - 32}" y="${by - 8}" width="16" height="16" viewBox="0 0 24 24">${getSymbolInnerSVG(z, PALETTE_Y[y].hex, '#020617', 1.1)}</svg>
-                        <text x="${bx + 7}" y="${by + 3.5}" text-anchor="middle" fill="${active ? '#fde047' : '#f8fafc'}" font-size="10" font-weight="bold" class="mono">${labelStr}</text>
+                        <rect x="${bx - 36}" y="${by - 11}" width="72" height="22" rx="11" fill="${active ? pal.badgeActiveFill : pal.badgeFill}" stroke="${active ? pal.activeStroke : PALETTE_Y[y].strokeHex}" stroke-width="${active ? 2.2 : 1.5}" />
+                        <svg x="${bx - 31}" y="${by - 8}" width="16" height="16" viewBox="0 0 24 24">${getSymbolInnerSVG(z, PALETTE_Y[y].hex, '#020617', 1.1)}</svg>
+                        <text x="${bx + 7}" y="${by + 3.5}" text-anchor="middle" fill="${active ? pal.textActive : pal.textMain}" font-size="10" font-weight="bold" class="mono">${labelStr}</text>
                     </g>
                 `;
             });
@@ -2199,10 +2282,10 @@
                        onmouseenter="highlightPropertyAcrossViews('Y', ${y})"
                        onmouseout="if(!this.contains(event.relatedTarget)) clearHighlights()"
                        onclick="highlightPropertyAcrossViews('Y', ${y})">
-                        <circle cx="${leftX}" cy="${cy}" r="${active ? 22 : 19}" fill="#0f172a" stroke="${active ? '#ffffff' : col.strokeHex}" stroke-width="${active ? 3.5 : 2.6}" />
-                        <circle cx="${leftX - 34}" cy="${cy}" r="7.5" fill="${col.hex}" stroke="#ffffff" stroke-width="1" />
-                        <text x="${leftX}" y="${cy - 2}" text-anchor="middle" fill="#ffffff" font-size="10.5" font-weight="bold" class="mono">Y=${y}</text>
-                        <text x="${leftX}" y="${cy + 10}" text-anchor="middle" fill="${col.strokeHex}" font-size="9" font-weight="700">${col.name}</text>
+                        <circle cx="${leftX}" cy="${cy}" r="${active ? 22 : 19}" fill="${pal.nodeFill}" stroke="${active ? pal.activeStroke : col.strokeHex}" stroke-width="${active ? 3.2 : 2.4}" />
+                        <circle cx="${leftX - 34}" cy="${cy}" r="7.5" fill="${col.hex}" stroke="${pal.activeStroke}" stroke-width="1" />
+                        <text x="${leftX}" y="${cy - 2}" text-anchor="middle" fill="${pal.textMain}" font-size="10.5" font-weight="bold" class="mono">Y=${y}</text>
+                        <text x="${leftX}" y="${cy + 10}" text-anchor="middle" fill="${pal.isLight ? col.cardStroke : col.strokeHex}" font-size="9" font-weight="700">${col.name}</text>
                     </g>
                 `;
             }
@@ -2216,14 +2299,14 @@
                 html += `
                     <g class="svg-prop-node" style="opacity:${hasAnyHighlight ? (active ? 1.0 : 0.35) : 1.0}"
                        onmouseenter="highlightPropertyAcrossViews('Z', ${z})"
-                      onmouseout="if(!this.contains(event.relatedTarget)) clearHighlights()"
+                       onmouseout="if(!this.contains(event.relatedTarget)) clearHighlights()"
                        onclick="highlightPropertyAcrossViews('Z', ${z})">
-                        <rect x="${rightX - r}" y="${cz - r}" width="${r * 2}" height="${r * 2}" rx="8" fill="#0f172a" stroke="${active ? '#ffffff' : '#94a3b8'}" stroke-width="${active ? 3.5 : 2.2}" />
-                        <svg x="${rightX + 24}" y="${cz - 11}" width="21" height="21" viewBox="0 0 24 24">${getSymbolInnerSVG(z, '#F8FAFC', '#0f172a', 1.1)}</svg>
-                        <circle cx="${rightX + 52}" cy="${cz - 5}" r="4" fill="${incY[0] !== undefined ? PALETTE_Y[incY[0]].hex : '#cbd5e1'}" stroke="#0f172a" stroke-width="1"/>
-                        <circle cx="${rightX + 52}" cy="${cz + 5}" r="4" fill="${incY[1] !== undefined ? PALETTE_Y[incY[1]].hex : '#cbd5e1'}" stroke="#0f172a" stroke-width="1"/>
-                        <text x="${rightX}" y="${cz - 2}" text-anchor="middle" fill="#ffffff" font-size="10.5" font-weight="bold" class="mono">Z=${z}</text>
-                        <text x="${rightX}" y="${cz + 10}" text-anchor="middle" fill="#cbd5e1" font-size="8.5" font-weight="700">${sym.name}</text>
+                        <rect x="${rightX - r}" y="${cz - r}" width="${r * 2}" height="${r * 2}" rx="10" fill="${pal.nodeFill}" stroke="${active ? pal.activeStroke : pal.zNodeStroke}" stroke-width="${active ? 3.2 : 2.0}" />
+                        <svg x="${rightX + 24}" y="${cz - 11}" width="21" height="21" viewBox="0 0 24 24">${getSymbolInnerSVG(z, pal.symFill, pal.symStroke, 1.1)}</svg>
+                        <circle cx="${rightX + 52}" cy="${cz - 5}" r="4" fill="${incY[0] !== undefined ? PALETTE_Y[incY[0]].hex : '#cbd5e1'}" stroke="${pal.nodeFill}" stroke-width="1"/>
+                        <circle cx="${rightX + 52}" cy="${cz + 5}" r="4" fill="${incY[1] !== undefined ? PALETTE_Y[incY[1]].hex : '#cbd5e1'}" stroke="${pal.nodeFill}" stroke-width="1"/>
+                        <text x="${rightX}" y="${cz - 2}" text-anchor="middle" fill="${pal.textMain}" font-size="10.5" font-weight="bold" class="mono">Z=${z}</text>
+                        <text x="${rightX}" y="${cz + 10}" text-anchor="middle" fill="${pal.textSub}" font-size="8.5" font-weight="700">${sym.name}</text>
                     </g>
                 `;
             }
@@ -2233,23 +2316,24 @@
         function renderCycleRingSVG(layer, cycles) {
             const svg = document.getElementById('svg-cycle-ring');
             if (!svg) return;
+            const pal = get2DSvgPalette();
             const hasAnyHighlight = Boolean(state.highlightedCard || state.highlightedProp);
             let html = '';
 
             const circleConfigs = cycles.length === 1
-                ? [{ cx: 270, cy: 222, r: 158, ringStroke: '#38bdf8', title: `Hamilton-Zyklus (${PALETTE_X[layer].short})` }]
+                ? [{ cx: 270, cy: 222, r: 158, ringStroke: pal.ringStroke1, title: `Hamilton-Zyklus (${PALETTE_X[layer].short})` }]
                 : cycles.map((c, idx) => idx === 0
-                    ? { cx: 165, cy: 225, r: 116, ringStroke: '#38bdf8', title: `Zyklus 1 (${c.length}er-Ring)` }
-                    : { cx: 416, cy: 225, r: 80,  ringStroke: '#c084fc', title: `Zyklus 2 (${c.length}er-Ring)` });
+                    ? { cx: 165, cy: 225, r: 116, ringStroke: pal.ringStroke1, title: `Zyklus 1 (${c.length}er-Ring)` }
+                    : { cx: 416, cy: 225, r: 80, ringStroke: pal.ringStroke2, title: `Zyklus 2 (${c.length}er-Ring)` });
 
             cycles.forEach((cycle, cIdx) => {
                 const { cx, cy, r, ringStroke, title } = circleConfigs[cIdx];
                 const n = cycle.length;
 
                 html += `
-                    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${ringStroke}" stroke-opacity="0.25" stroke-width="1.8" stroke-dasharray="5,5" />
-                    <text x="${cx}" y="${cy - r - 28}" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="bold" class="mono">${title}</text>
-                    <text x="${cx}" y="${cy - 4}" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="bold" class="mono">X=${layer === 5 ? '5*' : layer} (${PALETTE_X[layer].word})</text>
+                    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${ringStroke}" stroke-opacity="0.28" stroke-width="1.8" stroke-dasharray="5,5" />
+                    <text x="${cx}" y="${cy - r - 28}" text-anchor="middle" fill="${pal.textMain}" font-size="11" font-weight="bold" class="mono">${title}</text>
+                    <text x="${cx}" y="${cy - 4}" text-anchor="middle" fill="${pal.textSub}" font-size="10" font-weight="bold" class="mono">X=${layer === 5 ? '5*' : layer} (${PALETTE_X[layer].word})</text>
                 `;
 
                 const pts = cycle.map((step, i) => {
@@ -2262,7 +2346,7 @@
                     const [kx, ky, kz] = p1.outCard;
                     const active = isCardHighlighted(kx, ky, kz);
 
-                    html += `<line x1="${p1.px}" y1="${p1.py}" x2="${p2.px}" y2="${p2.py}" stroke="${active ? '#ffffff' : PALETTE_Y[ky].hex}" stroke-width="${active ? 4.2 : 2.8}" stroke-opacity="${hasAnyHighlight ? (active ? 1.0 : 0.22) : 0.9}" class="svg-edge-line" />`;
+                    html += `<line x1="${p1.px}" y1="${p1.py}" x2="${p2.px}" y2="${p2.py}" stroke="${active ? pal.activeStroke : PALETTE_Y[ky].hex}" stroke-width="${active ? 4.0 : 2.6}" stroke-opacity="${hasAnyHighlight ? (active ? 1.0 : 0.22) : 0.9}" class="svg-edge-line" />`;
 
                     const midAngle = p1.angle + Math.PI / n;
                     const badgeR = r + (cycles.length === 1 ? 16 : 14);
@@ -2275,9 +2359,9 @@
                            onmouseenter="highlightCardAcrossViews(${kx},${ky},${kz}, false)"
                            onmouseleave="if(!state.animTimer) clearHighlights()"
                            onclick="highlightCardAcrossViews(${kx},${ky},${kz}, true)">
-                            <rect x="${bx - 32}" y="${by - 10}" width="64" height="20" rx="5" fill="${active ? '#1e293b' : '#090d16'}" stroke="${active ? '#ffffff' : PALETTE_Y[ky].strokeHex}" stroke-width="${active ? 2.2 : 1.5}" />
-                            <svg x="${bx - 29}" y="${by - 7}" width="14" height="14" viewBox="0 0 24 24">${getSymbolInnerSVG(kz, PALETTE_Y[ky].hex, '#020617', 1.1)}</svg>
-                            <text x="${bx + 6}" y="${by + 3.5}" text-anchor="middle" fill="${active ? '#fde047' : '#f8fafc'}" font-size="9" font-weight="bold" class="mono">${labelStr}</text>
+                            <rect x="${bx - 32}" y="${by - 10}" width="64" height="20" rx="10" fill="${active ? pal.badgeActiveFill : pal.badgeFill}" stroke="${active ? pal.activeStroke : PALETTE_Y[ky].strokeHex}" stroke-width="${active ? 2.2 : 1.5}" />
+                            <svg x="${bx - 28}" y="${by - 7}" width="14" height="14" viewBox="0 0 24 24">${getSymbolInnerSVG(kz, PALETTE_Y[ky].hex, '#020617', 1.1)}</svg>
+                            <text x="${bx + 6}" y="${by + 3.5}" text-anchor="middle" fill="${active ? pal.textActive : pal.textMain}" font-size="9" font-weight="bold" class="mono">${labelStr}</text>
                         </g>
                     `;
                 });
@@ -2294,10 +2378,10 @@
                                onmouseenter="highlightPropertyAcrossViews('Y', ${p.id})"
                                onmouseout="if(!this.contains(event.relatedTarget)) clearHighlights()"
                                onclick="highlightPropertyAcrossViews('Y', ${p.id})">
-                                <circle cx="${p.px}" cy="${p.py}" r="${rad}" fill="#0f172a" stroke="${active ? '#ffffff' : col.strokeHex}" stroke-width="${active ? 3.5 : 2.6}" />
+                                <circle cx="${p.px}" cy="${p.py}" r="${rad}" fill="${pal.nodeFill}" stroke="${active ? pal.activeStroke : col.strokeHex}" stroke-width="${active ? 3.2 : 2.4}" />
                                 <circle cx="${p.px}" cy="${p.py - 9}" r="3.5" fill="${col.hex}" />
-                                <text x="${p.px}" y="${p.py + 2}" text-anchor="middle" fill="#ffffff" font-size="9.5" font-weight="bold" class="mono">Y=${p.id}</text>
-                                <text x="${p.px}" y="${p.py + 11}" text-anchor="middle" fill="${col.strokeHex}" font-size="8" font-weight="700">${col.name}</text>
+                                <text x="${p.px}" y="${p.py + 2}" text-anchor="middle" fill="${pal.textMain}" font-size="9.5" font-weight="bold" class="mono">Y=${p.id}</text>
+                                <text x="${p.px}" y="${p.py + 11}" text-anchor="middle" fill="${pal.isLight ? col.cardStroke : col.strokeHex}" font-size="8" font-weight="700">${col.name}</text>
                             </g>
                         `;
                     } else {
@@ -2305,11 +2389,11 @@
                         html += `
                             <g class="svg-prop-node" style="opacity:${nodeOpacity}"
                                onmouseenter="highlightPropertyAcrossViews('Z', ${p.id})"
-                              onmouseout="if(!this.contains(event.relatedTarget)) clearHighlights()"
+                               onmouseout="if(!this.contains(event.relatedTarget)) clearHighlights()"
                                onclick="highlightPropertyAcrossViews('Z', ${p.id})">
-                                <rect x="${p.px - s}" y="${p.py - s}" width="${s * 2}" height="${s * 2}" rx="6" fill="#0f172a" stroke="${active ? '#ffffff' : '#cbd5e1'}" stroke-width="${active ? 3.5 : 2.2}" />
-                                <svg x="${p.px - 7}" y="${p.py - 14}" width="14" height="14" viewBox="0 0 24 24">${getSymbolInnerSVG(p.id, '#F8FAFC', '#0f172a', 1.0)}</svg>
-                                <text x="${p.px}" y="${p.py + 10}" text-anchor="middle" fill="#ffffff" font-size="8.5" font-weight="bold" class="mono">Z=${p.id}</text>
+                                <rect x="${p.px - s}" y="${p.py - s}" width="${s * 2}" height="${s * 2}" rx="9" fill="${pal.nodeFill}" stroke="${active ? pal.activeStroke : pal.zNodeStroke}" stroke-width="${active ? 3.2 : 2.0}" />
+                                <svg x="${p.px - 7}" y="${p.py - 14}" width="14" height="14" viewBox="0 0 24 24">${getSymbolInnerSVG(p.id, pal.symFill, pal.symStroke, 1.0)}</svg>
+                                <text x="${p.px}" y="${p.py + 10}" text-anchor="middle" fill="${pal.textMain}" font-size="8.5" font-weight="bold" class="mono">Z=${p.id}</text>
                             </g>
                         `;
                     }
@@ -2321,21 +2405,22 @@
         function renderCycleChainsList(layer, cycles) {
             const listEl = document.getElementById('cycle-chains-list');
             if (!listEl) return;
+            const pal = get2DSvgPalette();
             listEl.innerHTML = cycles.map((cycle, idx) => {
                 const stepsHtml = cycle.map(step => {
                     const [kx, ky, kz] = step.outCard;
                     const nodeContent = step.nodeType === 'Y'
                         ? `<span class="w-2.5 h-2.5 rounded-full inline-block" style="background:${PALETTE_Y[step.id].hex}"></span> Y=${step.id}`
-                        : `${getSymbolSVG(step.id, '#F8FAFC', 12)} Z=${step.id}`;
+                        : `${getSymbolSVG(step.id, pal.symFill, 12, pal.symStroke, 1.1)} Z=${step.id}`;
                     const cardLabel = kx === 5 ? `*(${ky},${kz})` : `(${kx},${ky},${kz})`;
                     return `
-                        <button onclick="highlightPropertyAcrossViews('${step.nodeType}', ${step.id})" class="px-1.5 py-0.5 rounded border text-[11px] mono inline-flex items-center gap-1 bg-slate-950 text-slate-200 border-slate-700">${nodeContent}</button>
+                        <button onclick="highlightPropertyAcrossViews('${step.nodeType}', ${step.id})" class="apple-chain-chip is-node">${nodeContent}</button>
                         <span class="text-slate-500 text-[10px]">─</span>
-                        <button onclick="highlightCardAcrossViews(${kx},${ky},${kz}, true)" class="px-1.5 py-0.5 rounded border text-[11px] mono inline-flex items-center gap-1 bg-slate-800 text-cyan-200 border-slate-700">${getSymbolSVG(kz, PALETTE_Y[ky].hex, 12, '#0f172a', 1.2)}<span>${cardLabel}</span></button>
+                        <button onclick="highlightCardAcrossViews(${kx},${ky},${kz}, true)" class="apple-chain-chip is-card">${getSymbolSVG(kz, PALETTE_Y[ky].hex, 12, '#0f172a', 1.2)}<span>${cardLabel}</span></button>
                         <span class="text-slate-500 text-[10px]">→</span>
                     `;
                 }).join('');
-                return `<div class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800"><div class="text-[11px] font-bold text-amber-300 mb-1.5 mono">Zyklus ${idx + 1} (${cycle.length} Karten):</div><div class="flex flex-wrap items-center gap-1">${stepsHtml}<span class="px-1.5 py-0.5 rounded bg-slate-800 text-emerald-300 text-[11px] mono font-bold">↺ Y=${cycle[0].id}</span></div></div>`;
+                return `<div class="apple-chain-card"><div class="text-[11px] font-bold text-amber-300 mb-2 mono">Zyklus ${idx + 1} (${cycle.length} Karten)</div><div class="flex flex-wrap items-center gap-1">${stepsHtml}<span class="apple-chain-chip is-loop">↺ Y=${cycle[0].id}</span></div></div>`;
             }).join('');
         }
 
@@ -2347,21 +2432,21 @@
             const grid = Array.from({ length: 6 }, () => Array(6).fill(null));
             layerCards.forEach(([x, y, z]) => grid[y][z] = [x, y, z]);
 
-            let html = `<table class="w-full text-center mono text-[11px] border-separate border-spacing-1"><thead><tr><th class="text-[10px] text-slate-500">Y \\ Z</th>`;
-            for (let z = 0; z < 6; z++) html += `<th class="text-slate-200 pb-0.5"><span class="text-[10px]">Z=${z} (${PALETTE_Z[z].name})</span></th>`;
+            let html = `<table class="w-full text-center mono text-[11px] border-separate border-spacing-1.5"><thead><tr><th class="text-[10px] text-slate-500">Y \\ Z</th>`;
+            for (let z = 0; z < 6; z++) html += `<th class="text-slate-200 pb-1"><span class="text-[10px]">Z=${z} (${PALETTE_Z[z].name})</span></th>`;
             html += `<th class="text-[10px] text-slate-400">∑</th></tr></thead><tbody>`;
 
             for (let y = 0; y < 6; y++) {
-                html += `<tr><td class="text-left pr-1 text-[10px] text-slate-200 font-semibold"><span class="inline-block w-2.5 h-2.5 rounded-full mr-1" style="background:${PALETTE_Y[y].hex}"></span>Y=${y} (${PALETTE_Y[y].name})</td>`;
+                html += `<tr><td class="text-left pr-1.5 text-[10px] text-slate-200 font-semibold whitespace-nowrap"><span class="inline-block w-2.5 h-2.5 rounded-full mr-1.5 align-middle" style="background:${PALETTE_Y[y].hex}"></span>Y=${y} (${PALETTE_Y[y].name})</td>`;
                 for (let z = 0; z < 6; z++) {
                     const card = grid[y][z];
                     if (card) {
                         const [kx, ky, kz] = card;
                         const active = isCardHighlighted(kx, ky, kz);
                         const lbl = kx === 5 ? `*${ky},${kz}` : `${kx},${ky},${kz}`;
-                        html += `<td><button onclick="highlightCardAcrossViews(${kx},${ky},${kz}, true)" class="w-full py-1 px-0.5 rounded border text-[9.5px] flex items-center justify-center gap-1 ${active ? 'bg-amber-400 text-slate-950 font-bold border-white' : 'bg-slate-800/90 text-slate-100 border-slate-600'}">${getSymbolSVG(kz, PALETTE_Y[ky].hex, 13, '#0f172a', 1.2)}<span>(${lbl})</span></button></td>`;
+                        html += `<td><button onclick="highlightCardAcrossViews(${kx},${ky},${kz}, true)" class="apple-mat-cell ${active ? 'is-active' : ''}">${getSymbolSVG(kz, PALETTE_Y[ky].hex, 13, '#0f172a', 1.2)}<span>(${lbl})</span></button></td>`;
                     } else {
-                        html += `<td class="py-1 rounded border border-slate-800/70 bg-slate-900/40 text-slate-600">·</td>`;
+                        html += `<td class="apple-mat-empty">·</td>`;
                     }
                 }
                 html += `<td class="text-emerald-400 font-bold">2</td></tr>`;
@@ -2384,7 +2469,9 @@
             const coordsEl = document.getElementById('tt-coords');
             const statusEl = document.getElementById('tt-status');
             if (coordsEl) coordsEl.textContent = x === 5 ? `Komplement *(${y}, ${z})` : `Karte (${x}, ${y}, ${z}) → ${anz.count}× ${col.name} ${sym.name}`;
-            if (statusEl) statusEl.textContent = `X=${x} (${anz.word}) • Y=${y} (${col.name}) • Z=${z} (${sym.name})`;
+            const inDeck60 = CARDS_60.some(c => c[0] === x && c[1] === y && c[2] === z);
+            const deckSuffix = (state.showFullSpace && x < 5) ? (inDeck60 ? ' · im 60er-Deck' : ' · Vollraum') : '';
+            if (statusEl) statusEl.textContent = `X=${x} (${anz.word}) • Y=${y} (${col.name}) • Z=${z} (${sym.name})${deckSuffix}`;
             update3DScene();
             render2DCycleGraphs();
         }
@@ -2430,9 +2517,14 @@
             const gridEl = document.getElementById('card-list-grid');
             if (!countEl || !gridEl) return;
             const q = state.searchQuery.trim().toLowerCase();
-            const sorted = [...CARDS_60].sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]);
-            const filtered = sorted.filter(([x, y, z]) => `(${x},${y},${z}) ${PALETTE_X[x].word.toLowerCase()} ${PALETTE_Y[y].name.toLowerCase()} ${PALETTE_Z[z].name.toLowerCase()}`.includes(q));
-            countEl.textContent = `${filtered.length} / 60 Karten`;
+            const sourceCards = state.showFullSpace
+                ? Array.from({ length: 180 }, (_, idx) => [Math.floor(idx / 36), Math.floor((idx % 36) / 6), idx % 6])
+                : [...CARDS_60].sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]);
+            const totalCards = state.showFullSpace ? 180 : 60;
+            const listHead = document.getElementById('basic-card-list-heading');
+            if (listHead) listHead.textContent = state.showFullSpace ? 'Alle 180 Vollraum-Karten im Format 63:88' : 'Alle 60 Spielkarten im Format 63:88';
+            const filtered = sourceCards.filter(([x, y, z]) => `(${x},${y},${z}) ${PALETTE_X[x].word.toLowerCase()} ${PALETTE_Y[y].name.toLowerCase()} ${PALETTE_Z[z].name.toLowerCase()}`.includes(q));
+            countEl.textContent = `${filtered.length} / ${totalCards} Karten`;
             gridEl.innerHTML = filtered.map(([x, y, z]) => `
                 <button onclick="selectCycleLayer(${x}); setLayoutMode('split'); highlightCardAcrossViews(${x},${y},${z}, true);" class="card-63-88 p-1.5 rounded-xl border-2 border-slate-300 bg-white text-left flex flex-col justify-between shadow hover:border-cyan-400 transition overflow-hidden">
                     <div class="blink-card-inner">
@@ -2450,6 +2542,26 @@
                     </div>
                 </button>
             `).join('');
+        }
+
+        function toggleBasicFullSpace(forceVal = null) {
+            const next = forceVal !== null ? Boolean(forceVal) : !state.showFullSpace;
+            state.showFullSpace = next;
+            playSound('tick');
+
+            if (next) {
+                state.filterX = null;
+                if (state.cycleLayer === 5) state.cycleLayer = 0;
+                updateGlobalLayerButtons();
+            }
+
+            const btn = document.getElementById('btn-basic-fullspace');
+            if (btn) {
+                btn.classList.toggle('is-active', next);
+                btn.setAttribute('aria-pressed', next ? 'true' : 'false');
+            }
+            if (state.currentPage === 'basic-model') updateModelsSharedBar('basic-model');
+            refreshAll();
         }
 
         function selectActiveLayer(layerVal) {
