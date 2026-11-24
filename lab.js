@@ -2075,7 +2075,7 @@
                         slotsHtml += `
                             <div onclick="vhAddSelectedToSktDraft()"
                                  class="w-full card-63-88 rounded-lg border border-dashed border-white/15 bg-white/[0.02] flex flex-col items-center justify-center text-[9px] mono text-slate-500 ${vhState.selectedIdx !== null ? 'cursor-pointer hover:border-purple-400/60 hover:text-purple-300' : ''}">
-                                <span>SKT ${s + 1}</span>
+                                <span>+</span>
                             </div>
                         `;
                     }

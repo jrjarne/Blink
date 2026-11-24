@@ -1227,7 +1227,7 @@
             state.theme = themeId;
             localStorage.setItem('blink_theme', themeId);
             document.documentElement.setAttribute('data-theme', themeId);
-            ['foerde-midnight', 'academic-light', 'onyx-oled'].forEach(t => {
+            ['foerde-midnight', 'academic-light', 'onyx-oled', 'gargantua-interstellar', 'arrakis-dune', 'kachow-cars'].forEach(t => {
                 const btn = document.getElementById(`theme-btn-${t}`);
                 if (!btn) return;
                 const isActive = t === themeId;
@@ -1861,7 +1861,7 @@
 
         function buildGridAndAxes() {
             gridGroup.clear();
-            const isLight = state.theme === 'academic-light';
+            const isLight = state.theme === 'academic-light' || state.theme === 'arrakis-dune';
             const lineMat = new THREE.LineBasicMaterial({ color: isLight ? 0x64748b : 0x334155, transparent: true, opacity: isLight ? 0.35 : 0.25 });
             const points = [];
 
@@ -2196,7 +2196,7 @@
         }
 
         function get2DSvgPalette() {
-            const isLight = state.theme === 'academic-light';
+            const isLight = state.theme === 'academic-light' || state.theme === 'arrakis-dune';
             const isOnyx = state.theme === 'onyx-oled';
             return {
                 isLight,

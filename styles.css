@@ -5161,3 +5161,1859 @@ body[data-page="advanced-model"] {
 [data-theme="academic-light"] .cloud-status-dot {
     border-color: #f2f3ef;
 }
+/* ============================================================================
+   PARTIE-ANALYSE & ZUG-REPLAY SHEET (ALLE 3 THEMES)
+   ============================================================================ */
+#match-analysis-modal > div {
+    backdrop-filter: blur(32px) saturate(190%) !important;
+    -webkit-backdrop-filter: blur(32px) saturate(190%) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        0 34px 80px -20px rgba(0, 0, 0, 0.82) !important;
+}
+
+.apple-analysis-well,
+.apple-analysis-kpi {
+    background: rgba(6, 10, 20, 0.60);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+}
+.apple-analysis-kpi {
+    border-radius: 14px;
+    padding: 10px 12px;
+}
+[data-theme="onyx-oled"] .apple-analysis-well,
+[data-theme="onyx-oled"] .apple-analysis-kpi {
+    background: #101012;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme="academic-light"] .apple-analysis-well,
+[data-theme="academic-light"] .apple-analysis-kpi {
+    background: rgba(255, 255, 255, 0.88);
+    border-color: rgba(24, 24, 27, 0.10);
+}
+
+.apple-replay-btn {
+    width: 32px;
+    height: 30px;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 140ms ease, border-color 140ms ease;
+}
+.apple-replay-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+[data-theme="academic-light"] .apple-replay-btn {
+    background: #ffffff;
+    border-color: rgba(24, 24, 27, 0.14);
+    color: #18181b;
+}
+
+.apple-ma-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 9px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    transition: background-color 120ms ease, border-color 120ms ease;
+}
+.apple-ma-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+.apple-ma-row.is-active {
+    background: rgba(34, 211, 238, 0.15);
+    border-color: rgba(34, 211, 238, 0.45);
+}
+[data-theme="onyx-oled"] .apple-ma-row.is-active {
+    background: rgba(255, 255, 255, 0.10);
+    border-color: rgba(255, 255, 255, 0.28);
+}
+[data-theme="academic-light"] .apple-ma-row:hover {
+    background: rgba(24, 24, 27, 0.04);
+}
+[data-theme="academic-light"] .apple-ma-row.is-active {
+    background: rgba(24, 24, 27, 0.08);
+    border-color: #18181b;
+}
+
+#ma-piles-stage > div > div {
+    background: #ffffff !important;
+}
+/* ============================================================================
+   VERHÖR: ZUG-POPUP („DU BIST DRAN!“) & AKTIVER HANDKARTEN-FOKUS
+   ============================================================================ */
+.vh-turn-toast {
+    position: fixed;
+    top: 84px;
+    left: 50%;
+    z-index: 65;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 18px;
+    border-radius: 9999px;
+    background: rgba(8, 13, 25, 0.90);
+    backdrop-filter: blur(24px) saturate(190%);
+    -webkit-backdrop-filter: blur(24px) saturate(190%);
+    border: 1px solid rgba(34, 211, 238, 0.55);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.22),
+        0 18px 42px -10px rgba(0, 0, 0, 0.72),
+        0 0 28px -6px rgba(34, 211, 238, 0.45);
+    opacity: 0;
+    transform: translate(-50%, -14px) scale(0.92);
+    transition: transform 280ms var(--spring-balatro), opacity 220ms ease;
+    max-width: calc(100vw - 24px);
+}
+.vh-turn-toast.is-visible {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+}
+.vh-turn-toast.is-interrogation {
+    border-color: rgba(251, 191, 36, 0.65);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.22),
+        0 18px 42px -10px rgba(0, 0, 0, 0.72),
+        0 0 28px -6px rgba(251, 191, 36, 0.45);
+}
+[data-theme="onyx-oled"] .vh-turn-toast {
+    background: rgba(20, 20, 23, 0.94);
+    border-color: rgba(255, 255, 255, 0.34);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.16),
+        0 18px 42px -10px rgba(0, 0, 0, 0.88);
+}
+[data-theme="academic-light"] .vh-turn-toast {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: #18181b;
+    box-shadow: 0 14px 36px -10px rgba(15, 23, 42, 0.26);
+}
+
+#vh-player-hand-box.vh-my-turn-glow {
+    border-color: rgba(34, 211, 238, 0.55) !important;
+    box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.20), 0 0 26px -10px rgba(34, 211, 238, 0.45);
+}
+#vh-player-hand-box.vh-int-hand-focus {
+    border-color: rgba(251, 191, 36, 0.50) !important;
+    box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.18), 0 0 22px -10px rgba(251, 191, 36, 0.35);
+}
+[data-theme="onyx-oled"] #vh-player-hand-box.vh-my-turn-glow {
+    border-color: rgba(255, 255, 255, 0.38) !important;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+[data-theme="academic-light"] #vh-player-hand-box.vh-my-turn-glow {
+    border-color: #18181b !important;
+    box-shadow: 0 0 0 2px rgba(24, 24, 27, 0.10);
+}
+/* ============================================================================
+   ONLINE HEAD-TO-HEAD SCORE-PILL & SERIEN-BANNER (ALLE 3 THEMES)
+   ============================================================================ */
+.h2h-score-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    background: rgba(6, 10, 20, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.09),
+        0 6px 18px -8px rgba(0, 0, 0, 0.55);
+}
+[data-theme="onyx-oled"] .h2h-score-pill {
+    background: #101012;
+    border-color: rgba(255, 255, 255, 0.10);
+}
+[data-theme="academic-light"] .h2h-score-pill {
+    background: #ffffff;
+    border-color: rgba(24, 24, 27, 0.14);
+    box-shadow: 0 2px 8px -4px rgba(15, 23, 42, 0.14);
+}
+[data-theme="academic-light"] .h2h-score-pill .text-cyan-300 {
+    color: #0284c7 !important;
+}
+[data-theme="academic-light"] .h2h-score-pill .text-rose-400 {
+    color: #e11d48 !important;
+}
+
+.h2h-summary-banner {
+    border-radius: 16px;
+    padding: 11px 14px;
+    background: linear-gradient(180deg, rgba(34, 211, 238, 0.10) 0%, rgba(15, 23, 42, 0.72) 100%);
+    border: 1px solid rgba(34, 211, 238, 0.28);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+[data-theme="onyx-oled"] .h2h-summary-banner {
+    background: #101012;
+    border-color: rgba(255, 255, 255, 0.12);
+}
+[data-theme="academic-light"] .h2h-summary-banner {
+    background: #ffffff;
+    border-color: rgba(24, 24, 27, 0.14);
+}
+[data-theme="academic-light"] .h2h-summary-banner .text-cyan-300 {
+    color: #0284c7 !important;
+}
+[data-theme="academic-light"] .h2h-summary-banner .text-rose-400,
+[data-theme="academic-light"] .h2h-summary-banner .text-rose-300 {
+    color: #e11d48 !important;
+}
+/* ============================================================================
+   VERHÖR: KOMPAKTE HANDREIHE · PRÄGNANTER CLUSTER-BUTTON · PRÜF-HIGHLIGHT
+   ============================================================================ */
+.vh-hand-compact-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 8px;
+}
+.vh-hand-compact-row > * {
+    flex: 0 0 calc((100% - 16px) / 3);
+    max-width: calc((100% - 16px) / 3);
+}
+@media (min-width: 640px) {
+    .vh-hand-compact-row {
+        flex-wrap: nowrap;
+    }
+    .vh-hand-compact-row > * {
+        flex: 0 0 calc((100% - 40px) / 6);
+        max-width: calc((100% - 40px) / 6);
+    }
+}
+
+/* Großer, prägnanter Ziel-Button „Cluster rufen!“ (ohne Auto-Spoiler, alle 3 Themes) */
+.vh-cluster-cta-btn {
+    background: linear-gradient(135deg, #34d399 0%, #22d3ee 100%);
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    color: #041016;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.48),
+        0 10px 24px -8px rgba(52, 211, 153, 0.55);
+}
+.vh-cluster-cta-btn:not(:disabled):hover {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.58),
+        0 14px 28px -8px rgba(34, 211, 238, 0.62);
+}
+[data-theme="onyx-oled"] .vh-cluster-cta-btn {
+    background: linear-gradient(180deg, #ffffff 0%, #e4e4e7 100%);
+    border-color: #ffffff;
+    color: #0c0c0e;
+    box-shadow:
+        inset 0 1px 0 #ffffff,
+        0 8px 22px -8px rgba(255, 255, 255, 0.28);
+}
+[data-theme="academic-light"] .vh-cluster-cta-btn {
+    background: #18181b;
+    border-color: #18181b;
+    color: #ffffff;
+    box-shadow: 0 8px 20px -8px rgba(15, 23, 42, 0.35);
+}
+[data-theme="academic-light"] .vh-cluster-cta-btn:not(:disabled):hover {
+    background: #000000;
+}
+
+/* Karte in der eigenen Hand, über die der Gegner im Verhör gerade entscheidet */
+@keyframes vhReviewPulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.55), 0 12px 24px -6px rgba(251, 191, 36, 0.45); }
+    50%      { box-shadow: 0 0 0 5px rgba(251, 191, 36, 0.85), 0 16px 30px -6px rgba(251, 191, 36, 0.65); }
+}
+.vh-card-under-review {
+    border-color: #fbbf24 !important;
+    transform: translateY(-8px) scale(1.04) !important;
+    animation: vhReviewPulse 1.2s ease-in-out infinite !important;
+    z-index: 16;
+}
+
+/* ============================================================================
+   SUNRISE ON THE REAPING — HELLES PANEM-THEME (ERSETZT ACADEMIC-LIGHT)
+   ============================================================================ */
+
+/* 1. Zentrale Farb-Tokens (Morgennebel, Pflaumen-Violett, Gold, Blau, Beere, Moos) */
+[data-theme="academic-light"] {
+    --bg-base: #eef3ee;
+    --bg-surface: rgba(253, 252, 248, 0.88);
+    --bg-elevated: #e5ece6;
+    --bg-glass: rgba(251, 250, 246, 0.86);
+    --border-subtle: rgba(114, 134, 114, 0.24);
+    --border-focus: #c58b2a;
+    --text-primary: #2c1e38;
+    --text-secondary: #675d72;
+    --accent-primary: #c58b2a;
+    --accent-gold: #b07822;
+    --canvas-grad-inner: #f7f9f5;
+    --canvas-grad-outer: #dde7df;
+
+    --panem-plum: #2c1e38;
+    --panem-gold: #c68b2c;
+    --panem-gold-deep: #9f6a18;
+    --panem-blue: #2f6ec4;
+    --panem-berry: #c24668;
+    --panem-moss: #287a54;
+    --panem-lilac: #7b4594;
+}
+
+/* 2. Theme-Vorschau-Kachel in den Einstellungen */
+.theme-preview-light {
+    background:
+        radial-gradient(circle at 18% 85%, rgba(194, 70, 104, 0.28), transparent 46%),
+        radial-gradient(circle at 84% 22%, rgba(47, 110, 196, 0.26), transparent 48%),
+        radial-gradient(circle at 52% 96%, rgba(198, 139, 44, 0.30), transparent 52%),
+        #eff4ef !important;
+    border-color: rgba(198, 139, 44, 0.45) !important;
+}
+.theme-preview-light .tp-bar {
+    background: rgba(255, 253, 248, 0.94) !important;
+    border: 1px solid rgba(198, 139, 44, 0.34) !important;
+}
+.theme-preview-light .tp-dot {
+    background: #c68b2c !important;
+}
+.theme-preview-light .tp-pill {
+    background: linear-gradient(90deg, #2f6ec4, #7b4594, #c24668) !important;
+    opacity: 0.9 !important;
+}
+.theme-preview-light .tp-card {
+    background: rgba(255, 254, 250, 0.92) !important;
+    border: 1px solid rgba(40, 122, 84, 0.28) !important;
+}
+[data-theme="academic-light"] .apple-theme-card.is-theme-active {
+    background: linear-gradient(180deg, #fffdf8 0%, #f7f3e8 100%) !important;
+    border-color: #c68b2c !important;
+    box-shadow: 0 0 0 3px rgba(198, 139, 44, 0.18), 0 8px 20px -10px rgba(44, 30, 56, 0.18) !important;
+}
+[data-theme="academic-light"] .apple-theme-check {
+    background: linear-gradient(135deg, #d79c3a 0%, #b0741c 100%) !important;
+    color: #fffdf8 !important;
+}
+
+/* 3. Luftiger Morgennebel-Hintergrund mit buntem Blüten- & Sonnenlicht-Aura-Feld */
+[data-theme="academic-light"] body {
+    background-color: #edf3ee !important;
+    background-image: none !important;
+    color: var(--panem-plum) !important;
+    --ambient-c1: rgba(217, 161, 66, 0.22);
+    --ambient-c2: rgba(58, 123, 213, 0.16);
+}
+[data-theme="academic-light"] body[data-page="lab"] {
+    --ambient-c1: rgba(139, 77, 168, 0.18);
+    --ambient-c2: rgba(201, 79, 109, 0.15);
+}
+[data-theme="academic-light"] body[data-page="game"] {
+    --ambient-c1: rgba(45, 138, 94, 0.18);
+    --ambient-c2: rgba(217, 161, 66, 0.20);
+}
+[data-theme="academic-light"] body[data-page="basic-model"],
+[data-theme="academic-light"] body[data-page="advanced-model"] {
+    --ambient-c1: rgba(58, 123, 213, 0.18);
+    --ambient-c2: rgba(139, 77, 168, 0.15);
+}
+
+[data-theme="academic-light"] .aceternity-grid-bg {
+    background-color: #edf3ee !important;
+}
+[data-theme="academic-light"] .aceternity-grid-bg::before {
+    background-image:
+        radial-gradient(ellipse 68% 48% at 14% 4%, var(--ambient-c1), transparent 68%),
+        radial-gradient(ellipse 56% 42% at 88% 10%, var(--ambient-c2), transparent 66%),
+        radial-gradient(ellipse 54% 44% at 82% 92%, rgba(194, 70, 104, 0.12), transparent 64%),
+        radial-gradient(ellipse 50% 42% at 12% 88%, rgba(40, 122, 84, 0.12), transparent 62%),
+        radial-gradient(circle 3px at 18% 24%, rgba(226, 166, 62, 0.55) 0%, transparent 100%),
+        radial-gradient(circle 2.5px at 78% 30%, rgba(226, 166, 62, 0.48) 0%, transparent 100%),
+        radial-gradient(circle 3.5px at 86% 78%, rgba(235, 174, 70, 0.50) 0%, transparent 100%),
+        radial-gradient(circle 2.5px at 26% 74%, rgba(217, 152, 54, 0.45) 0%, transparent 100%) !important;
+    background-size: 100% 100% !important;
+}
+
+/* 4. Schwebender Header & Navigation (Creme-Glas mit zartem Gold-Schimmer) */
+[data-theme="academic-light"] .floating-nav-pill {
+    background: rgba(253, 252, 248, 0.84) !important;
+    border: 1px solid rgba(188, 150, 84, 0.28) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.98),
+        0 12px 30px -12px rgba(44, 30, 56, 0.14),
+        0 2px 6px -2px rgba(198, 139, 44, 0.12) !important;
+}
+[data-theme="academic-light"] .floating-nav-pill .bg-cyan-400\/90 {
+    background: linear-gradient(135deg, #e0a63e 0%, #c24668 100%) !important;
+    box-shadow: 0 0 10px rgba(214, 150, 52, 0.55);
+}
+[data-theme="academic-light"] #nav-indicator {
+    background: linear-gradient(180deg, rgba(255, 251, 240, 0.98) 0%, rgba(246, 236, 214, 0.92) 100%) !important;
+    border: 1px solid rgba(198, 139, 44, 0.42) !important;
+    box-shadow:
+        inset 0 1px 0 #ffffff,
+        0 4px 12px -4px rgba(198, 139, 44, 0.30) !important;
+}
+[data-theme="academic-light"] .nav-item-clean {
+    color: #534662 !important;
+}
+[data-theme="academic-light"] .nav-item-clean:hover,
+[data-theme="academic-light"] .nav-item-clean.font-bold {
+    color: #2c1e38 !important;
+}
+
+/* 5. Karten & Flächen (Warmes Elfenbein-Glas mit feiner botanischer Farbkante) */
+[data-theme="academic-light"] .aceternity-bento-card,
+[data-theme="academic-light"] .fu-card {
+    background: linear-gradient(180deg, rgba(255, 254, 250, 0.90) 0%, rgba(247, 249, 245, 0.86) 100%) !important;
+    border: 1px solid rgba(126, 146, 124, 0.24) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.98),
+        0 14px 34px -16px rgba(44, 30, 56, 0.13),
+        0 2px 8px -3px rgba(40, 122, 84, 0.06) !important;
+}
+[data-theme="academic-light"] .aceternity-bento-card::after {
+    display: block !important;
+    left: 10%;
+    right: 10%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(198, 139, 44, 0.55), rgba(194, 70, 104, 0.45), rgba(47, 110, 196, 0.45), transparent);
+}
+[data-theme="academic-light"] .aceternity-bento-card::before {
+    background: radial-gradient(
+        340px circle at var(--mouse-x, 50%) var(--mouse-y, 0%),
+        rgba(217, 161, 66, 0.14),
+        transparent 55%
+    ) !important;
+}
+[data-theme="academic-light"] .aceternity-bento-card[onclick]:hover {
+    border-color: rgba(198, 139, 44, 0.58) !important;
+    box-shadow:
+        inset 0 1px 0 #ffffff,
+        0 20px 42px -18px rgba(44, 30, 56, 0.18),
+        0 0 20px -8px rgba(198, 139, 44, 0.28) !important;
+}
+
+/* Farblich abgestimmte 3 Hauptmodule auf der Startseite (wie der Blütenkranz) */
+[data-theme="academic-light"] .aceternity-bento-card.stagger-delay-1::after {
+    background: linear-gradient(90deg, transparent, #3a7bd5, #d49b3c, transparent);
+}
+[data-theme="academic-light"] .aceternity-bento-card.stagger-delay-1:hover {
+    border-color: rgba(47, 110, 196, 0.50) !important;
+}
+[data-theme="academic-light"] .aceternity-bento-card.stagger-delay-2::after {
+    background: linear-gradient(90deg, transparent, #8b4da8, #c94f6d, transparent);
+}
+[data-theme="academic-light"] .aceternity-bento-card.stagger-delay-2:hover {
+    border-color: rgba(139, 77, 168, 0.50) !important;
+}
+[data-theme="academic-light"] .aceternity-bento-card.stagger-delay-3::after {
+    background: linear-gradient(90deg, transparent, #2d8a5e, #d49b3c, transparent);
+}
+[data-theme="academic-light"] .aceternity-bento-card.stagger-delay-3:hover {
+    border-color: rgba(45, 138, 94, 0.50) !important;
+}
+
+/* Hero-Titel im warmen Pflaumen-Bronze-Gold-Verlauf + schimmernde Karten-Aura */
+[data-theme="academic-light"] .aceternity-hero-title {
+    background: linear-gradient(125deg, #2c1e38 0%, #5c3756 46%, #a6711e 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+}
+[data-theme="academic-light"] .hero-3d-container::before {
+    background: radial-gradient(
+        ellipse at 48% 48%,
+        rgba(222, 163, 62, 0.30) 0%,
+        rgba(194, 70, 104, 0.16) 44%,
+        rgba(58, 123, 213, 0.14) 72%,
+        transparent 100%
+    ) !important;
+}
+
+/* Innere dunkle Boxen (slate-950/900/800) auf sanftes botanisches Hell umbiegen */
+[data-theme="academic-light"] .bg-slate-950,
+[data-theme="academic-light"] .bg-slate-950\/92,
+[data-theme="academic-light"] .bg-slate-950\/90,
+[data-theme="academic-light"] .bg-slate-950\/85,
+[data-theme="academic-light"] .bg-slate-950\/80,
+[data-theme="academic-light"] .bg-slate-950\/75,
+[data-theme="academic-light"] .bg-slate-950\/65,
+[data-theme="academic-light"] .bg-slate-950\/60,
+[data-theme="academic-light"] .bg-slate-950\/50 {
+    background-color: rgba(235, 241, 235, 0.86) !important;
+}
+[data-theme="academic-light"] .bg-slate-900,
+[data-theme="academic-light"] .bg-slate-900\/95,
+[data-theme="academic-light"] .bg-slate-900\/90,
+[data-theme="academic-light"] .bg-slate-900\/80,
+[data-theme="academic-light"] .bg-slate-900\/70 {
+    background-color: rgba(252, 250, 245, 0.94) !important;
+}
+[data-theme="academic-light"] .bg-slate-800,
+[data-theme="academic-light"] .bg-slate-800\/90,
+[data-theme="academic-light"] .bg-slate-800\/80 {
+    background-color: #e4ebe5 !important;
+}
+[data-theme="academic-light"] .border-slate-800,
+[data-theme="academic-light"] .border-slate-800\/90,
+[data-theme="academic-light"] .border-slate-800\/80,
+[data-theme="academic-light"] .border-slate-700,
+[data-theme="academic-light"] .border-slate-700\/80,
+[data-theme="academic-light"] .border-white\/10,
+[data-theme="academic-light"] .border-white\/\[0\.08\],
+[data-theme="academic-light"] .border-white\/\[0\.07\],
+[data-theme="academic-light"] .border-white\/\[0\.06\] {
+    border-color: rgba(124, 144, 122, 0.24) !important;
+}
+
+/* 6. Typografie & bunte Akzentfarben zurückholen (gut lesbar auf hellem Grund) */
+[data-theme="academic-light"] .text-white,
+[data-theme="academic-light"] h1,
+[data-theme="academic-light"] h2,
+[data-theme="academic-light"] h3,
+[data-theme="academic-light"] h4 {
+    color: #2c1e38 !important;
+}
+[data-theme="academic-light"] .text-slate-100,
+[data-theme="academic-light"] .text-slate-200,
+[data-theme="academic-light"] .text-slate-300 {
+    color: #41344d !important;
+}
+[data-theme="academic-light"] .text-slate-400,
+[data-theme="academic-light"] .text-slate-500 {
+    color: #6f647a !important;
+}
+[data-theme="academic-light"] .text-cyan-200,
+[data-theme="academic-light"] .text-cyan-300,
+[data-theme="academic-light"] .text-cyan-400 {
+    color: #2665b8 !important;
+}
+[data-theme="academic-light"] .text-emerald-200,
+[data-theme="academic-light"] .text-emerald-300,
+[data-theme="academic-light"] .text-emerald-400 {
+    color: #1f7a53 !important;
+}
+[data-theme="academic-light"] .text-purple-200,
+[data-theme="academic-light"] .text-purple-300,
+[data-theme="academic-light"] .text-purple-400 {
+    color: #7c3f96 !important;
+}
+[data-theme="academic-light"] .text-amber-200,
+[data-theme="academic-light"] .text-amber-300,
+[data-theme="academic-light"] .text-amber-400 {
+    color: #b07318 !important;
+}
+[data-theme="academic-light"] .text-rose-200,
+[data-theme="academic-light"] .text-rose-300,
+[data-theme="academic-light"] .text-rose-400 {
+    color: #c24063 !important;
+}
+
+/* 7. Lebendige Buttons, CTAs & Segmented-Control-Pills */
+[data-theme="academic-light"] .bg-cyan-400,
+[data-theme="academic-light"] .bg-cyan-500,
+[data-theme="academic-light"] .modal-pill-cta {
+    background: linear-gradient(135deg, #d79c3a 0%, #bf7828 100%) !important;
+    border-color: rgba(164, 102, 28, 0.35) !important;
+    color: #fffdf8 !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.36),
+        0 8px 20px -8px rgba(191, 120, 40, 0.55) !important;
+}
+[data-theme="academic-light"] .bg-cyan-400:hover,
+[data-theme="academic-light"] .bg-cyan-500:hover,
+[data-theme="academic-light"] .modal-pill-cta:hover {
+    filter: brightness(1.06);
+}
+[data-theme="academic-light"] .bg-cyan-400 *,
+[data-theme="academic-light"] .bg-cyan-500 *,
+[data-theme="academic-light"] .modal-pill-cta * {
+    color: #fffdf8 !important;
+}
+
+[data-theme="academic-light"] .bg-emerald-400,
+[data-theme="academic-light"] .bg-emerald-500,
+[data-theme="academic-light"] .vh-cluster-cta-btn {
+    background: linear-gradient(135deg, #2a855b 0%, #c89132 100%) !important;
+    border-color: rgba(42, 133, 91, 0.35) !important;
+    color: #fffdf8 !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.34),
+        0 10px 22px -8px rgba(42, 133, 91, 0.45) !important;
+}
+[data-theme="academic-light"] .vh-cluster-cta-btn:not(:disabled):hover {
+    background: linear-gradient(135deg, #23744e 0%, #b88124 100%) !important;
+    filter: brightness(1.04);
+}
+[data-theme="academic-light"] .bg-emerald-400 *,
+[data-theme="academic-light"] .bg-emerald-500 *,
+[data-theme="academic-light"] .vh-cluster-cta-btn * {
+    color: #fffdf8 !important;
+}
+
+[data-theme="academic-light"] .bg-purple-500 {
+    background: linear-gradient(135deg, #7d4699 0%, #c24668 100%) !important;
+    border-color: rgba(125, 70, 153, 0.35) !important;
+    color: #fffdf8 !important;
+}
+[data-theme="academic-light"] .bg-amber-400,
+[data-theme="academic-light"] .bg-amber-500 {
+    background: linear-gradient(135deg, #e0a63e 0%, #c96d38 100%) !important;
+    border-color: rgba(201, 109, 56, 0.35) !important;
+    color: #fffdf8 !important;
+}
+
+/* Farbige Startseiten-Pills (Modelle = Blau, Labor = Violett/Beere, Spielen = Moos/Gold) */
+[data-theme="academic-light"] .stagger-delay-1 span.bg-white {
+    background: linear-gradient(135deg, #2f6ec4 0%, #4b87d6 100%) !important;
+    color: #fffdf8 !important;
+    border-color: transparent !important;
+    box-shadow: 0 6px 16px -6px rgba(47, 110, 196, 0.48);
+}
+[data-theme="academic-light"] .stagger-delay-2 span.bg-white {
+    background: linear-gradient(135deg, #7c4496 0%, #c24668 100%) !important;
+    color: #fffdf8 !important;
+    border-color: transparent !important;
+    box-shadow: 0 6px 16px -6px rgba(194, 70, 104, 0.44);
+}
+[data-theme="academic-light"] .stagger-delay-3 span.bg-white {
+    background: linear-gradient(135deg, #287a54 0%, #c68b2c 100%) !important;
+    color: #fffdf8 !important;
+    border-color: transparent !important;
+    box-shadow: 0 6px 16px -6px rgba(40, 122, 84, 0.44);
+}
+
+/* Nachziehstapel im edlen Panem-Smaragd & Antiken Gold (Arena & Das Verhör) */
+[data-theme="academic-light"] #player-draw-pile-btn,
+[data-theme="academic-light"] #vh-deck-btn {
+    background: linear-gradient(155deg, #225c45 0%, #153c30 100%) !important;
+    border: 2px solid #cfa049 !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 240, 198, 0.32),
+        0 14px 28px -10px rgba(21, 60, 48, 0.45) !important;
+}
+[data-theme="academic-light"] #player-draw-pile-btn span,
+[data-theme="academic-light"] #vh-deck-btn span {
+    color: #fef6e4 !important;
+}
+[data-theme="academic-light"] #vh-deck-hint {
+    background: rgba(207, 160, 73, 0.25) !important;
+    border: 1px solid rgba(254, 243, 199, 0.35);
+    color: #fde68a !important;
+}
+
+/* Segmented Controls, Sliding Pills, Toggles & Slider */
+[data-theme="academic-light"] #models-mode-tabs,
+[data-theme="academic-light"] #game-mode-tabs,
+[data-theme="academic-light"] #lab-mode-tabs,
+[data-theme="academic-light"] #lesson-mode-tabs,
+[data-theme="academic-light"] #basic-layout-tabs,
+[data-theme="academic-light"] #basic-2d-tabs,
+[data-theme="academic-light"] #adv-struct-tabs,
+[data-theme="academic-light"] #mapping-mode-tabs,
+[data-theme="academic-light"] #game-info-mode-tabs,
+[data-theme="academic-light"] #profile-sheet-tabs,
+[data-theme="academic-light"] .apple-seg-rail,
+[data-theme="academic-light"] div:has(> #basic-layer-tabs),
+[data-theme="academic-light"] div:has(> #adv-layer-tabs) {
+    background: rgba(220, 230, 222, 0.78) !important;
+    border-color: rgba(124, 144, 122, 0.24) !important;
+}
+[data-theme="academic-light"] .sliding-pill-cyan {
+    background: linear-gradient(180deg, #fffdf8 0%, #f5ecd8 100%) !important;
+    border: 1px solid rgba(198, 139, 44, 0.42) !important;
+    box-shadow: 0 3px 10px -3px rgba(198, 139, 44, 0.28) !important;
+}
+[data-theme="academic-light"] .sliding-pill-purple {
+    background: linear-gradient(180deg, #fdfaff 0%, #f1e6f7 100%) !important;
+    border: 1px solid rgba(125, 70, 153, 0.36) !important;
+    box-shadow: 0 3px 10px -3px rgba(125, 70, 153, 0.24) !important;
+}
+[data-theme="academic-light"] .pill-btn-active {
+    color: #2c1e38 !important;
+}
+[data-theme="academic-light"] .pill-btn-idle {
+    color: #5f566b !important;
+}
+[data-theme="academic-light"] .pill-btn-idle:hover {
+    color: #2c1e38 !important;
+}
+
+/* Aktive Toggles & Slider in Moosgrün-Gold-Optik */
+[data-theme="academic-light"] input[type="checkbox"]:checked {
+    background: linear-gradient(135deg, #2a855b 0%, #c68b2c 100%) !important;
+    border-color: rgba(42, 133, 91, 0.45) !important;
+}
+[data-theme="academic-light"] input[type="range"] {
+    background: linear-gradient(
+        to right,
+        #2f6ec4 0%,
+        #c68b2c var(--range-fill, 50%),
+        rgba(212, 222, 214, 0.90) var(--range-fill, 50%),
+        rgba(212, 222, 214, 0.90) 100%
+    ) !important;
+}
+
+/* Fortschrittsbalken in frischem Blau-Moos & Koralle-Gold */
+[data-theme="academic-light"] #bar-player-progress,
+[data-theme="academic-light"] #vh-bar-player {
+    background: linear-gradient(90deg, #2f6ec4 0%, #2a855b 100%) !important;
+}
+[data-theme="academic-light"] #bar-ai-progress,
+[data-theme="academic-light"] #vh-bar-bot {
+    background: linear-gradient(90deg, #c24668 0%, #d79c3a 100%) !important;
+}
+
+/* 8. Modals, Sheets, Verhör-Pop-up & Head-to-Head im Sunrise-Stil */
+[data-theme="academic-light"] .apple-settings-sheet {
+    background: linear-gradient(180deg, rgba(253, 252, 248, 0.95) 0%, rgba(242, 246, 241, 0.94) 100%) !important;
+    border-color: rgba(198, 139, 44, 0.30) !important;
+}
+[data-theme="academic-light"] .apple-set-title-badge {
+    background: linear-gradient(135deg, rgba(215, 156, 58, 0.16) 0%, rgba(47, 110, 196, 0.14) 100%) !important;
+    border-color: rgba(198, 139, 44, 0.32) !important;
+    color: #9f6a18 !important;
+}
+[data-theme="academic-light"] .vh-turn-toast {
+    background: linear-gradient(135deg, rgba(255, 253, 247, 0.96) 0%, rgba(246, 239, 223, 0.96) 100%) !important;
+    border-color: #c68b2c !important;
+    box-shadow: 0 16px 36px -10px rgba(198, 139, 44, 0.35) !important;
+}
+[data-theme="academic-light"] #vh-player-hand-box.vh-my-turn-glow {
+    border-color: #c68b2c !important;
+    box-shadow: 0 0 0 2px rgba(198, 139, 44, 0.22), 0 0 24px -8px rgba(198, 139, 44, 0.35) !important;
+}
+[data-theme="academic-light"] .h2h-score-pill,
+[data-theme="academic-light"] .h2h-summary-banner {
+    background: linear-gradient(180deg, #fffdf8 0%, #f6f2e8 100%) !important;
+    border-color: rgba(198, 139, 44, 0.34) !important;
+}
+[data-theme="academic-light"] .h2h-score-pill .text-cyan-300,
+[data-theme="academic-light"] .h2h-summary-banner .text-cyan-300 {
+    color: #2665b8 !important;
+}
+[data-theme="academic-light"] .h2h-score-pill .text-rose-400,
+[data-theme="academic-light"] .h2h-summary-banner .text-rose-400,
+[data-theme="academic-light"] .h2h-summary-banner .text-rose-300 {
+    color: #c24063 !important;
+}
+[data-theme="academic-light"] .mp-live-pill-btn {
+    background: linear-gradient(180deg, #fffdf8 0%, #f4efe2 100%) !important;
+    border-color: rgba(198, 139, 44, 0.38) !important;
+    color: #2c1e38 !important;
+}
+[data-theme="academic-light"] .mp-live-pill-btn.is-connected {
+    background: linear-gradient(180deg, #f2fbf6 0%, #e1f4ea 100%) !important;
+    border-color: rgba(40, 122, 84, 0.45) !important;
+    color: #1a5c3e !important;
+}
+
+/* Spielkarten bleiben im Sunrise-Theme überall reinweiß & gestochen scharf */
+[data-theme="academic-light"] .game-card,
+[data-theme="academic-light"] #center-pile-0,
+[data-theme="academic-light"] #center-pile-1,
+[data-theme="academic-light"] #center-pile-2,
+[data-theme="academic-light"] #vh-discard-pile,
+[data-theme="academic-light"] [id^="vh-card-"],
+[data-theme="academic-light"] [id^="daily-card-"],
+[data-theme="academic-light"] [id^="eg-pile-"],
+[data-theme="academic-light"] #cas-current-card,
+[data-theme="academic-light"] #cas-next-card,
+[data-theme="academic-light"] #sdk-picker-preview,
+[data-theme="academic-light"] #sudoku-grid > button.bg-white,
+[data-theme="academic-light"] #cas-grid > button.bg-white {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+}
+
+/* ============================================================================
+   MINI-VORSCHAUEN FÜR DIE 3 NEUEN THEMES (IMMER ECHTE FARBEN)
+   ============================================================================ */
+.theme-preview-gargantua {
+    background:
+        radial-gradient(circle at 50% 62%, rgba(251, 191, 36, 0.44), rgba(234, 88, 12, 0.22) 38%, transparent 66%),
+        #070504 !important;
+    border-color: rgba(245, 158, 11, 0.42) !important;
+}
+.theme-preview-gargantua .tp-bar {
+    background: rgba(24, 15, 9, 0.92) !important;
+    border: 1px solid rgba(251, 191, 36, 0.34);
+}
+.theme-preview-gargantua .tp-dot {
+    background: #fde68a !important;
+}
+.theme-preview-gargantua .tp-pill {
+    background: linear-gradient(90deg, #f59e0b, #ea580c) !important;
+    opacity: 0.95 !important;
+}
+.theme-preview-gargantua .tp-card {
+    background: rgba(22, 14, 9, 0.90) !important;
+    border: 1px solid rgba(245, 158, 11, 0.26);
+}
+
+.theme-preview-arrakis {
+    background:
+        radial-gradient(ellipse 90% 55% at 80% 95%, rgba(209, 152, 92, 0.34), transparent 65%),
+        linear-gradient(180deg, #f6efe4 0%, #ece0cd 100%) !important;
+    border-color: rgba(168, 124, 78, 0.34) !important;
+}
+.theme-preview-arrakis .tp-bar {
+    background: rgba(255, 252, 247, 0.95) !important;
+    border: 1px solid rgba(168, 124, 78, 0.22);
+}
+.theme-preview-arrakis .tp-dot {
+    background: #0284c7 !important;
+}
+.theme-preview-arrakis .tp-pill {
+    background: #0284c7 !important;
+    opacity: 0.92 !important;
+}
+.theme-preview-arrakis .tp-card {
+    background: #fffcf7 !important;
+    border: 1px solid rgba(168, 124, 78, 0.22);
+}
+
+.theme-preview-kachow {
+    background:
+        radial-gradient(circle at 20% 15%, rgba(225, 29, 46, 0.30), transparent 55%),
+        #0e0e11 !important;
+    border-color: rgba(225, 29, 46, 0.45) !important;
+}
+.theme-preview-kachow .tp-bar {
+    background: #17171c !important;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+}
+.theme-preview-kachow .tp-dot {
+    background: #facc15 !important;
+}
+.theme-preview-kachow .tp-pill {
+    background: #e11d2e !important;
+    opacity: 1 !important;
+}
+.theme-preview-kachow .tp-card {
+    background: #17171c !important;
+    border: 1px solid rgba(225, 29, 46, 0.30);
+}
+
+/* ============================================================================
+   THEME 4: GARGANTUA · INTERSTELLAR (SCHWARZES LOCH · AMBER · KUPFER · STERNE)
+   ============================================================================ */
+[data-theme="gargantua-interstellar"] {
+    --bg-base: #060403;
+    --bg-surface: rgba(20, 13, 8, 0.80);
+    --bg-elevated: #1c120b;
+    --bg-glass: rgba(16, 10, 6, 0.84);
+    --border-subtle: rgba(245, 158, 11, 0.20);
+    --border-focus: #f59e0b;
+    --text-primary: #fef6e4;
+    --text-secondary: #bfa78a;
+    --accent-primary: #f59e0b;
+    --accent-gold: #fde68a;
+    --canvas-grad-inner: #211309;
+    --canvas-grad-outer: #050302;
+}
+[data-theme="gargantua-interstellar"] body {
+    background-color: #060403 !important;
+    --ambient-c1: rgba(245, 158, 11, 0.20);
+    --ambient-c2: rgba(234, 88, 12, 0.14);
+}
+[data-theme="gargantua-interstellar"] .aceternity-grid-bg::before {
+    background-image:
+        radial-gradient(ellipse 68% 42% at 50% -6%, rgba(251, 191, 36, 0.22), rgba(234, 88, 12, 0.10) 46%, transparent 74%),
+        radial-gradient(ellipse 46% 36% at 86% 18%, rgba(217, 119, 6, 0.14), transparent 68%),
+        radial-gradient(circle 1.5px at 14% 22%, rgba(254, 243, 199, 0.65) 0%, transparent 100%),
+        radial-gradient(circle 1.2px at 31% 12%, rgba(253, 230, 138, 0.55) 0%, transparent 100%),
+        radial-gradient(circle 1.8px at 78% 28%, rgba(254, 243, 199, 0.60) 0%, transparent 100%),
+        radial-gradient(circle 1.2px at 88% 72%, rgba(251, 191, 36, 0.55) 0%, transparent 100%),
+        radial-gradient(circle 1.5px at 22% 80%, rgba(254, 243, 199, 0.48) 0%, transparent 100%) !important;
+}
+[data-theme="gargantua-interstellar"] .floating-nav-pill {
+    background: rgba(18, 11, 7, 0.74) !important;
+    border-color: rgba(245, 158, 11, 0.24) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(254, 243, 199, 0.16),
+        0 18px 42px -14px rgba(0, 0, 0, 0.85),
+        0 0 24px -10px rgba(245, 158, 11, 0.28) !important;
+}
+[data-theme="gargantua-interstellar"] .floating-nav-pill .bg-cyan-400\/90 {
+    background: radial-gradient(circle, #fef3c7 0%, #f59e0b 65%, #b45309 100%) !important;
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.85);
+}
+[data-theme="gargantua-interstellar"] #nav-indicator {
+    background: linear-gradient(180deg, rgba(251, 191, 36, 0.24) 0%, rgba(234, 88, 12, 0.10) 100%) !important;
+    border-color: rgba(251, 191, 36, 0.42) !important;
+    box-shadow: inset 0 1px 0 rgba(254, 243, 199, 0.28), 0 0 18px -4px rgba(245, 158, 11, 0.48) !important;
+}
+[data-theme="gargantua-interstellar"] .aceternity-bento-card,
+[data-theme="gargantua-interstellar"] .fu-card {
+    background: linear-gradient(180deg, rgba(26, 16, 10, 0.72) 0%, rgba(12, 8, 5, 0.90) 100%) !important;
+    border-color: rgba(245, 158, 11, 0.22) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(254, 243, 199, 0.10),
+        0 18px 42px -16px rgba(0, 0, 0, 0.86),
+        0 0 24px -12px rgba(245, 158, 11, 0.24) !important;
+}
+[data-theme="gargantua-interstellar"] .aceternity-bento-card::after {
+    left: 10%;
+    right: 10%;
+    height: 1.5px;
+    background: linear-gradient(90deg, transparent, #fde68a, #f59e0b, #ea580c, transparent);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.55);
+}
+[data-theme="gargantua-interstellar"] .aceternity-bento-card::before {
+    background: radial-gradient(360px circle at var(--mouse-x, 50%) var(--mouse-y, 0%), rgba(251, 191, 36, 0.18), transparent 54%);
+}
+[data-theme="gargantua-interstellar"] .aceternity-hero-title {
+    background: linear-gradient(180deg, #fffbeb 0%, #fcd34d 58%, #d97706 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+}
+[data-theme="gargantua-interstellar"] .hero-3d-container::before {
+    background: radial-gradient(ellipse at 50% 50%, rgba(251, 191, 36, 0.34) 0%, rgba(234, 88, 12, 0.22) 45%, transparent 75%) !important;
+}
+[data-theme="gargantua-interstellar"] .bg-slate-950,
+[data-theme="gargantua-interstellar"] .bg-slate-950\/92,
+[data-theme="gargantua-interstellar"] .bg-slate-950\/90,
+[data-theme="gargantua-interstellar"] .bg-slate-950\/85,
+[data-theme="gargantua-interstellar"] .bg-slate-950\/80,
+[data-theme="gargantua-interstellar"] .bg-slate-950\/75 {
+    background-color: rgba(13, 8, 5, 0.88) !important;
+}
+[data-theme="gargantua-interstellar"] .bg-slate-900,
+[data-theme="gargantua-interstellar"] .bg-slate-900\/95 {
+    background-color: rgba(24, 15, 9, 0.94) !important;
+}
+[data-theme="gargantua-interstellar"] .text-cyan-300,
+[data-theme="gargantua-interstellar"] .text-cyan-400 {
+    color: #fbbf24 !important;
+}
+[data-theme="gargantua-interstellar"] .bg-cyan-400,
+[data-theme="gargantua-interstellar"] .bg-cyan-500,
+[data-theme="gargantua-interstellar"] .modal-pill-cta {
+    background: linear-gradient(135deg, #fcd34d 0%, #ea580c 100%) !important;
+    border-color: rgba(254, 243, 199, 0.40) !important;
+    color: #160b04 !important;
+    box-shadow: 0 10px 26px -8px rgba(245, 158, 11, 0.55) !important;
+}
+[data-theme="gargantua-interstellar"] .sliding-pill-cyan,
+[data-theme="gargantua-interstellar"] .sliding-pill-purple {
+    background: linear-gradient(180deg, rgba(251, 191, 36, 0.26) 0%, rgba(234, 88, 12, 0.12) 100%) !important;
+    border-color: rgba(251, 191, 36, 0.45) !important;
+    box-shadow: inset 0 1px 0 rgba(254, 243, 199, 0.28), 0 0 16px -4px rgba(245, 158, 11, 0.48) !important;
+}
+[data-theme="gargantua-interstellar"] input[type="checkbox"]:checked {
+    background: linear-gradient(180deg, rgba(251, 191, 36, 0.36) 0%, rgba(234, 88, 12, 0.18) 100%) !important;
+    border-color: rgba(251, 191, 36, 0.58) !important;
+}
+[data-theme="gargantua-interstellar"] input[type="range"] {
+    background: linear-gradient(to right, rgba(251, 191, 36, 0.55) 0%, rgba(234, 88, 12, 0.38) var(--range-fill, 50%), rgba(16, 10, 6, 0.80) var(--range-fill, 50%), rgba(16, 10, 6, 0.80) 100%) !important;
+}
+[data-theme="gargantua-interstellar"] #player-draw-pile-btn,
+[data-theme="gargantua-interstellar"] #vh-deck-btn {
+    background: linear-gradient(155deg, #431c08 0%, #160a04 100%) !important;
+    border: 2px solid #f59e0b !important;
+    box-shadow: 0 14px 28px -10px rgba(245, 158, 11, 0.38) !important;
+}
+[data-theme="gargantua-interstellar"] #bar-player-progress,
+[data-theme="gargantua-interstellar"] #vh-bar-player {
+    background: linear-gradient(90deg, #ea580c 0%, #fbbf24 65%, #fef08a 100%) !important;
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.65);
+}
+[data-theme="gargantua-interstellar"] .apple-theme-card.is-theme-active {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
+}
+[data-theme="gargantua-interstellar"] .apple-theme-check {
+    background: #fbbf24;
+    color: #160b04;
+}
+[data-theme="gargantua-interstellar"] .apple-settings-sheet {
+    background: rgba(18, 11, 7, 0.90) !important;
+    border-color: rgba(245, 158, 11, 0.28) !important;
+}
+[data-theme="gargantua-interstellar"] .vh-cluster-cta-btn {
+    background: linear-gradient(135deg, #fde68a 0%, #f59e0b 55%, #ea580c 100%) !important;
+    color: #160b04 !important;
+}
+
+/* ============================================================================
+   THEME 5: ARRAKIS · DUNE (CLEAN DESERT MINIMAL · SANDSTEIN · SPICE-BLAU)
+   ============================================================================ */
+[data-theme="arrakis-dune"] {
+    --bg-base: #f2e9dc;
+    --bg-surface: rgba(255, 252, 247, 0.88);
+    --bg-elevated: #e8dcc9;
+    --bg-glass: rgba(252, 247, 239, 0.86);
+    --border-subtle: rgba(154, 118, 82, 0.18);
+    --border-focus: #0284c7;
+    --text-primary: #241911;
+    --text-secondary: #755f4b;
+    --accent-primary: #0284c7;
+    --accent-gold: #b87a3d;
+    --canvas-grad-inner: #f9f3ea;
+    --canvas-grad-outer: #e5d5be;
+}
+[data-theme="arrakis-dune"] body {
+    background-color: #f2e9dc !important;
+    color: #241911 !important;
+    --ambient-c1: rgba(209, 152, 92, 0.20);
+    --ambient-c2: rgba(14, 165, 233, 0.08);
+}
+[data-theme="arrakis-dune"] .aceternity-grid-bg {
+    background-color: #f2e9dc !important;
+}
+[data-theme="arrakis-dune"] .aceternity-grid-bg::before {
+    background-image:
+        radial-gradient(ellipse 72% 46% at 50% -10%, rgba(255, 251, 242, 0.85), transparent 70%),
+        radial-gradient(ellipse 80% 42% at 85% 98%, rgba(201, 145, 86, 0.22), transparent 64%),
+        radial-gradient(ellipse 65% 38% at 10% 94%, rgba(188, 128, 72, 0.16), transparent 62%) !important;
+    background-size: 100% 100% !important;
+}
+[data-theme="arrakis-dune"] .floating-nav-pill {
+    background: rgba(255, 252, 247, 0.82) !important;
+    border-color: rgba(154, 118, 82, 0.18) !important;
+    box-shadow:
+        inset 0 1px 0 #ffffff,
+        0 10px 28px -12px rgba(72, 46, 22, 0.13) !important;
+}
+[data-theme="arrakis-dune"] .floating-nav-pill .bg-cyan-400\/90 {
+    background: #0284c7 !important;
+    box-shadow: 0 0 8px rgba(2, 132, 199, 0.45);
+}
+[data-theme="arrakis-dune"] .nav-item-clean {
+    color: #6b5542 !important;
+}
+[data-theme="arrakis-dune"] .nav-item-clean:hover,
+[data-theme="arrakis-dune"] .nav-item-clean.font-bold {
+    color: #241911 !important;
+}
+[data-theme="arrakis-dune"] #nav-indicator {
+    background: #ffffff !important;
+    border: 1px solid rgba(154, 118, 82, 0.22) !important;
+    box-shadow: 0 2px 10px -3px rgba(72, 46, 22, 0.14) !important;
+}
+[data-theme="arrakis-dune"] .aceternity-bento-card,
+[data-theme="arrakis-dune"] .fu-card {
+    background: rgba(255, 252, 247, 0.88) !important;
+    border-color: rgba(154, 118, 82, 0.18) !important;
+    box-shadow:
+        inset 0 1px 0 #ffffff,
+        0 10px 26px -14px rgba(72, 46, 22, 0.12) !important;
+}
+[data-theme="arrakis-dune"] .aceternity-bento-card::after {
+    display: block !important;
+    left: 18%;
+    right: 18%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(184, 122, 61, 0.42), transparent);
+}
+[data-theme="arrakis-dune"] .aceternity-bento-card::before {
+    background: radial-gradient(320px circle at var(--mouse-x, 50%) var(--mouse-y, 0%), rgba(184, 122, 61, 0.08), transparent 55%) !important;
+}
+[data-theme="arrakis-dune"] .aceternity-bento-card[onclick]:hover {
+    border-color: rgba(2, 132, 199, 0.42) !important;
+    box-shadow: 0 16px 34px -16px rgba(72, 46, 22, 0.16) !important;
+}
+[data-theme="arrakis-dune"] .aceternity-hero-title {
+    background: linear-gradient(180deg, #241911 0%, #7d5027 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+}
+[data-theme="arrakis-dune"] .hero-3d-container::before {
+    background: radial-gradient(ellipse at 50% 50%, rgba(209, 152, 92, 0.28) 0%, rgba(14, 165, 233, 0.12) 55%, transparent 78%) !important;
+}
+[data-theme="arrakis-dune"] .bg-slate-950,
+[data-theme="arrakis-dune"] .bg-slate-950\/92,
+[data-theme="arrakis-dune"] .bg-slate-950\/90,
+[data-theme="arrakis-dune"] .bg-slate-950\/85,
+[data-theme="arrakis-dune"] .bg-slate-950\/80,
+[data-theme="arrakis-dune"] .bg-slate-950\/75,
+[data-theme="arrakis-dune"] .bg-slate-950\/65,
+[data-theme="arrakis-dune"] .bg-slate-950\/60,
+[data-theme="arrakis-dune"] .bg-slate-950\/50 {
+    background-color: rgba(242, 232, 217, 0.82) !important;
+}
+[data-theme="arrakis-dune"] .bg-slate-900,
+[data-theme="arrakis-dune"] .bg-slate-900\/95,
+[data-theme="arrakis-dune"] .bg-slate-900\/90 {
+    background-color: #fffcf7 !important;
+}
+[data-theme="arrakis-dune"] .bg-slate-800,
+[data-theme="arrakis-dune"] .bg-slate-800\/90 {
+    background-color: #e8dcc9 !important;
+}
+[data-theme="arrakis-dune"] .border-slate-800,
+[data-theme="arrakis-dune"] .border-slate-700,
+[data-theme="arrakis-dune"] .border-white\/10,
+[data-theme="arrakis-dune"] .border-white\/\[0\.08\],
+[data-theme="arrakis-dune"] .border-white\/\[0\.07\],
+[data-theme="arrakis-dune"] .border-white\/\[0\.06\] {
+    border-color: rgba(154, 118, 82, 0.18) !important;
+}
+[data-theme="arrakis-dune"] .text-white,
+[data-theme="arrakis-dune"] h1,
+[data-theme="arrakis-dune"] h2,
+[data-theme="arrakis-dune"] h3,
+[data-theme="arrakis-dune"] h4 {
+    color: #241911 !important;
+}
+[data-theme="arrakis-dune"] .text-slate-100,
+[data-theme="arrakis-dune"] .text-slate-200,
+[data-theme="arrakis-dune"] .text-slate-300 {
+    color: #4a3728 !important;
+}
+[data-theme="arrakis-dune"] .text-slate-400,
+[data-theme="arrakis-dune"] .text-slate-500 {
+    color: #7c6550 !important;
+}
+[data-theme="arrakis-dune"] .text-cyan-200,
+[data-theme="arrakis-dune"] .text-cyan-300,
+[data-theme="arrakis-dune"] .text-cyan-400 {
+    color: #0284c7 !important;
+}
+[data-theme="arrakis-dune"] .text-emerald-200,
+[data-theme="arrakis-dune"] .text-emerald-300,
+[data-theme="arrakis-dune"] .text-emerald-400 {
+    color: #0f766e !important;
+}
+[data-theme="arrakis-dune"] .text-amber-200,
+[data-theme="arrakis-dune"] .text-amber-300,
+[data-theme="arrakis-dune"] .text-amber-400 {
+    color: #a66220 !important;
+}
+[data-theme="arrakis-dune"] .text-rose-200,
+[data-theme="arrakis-dune"] .text-rose-300,
+[data-theme="arrakis-dune"] .text-rose-400 {
+    color: #b84233 !important;
+}
+[data-theme="arrakis-dune"] .bg-cyan-400,
+[data-theme="arrakis-dune"] .bg-cyan-500,
+[data-theme="arrakis-dune"] .modal-pill-cta {
+    background: #0284c7 !important;
+    border-color: #0284c7 !important;
+    color: #ffffff !important;
+    box-shadow: 0 8px 20px -8px rgba(2, 132, 199, 0.45) !important;
+}
+[data-theme="arrakis-dune"] .bg-cyan-400:hover,
+[data-theme="arrakis-dune"] .bg-cyan-500:hover,
+[data-theme="arrakis-dune"] .modal-pill-cta:hover {
+    background: #0369a1 !important;
+}
+[data-theme="arrakis-dune"] .bg-cyan-400 *,
+[data-theme="arrakis-dune"] .bg-cyan-500 *,
+[data-theme="arrakis-dune"] .modal-pill-cta * {
+    color: #ffffff !important;
+}
+[data-theme="arrakis-dune"] #models-mode-tabs,
+[data-theme="arrakis-dune"] #game-mode-tabs,
+[data-theme="arrakis-dune"] #lab-mode-tabs,
+[data-theme="arrakis-dune"] #lesson-mode-tabs,
+[data-theme="arrakis-dune"] #basic-layout-tabs,
+[data-theme="arrakis-dune"] #basic-2d-tabs,
+[data-theme="arrakis-dune"] #adv-struct-tabs,
+[data-theme="arrakis-dune"] #mapping-mode-tabs,
+[data-theme="arrakis-dune"] #game-info-mode-tabs,
+[data-theme="arrakis-dune"] #profile-sheet-tabs,
+[data-theme="arrakis-dune"] .apple-seg-rail,
+[data-theme="arrakis-dune"] div:has(> #basic-layer-tabs),
+[data-theme="arrakis-dune"] div:has(> #adv-layer-tabs) {
+    background: rgba(226, 211, 189, 0.78) !important;
+    border-color: rgba(154, 118, 82, 0.18) !important;
+    box-shadow: inset 0 1px 2px rgba(72, 46, 22, 0.08) !important;
+}
+[data-theme="arrakis-dune"] .sliding-pill-cyan,
+[data-theme="arrakis-dune"] .sliding-pill-purple {
+    background: #ffffff !important;
+    border: 1px solid rgba(154, 118, 82, 0.20) !important;
+    box-shadow: 0 2px 8px -2px rgba(72, 46, 22, 0.12) !important;
+}
+[data-theme="arrakis-dune"] .pill-btn-active {
+    color: #241911 !important;
+}
+[data-theme="arrakis-dune"] .pill-btn-idle {
+    color: #755f4b !important;
+}
+[data-theme="arrakis-dune"] .pill-btn-idle:hover {
+    color: #241911 !important;
+}
+[data-theme="arrakis-dune"] input[type="checkbox"] {
+    background: rgba(218, 200, 174, 0.92) !important;
+    border-color: rgba(154, 118, 82, 0.22) !important;
+}
+[data-theme="arrakis-dune"] input[type="checkbox"]:checked {
+    background: #0284c7 !important;
+    border-color: #0284c7 !important;
+}
+[data-theme="arrakis-dune"] input[type="range"] {
+    background: linear-gradient(to right, #0284c7 0%, #0284c7 var(--range-fill, 50%), rgba(220, 203, 178, 0.92) var(--range-fill, 50%), rgba(220, 203, 178, 0.92) 100%) !important;
+}
+[data-theme="arrakis-dune"] .fu-select,
+[data-theme="arrakis-dune"] .fu-cselect-trigger,
+[data-theme="arrakis-dune"] .fu-cselect-menu {
+    background: #fffcf7 !important;
+    border-color: rgba(154, 118, 82, 0.22) !important;
+    color: #241911 !important;
+}
+[data-theme="arrakis-dune"] #player-draw-pile-btn,
+[data-theme="arrakis-dune"] #vh-deck-btn {
+    background: linear-gradient(160deg, #9c6230 0%, #6b3e18 100%) !important;
+    border: 1.5px solid rgba(240, 209, 168, 0.72) !important;
+    box-shadow: 0 12px 24px -10px rgba(72, 46, 22, 0.36) !important;
+}
+[data-theme="arrakis-dune"] #player-draw-pile-btn span,
+[data-theme="arrakis-dune"] #vh-deck-btn span {
+    color: #fffaf2 !important;
+}
+[data-theme="arrakis-dune"] #bar-player-progress,
+[data-theme="arrakis-dune"] #vh-bar-player {
+    background: linear-gradient(90deg, #0284c7 0%, #38bdf8 100%) !important;
+}
+[data-theme="arrakis-dune"] #bar-ai-progress,
+[data-theme="arrakis-dune"] #vh-bar-bot {
+    background: linear-gradient(90deg, #b87a3d 0%, #d9a05b 100%) !important;
+}
+[data-theme="arrakis-dune"] .apple-settings-sheet {
+    background: rgba(250, 244, 234, 0.96) !important;
+    border-color: rgba(154, 118, 82, 0.24) !important;
+}
+[data-theme="arrakis-dune"] .apple-inset-group {
+    background: rgba(255, 253, 249, 0.88) !important;
+    border-color: rgba(154, 118, 82, 0.16) !important;
+}
+[data-theme="arrakis-dune"] .apple-theme-card {
+    background: rgba(255, 253, 249, 0.68);
+    border-color: rgba(154, 118, 82, 0.18);
+}
+[data-theme="arrakis-dune"] .apple-theme-card.is-theme-active {
+    background: #ffffff !important;
+    border-color: #0284c7 !important;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.14) !important;
+}
+[data-theme="arrakis-dune"] .apple-theme-check {
+    background: #0284c7 !important;
+    color: #ffffff !important;
+}
+[data-theme="arrakis-dune"] .vh-cluster-cta-btn {
+    background: #0284c7 !important;
+    border-color: #0284c7 !important;
+    color: #ffffff !important;
+    box-shadow: 0 8px 20px -8px rgba(2, 132, 199, 0.45) !important;
+}
+[data-theme="arrakis-dune"] .vh-cluster-cta-btn * {
+    color: #ffffff !important;
+}
+[data-theme="arrakis-dune"] .vh-turn-toast,
+[data-theme="arrakis-dune"] .h2h-score-pill,
+[data-theme="arrakis-dune"] .h2h-summary-banner,
+[data-theme="arrakis-dune"] .mp-live-pill-btn {
+    background: #fffcf7 !important;
+    border-color: rgba(154, 118, 82, 0.28) !important;
+    color: #241911 !important;
+}
+[data-theme="arrakis-dune"] .game-card,
+[data-theme="arrakis-dune"] #center-pile-0,
+[data-theme="arrakis-dune"] #center-pile-1,
+[data-theme="arrakis-dune"] #center-pile-2,
+[data-theme="arrakis-dune"] #vh-discard-pile,
+[data-theme="arrakis-dune"] [id^="vh-card-"],
+[data-theme="arrakis-dune"] [id^="daily-card-"],
+[data-theme="arrakis-dune"] [id^="eg-pile-"],
+[data-theme="arrakis-dune"] #cas-current-card,
+[data-theme="arrakis-dune"] #cas-next-card,
+[data-theme="arrakis-dune"] #sdk-picker-preview,
+[data-theme="arrakis-dune"] #sudoku-grid > button.bg-white,
+[data-theme="arrakis-dune"] #cas-grid > button.bg-white {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+}
+
+/* ============================================================================
+   THEME 6: KA-CHOW! · MODERN MOTORSPORT (CARBON-ASPHALT · RENNROT · BLITZGELB)
+   ============================================================================ */
+[data-theme="kachow-cars"] {
+    --bg-base: #0d0d10;
+    --bg-surface: rgba(22, 22, 26, 0.86);
+    --bg-elevated: #1c1c22;
+    --bg-glass: rgba(18, 18, 22, 0.88);
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-focus: #e11d2e;
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --accent-primary: #e11d2e;
+    --accent-gold: #facc15;
+    --canvas-grad-inner: #1b1316;
+    --canvas-grad-outer: #0b0b0e;
+}
+[data-theme="kachow-cars"] body {
+    background-color: #0d0d10 !important;
+    --ambient-c1: rgba(225, 29, 46, 0.16);
+    --ambient-c2: rgba(250, 204, 21, 0.08);
+}
+[data-theme="kachow-cars"] .aceternity-grid-bg {
+    background-color: #0d0d10 !important;
+}
+[data-theme="kachow-cars"] .aceternity-grid-bg::before {
+    background-image:
+        radial-gradient(ellipse 64% 42% at 18% -8%, rgba(225, 29, 46, 0.22), transparent 66%),
+        radial-gradient(ellipse 46% 34% at 86% 8%, rgba(250, 204, 21, 0.10), transparent 62%) !important;
+    background-size: 100% 100% !important;
+}
+[data-theme="kachow-cars"] .floating-nav-pill {
+    background: rgba(19, 19, 23, 0.78) !important;
+    border: 1px solid rgba(255, 255, 255, 0.10) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.10),
+        0 16px 38px -14px rgba(0, 0, 0, 0.82) !important;
+}
+[data-theme="kachow-cars"] .floating-nav-pill .bg-cyan-400\/90 {
+    background: #e11d2e !important;
+    box-shadow: 0 0 10px rgba(225, 29, 46, 0.75);
+}
+[data-theme="kachow-cars"] #nav-indicator {
+    background: rgba(225, 29, 46, 0.20) !important;
+    border: 1px solid rgba(225, 29, 46, 0.45) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+}
+[data-theme="kachow-cars"] .aceternity-bento-card,
+[data-theme="kachow-cars"] .fu-card {
+    background: linear-gradient(180deg, #17171c 0%, #121216 100%) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.07),
+        0 16px 38px -18px rgba(0, 0, 0, 0.78) !important;
+}
+[data-theme="kachow-cars"] .aceternity-bento-card::after {
+    left: 16%;
+    right: 16%;
+    height: 1.5px;
+    background: linear-gradient(90deg, transparent, #e11d2e 38%, #facc15 62%, transparent);
+    opacity: 0.72;
+}
+[data-theme="kachow-cars"] .aceternity-bento-card::before {
+    background: radial-gradient(320px circle at var(--mouse-x, 50%) var(--mouse-y, 0%), rgba(225, 29, 46, 0.12), transparent 55%);
+}
+[data-theme="kachow-cars"] .aceternity-bento-card[onclick]:hover {
+    border-color: rgba(225, 29, 46, 0.55) !important;
+    box-shadow: 0 20px 44px -18px rgba(0, 0, 0, 0.86) !important;
+}
+[data-theme="kachow-cars"] .aceternity-hero-title {
+    background: linear-gradient(135deg, #ffffff 0%, #f4f4f5 62%, #facc15 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+}
+[data-theme="kachow-cars"] .hero-3d-container::before {
+    background: radial-gradient(ellipse at 50% 50%, rgba(225, 29, 46, 0.28) 0%, rgba(250, 204, 21, 0.14) 52%, transparent 78%) !important;
+}
+[data-theme="kachow-cars"] .bg-slate-950,
+[data-theme="kachow-cars"] .bg-slate-950\/92,
+[data-theme="kachow-cars"] .bg-slate-950\/90,
+[data-theme="kachow-cars"] .bg-slate-950\/85,
+[data-theme="kachow-cars"] .bg-slate-950\/80,
+[data-theme="kachow-cars"] .bg-slate-950\/75 {
+    background-color: #0e0e11 !important;
+}
+[data-theme="kachow-cars"] .bg-slate-900,
+[data-theme="kachow-cars"] .bg-slate-900\/95 {
+    background-color: #16161b !important;
+}
+[data-theme="kachow-cars"] .text-cyan-300,
+[data-theme="kachow-cars"] .text-cyan-400 {
+    color: #facc15 !important;
+}
+[data-theme="kachow-cars"] .bg-cyan-400,
+[data-theme="kachow-cars"] .bg-cyan-500,
+[data-theme="kachow-cars"] .modal-pill-cta {
+    background: #e11d2e !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    color: #ffffff !important;
+    box-shadow: 0 10px 24px -10px rgba(225, 29, 46, 0.65) !important;
+}
+[data-theme="kachow-cars"] .bg-cyan-400:hover,
+[data-theme="kachow-cars"] .bg-cyan-500:hover,
+[data-theme="kachow-cars"] .modal-pill-cta:hover {
+    background: #be1222 !important;
+}
+[data-theme="kachow-cars"] .sliding-pill-cyan,
+[data-theme="kachow-cars"] .sliding-pill-purple {
+    background: rgba(225, 29, 46, 0.24) !important;
+    border: 1px solid rgba(225, 29, 46, 0.50) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16) !important;
+}
+[data-theme="kachow-cars"] input[type="checkbox"]:checked {
+    background: #e11d2e !important;
+    border-color: rgba(255, 255, 255, 0.20) !important;
+}
+[data-theme="kachow-cars"] input[type="range"] {
+    background: linear-gradient(to right, #e11d2e 0%, #e11d2e var(--range-fill, 50%), rgba(255, 255, 255, 0.08) var(--range-fill, 50%), rgba(255, 255, 255, 0.08) 100%) !important;
+}
+[data-theme="kachow-cars"] .fu-select,
+[data-theme="kachow-cars"] .fu-cselect-trigger,
+[data-theme="kachow-cars"] .fu-cselect-menu {
+    background: #141418 !important;
+    border-color: rgba(255, 255, 255, 0.10) !important;
+}
+[data-theme="kachow-cars"] #player-draw-pile-btn,
+[data-theme="kachow-cars"] #vh-deck-btn {
+    background: linear-gradient(155deg, #c81424 0%, #6e0b14 100%) !important;
+    border: 1.5px solid rgba(250, 204, 21, 0.72) !important;
+    box-shadow: 0 14px 28px -10px rgba(225, 29, 46, 0.45) !important;
+}
+[data-theme="kachow-cars"] #bar-player-progress,
+[data-theme="kachow-cars"] #vh-bar-player {
+    background: linear-gradient(90deg, #e11d2e 0%, #facc15 100%) !important;
+}
+[data-theme="kachow-cars"] .apple-theme-card.is-theme-active {
+    background: rgba(225, 29, 46, 0.12);
+    border-color: #e11d2e;
+    box-shadow: 0 0 0 3px rgba(225, 29, 46, 0.18);
+}
+[data-theme="kachow-cars"] .apple-theme-check {
+    background: #e11d2e;
+    color: #ffffff;
+}
+[data-theme="kachow-cars"] .apple-settings-sheet {
+    background: rgba(18, 18, 22, 0.94) !important;
+    border-color: rgba(255, 255, 255, 0.10) !important;
+}
+[data-theme="kachow-cars"] .vh-cluster-cta-btn {
+    background: #e11d2e !important;
+    border-color: rgba(250, 204, 21, 0.65) !important;
+    color: #ffffff !important;
+    box-shadow: 0 10px 24px -8px rgba(225, 29, 46, 0.55) !important;
+}
+[data-theme="kachow-cars"] .vh-turn-toast {
+    background: rgba(20, 20, 24, 0.95) !important;
+    border-color: rgba(250, 204, 21, 0.62) !important;
+    box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.82) !important;
+}
+[data-theme="kachow-cars"] .game-card,
+[data-theme="kachow-cars"] #center-pile-0,
+[data-theme="kachow-cars"] #center-pile-1,
+[data-theme="kachow-cars"] #center-pile-2,
+[data-theme="kachow-cars"] #vh-discard-pile,
+[data-theme="kachow-cars"] [id^="vh-card-"],
+[data-theme="kachow-cars"] [id^="daily-card-"],
+[data-theme="kachow-cars"] [id^="eg-pile-"],
+[data-theme="kachow-cars"] #cas-current-card,
+[data-theme="kachow-cars"] #cas-next-card,
+[data-theme="kachow-cars"] #sdk-picker-preview,
+[data-theme="kachow-cars"] #sudoku-grid > button.bg-white,
+[data-theme="kachow-cars"] #cas-grid > button.bg-white {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+}
+
+/* ============================================================================
+   KONTRAST- & LESBARKEITS-FIX FÜR ALLE NEUEN THEMES
+   (SUNRISE · ARRAKIS · GARGANTUA · KA-CHOW!)
+   ============================================================================ */
+
+/* 1. ARRAKIS · DUNE: ALLE DUNKLEN BASIS-CONTAINERS, HUDS & MODALS AUF HELL STELLEN */
+[data-theme="arrakis-dune"] #panel-3d > div.absolute,
+[data-theme="arrakis-dune"] #panel-adv-3d > div.absolute {
+    background: rgba(255, 251, 244, 0.88) !important;
+    border-color: rgba(154, 118, 82, 0.22) !important;
+    box-shadow: inset 0 1px 0 #ffffff, 0 12px 26px -12px rgba(72, 46, 22, 0.16) !important;
+}
+[data-theme="arrakis-dune"] #card-2d-ring,
+[data-theme="arrakis-dune"] #card-2d-bipartite,
+[data-theme="arrakis-dune"] #card-2d-matrix,
+[data-theme="arrakis-dune"] #adv-view-grid,
+[data-theme="arrakis-dune"] #adv-cube-controls,
+[data-theme="arrakis-dune"] #adv-filter-drawer,
+[data-theme="arrakis-dune"] #basic-matrices-workspace .rounded-2xl,
+[data-theme="arrakis-dune"] #basic-matrices-workspace .rounded-xl {
+    background: rgba(255, 252, 247, 0.92) !important;
+    border-color: rgba(154, 118, 82, 0.20) !important;
+    box-shadow: inset 0 1px 0 #ffffff, 0 10px 24px -14px rgba(72, 46, 22, 0.12) !important;
+}
+[data-theme="arrakis-dune"] .apple-elo-card,
+[data-theme="arrakis-dune"] .profile-preview-stage,
+[data-theme="arrakis-dune"] .apple-profile-well,
+[data-theme="arrakis-dune"] .apple-analysis-well,
+[data-theme="arrakis-dune"] .apple-analysis-kpi,
+[data-theme="arrakis-dune"] .mp-share-card,
+[data-theme="arrakis-dune"] .cr-live-bar,
+[data-theme="arrakis-dune"] .cr-player-tile,
+[data-theme="arrakis-dune"] .cr-lb-row,
+[data-theme="arrakis-dune"] .apple-chain-card {
+    background: rgba(255, 252, 247, 0.90) !important;
+    border-color: rgba(154, 118, 82, 0.20) !important;
+    color: #241911 !important;
+}
+[data-theme="arrakis-dune"] .apple-elo-card.is-player-tier,
+[data-theme="arrakis-dune"] .cr-lb-row.is-me {
+    background: #ffffff !important;
+    border-color: #0284c7 !important;
+    box-shadow: 0 0 0 2.5px rgba(2, 132, 199, 0.14) !important;
+}
+[data-theme="arrakis-dune"] .apple-elo-icon-box,
+[data-theme="arrakis-dune"] .apple-set-title-badge,
+[data-theme="arrakis-dune"] .apple-sym-chip {
+    background: #f5ede0 !important;
+    border-color: rgba(154, 118, 82, 0.22) !important;
+    color: #241911 !important;
+}
+[data-theme="arrakis-dune"] .apple-set-header,
+[data-theme="arrakis-dune"] .apple-hud-divider,
+[data-theme="arrakis-dune"] .apple-elo-badges-row,
+[data-theme="arrakis-dune"] .apple-mapping-table thead tr,
+[data-theme="arrakis-dune"] .apple-mapping-table tbody tr {
+    border-color: rgba(154, 118, 82, 0.16) !important;
+}
+[data-theme="arrakis-dune"] .apple-inset-group > * + *::before {
+    background: rgba(154, 118, 82, 0.14) !important;
+}
+[data-theme="arrakis-dune"] .apple-map-col-sep {
+    border-right-color: rgba(154, 118, 82, 0.16) !important;
+}
+
+/* ARRAKIS · DUNE: DROPDOWN-OPTIONEN, CHIPS, HUDS & SEGMENT-SCHALTER */
+[data-theme="arrakis-dune"] .fu-select option {
+    background-color: #fffcf7 !important;
+    color: #241911 !important;
+}
+[data-theme="arrakis-dune"] .fu-cselect-option {
+    color: #4a3728 !important;
+}
+[data-theme="arrakis-dune"] .fu-cselect-option:hover {
+    background-color: rgba(154, 118, 82, 0.12) !important;
+    color: #241911 !important;
+}
+[data-theme="arrakis-dune"] .fu-cselect-option.is-selected {
+    background-color: rgba(2, 132, 199, 0.12) !important;
+    color: #0369a1 !important;
+    font-weight: 700;
+}
+[data-theme="arrakis-dune"] .apple-hud-toggle-btn,
+[data-theme="arrakis-dune"] .apple-set-test-btn,
+[data-theme="arrakis-dune"] .game-rules-pill-btn,
+[data-theme="arrakis-dune"] .apple-replay-btn,
+[data-theme="arrakis-dune"] .apple-fullspace-btn,
+[data-theme="arrakis-dune"] .apple-filter-chip,
+[data-theme="arrakis-dune"] .apple-mat-cell,
+[data-theme="arrakis-dune"] .apple-chain-chip,
+[data-theme="arrakis-dune"] .profile-hair-btn,
+[data-theme="arrakis-dune"] .profile-chip {
+    background: rgba(255, 253, 249, 0.90) !important;
+    border-color: rgba(154, 118, 82, 0.22) !important;
+    color: #3a281a !important;
+}
+[data-theme="arrakis-dune"] .apple-hud-toggle-btn:hover,
+[data-theme="arrakis-dune"] .apple-set-test-btn:hover,
+[data-theme="arrakis-dune"] .game-rules-pill-btn:hover,
+[data-theme="arrakis-dune"] .apple-replay-btn:hover,
+[data-theme="arrakis-dune"] .apple-fullspace-btn:hover,
+[data-theme="arrakis-dune"] .apple-filter-chip:hover,
+[data-theme="arrakis-dune"] .profile-hair-btn:hover,
+[data-theme="arrakis-dune"] .profile-chip:hover {
+    background: #ffffff !important;
+    border-color: rgba(2, 132, 199, 0.45) !important;
+    color: #241911 !important;
+}
+[data-theme="arrakis-dune"] .apple-fullspace-btn.is-active,
+[data-theme="arrakis-dune"] .apple-filter-chip.is-active,
+[data-theme="arrakis-dune"] .apple-filter-chip.is-accent,
+[data-theme="arrakis-dune"] .apple-mat-cell.is-active,
+[data-theme="arrakis-dune"] .profile-chip.is-selected {
+    background: #0284c7 !important;
+    border-color: #0284c7 !important;
+    color: #ffffff !important;
+}
+[data-theme="arrakis-dune"] .profile-hair-btn.is-selected {
+    background: #ffffff !important;
+    border-color: #0284c7 !important;
+    box-shadow: 0 0 0 2.5px rgba(2, 132, 199, 0.16) !important;
+}
+[data-theme="arrakis-dune"] .apple-hud-count,
+[data-theme="arrakis-dune"] .apple-hud-count.is-purple,
+[data-theme="arrakis-dune"] .apple-coord-pill,
+[data-theme="arrakis-dune"] .apple-phase-pill,
+[data-theme="arrakis-dune"] .apple-legend-chip {
+    background: rgba(154, 118, 82, 0.12) !important;
+    border-color: rgba(154, 118, 82, 0.24) !important;
+    color: #241911 !important;
+}
+[data-theme="arrakis-dune"] .apple-cam-btn {
+    color: #6b5542 !important;
+}
+[data-theme="arrakis-dune"] .apple-cam-btn:hover {
+    color: #241911 !important;
+    background: rgba(154, 118, 82, 0.10) !important;
+}
+[data-theme="arrakis-dune"] .apple-cam-btn.is-active,
+[data-theme="arrakis-dune"] .apple-cam-rail.is-purple .apple-cam-btn.is-active {
+    background: #ffffff !important;
+    border-color: rgba(2, 132, 199, 0.35) !important;
+    color: #0369a1 !important;
+    box-shadow: 0 2px 8px -2px rgba(72, 46, 22, 0.14) !important;
+}
+[data-theme="arrakis-dune"] .apple-mat-empty {
+    background: rgba(154, 118, 82, 0.06) !important;
+    border-color: rgba(154, 118, 82, 0.14) !important;
+    color: #9c846d !important;
+}
+[data-theme="arrakis-dune"] .apple-search-pill input,
+[data-theme="arrakis-dune"] .apple-inset-name-input {
+    background: #ffffff !important;
+    border-color: rgba(154, 118, 82, 0.24) !important;
+    color: #241911 !important;
+}
+[data-theme="arrakis-dune"] .apple-inset-name-input {
+    background: transparent !important;
+    border-color: transparent !important;
+}
+[data-theme="arrakis-dune"] [id^="sdk-diff-"].bg-white,
+[data-theme="arrakis-dune"] [id^="sdk-mode-"].bg-white,
+[data-theme="arrakis-dune"] [id^="eg-switch-"].bg-white,
+[data-theme="arrakis-dune"] [id^="mc-dist-"].bg-white,
+[data-theme="arrakis-dune"] [id^="phase-met-"].bg-white,
+[data-theme="arrakis-dune"] [id^="brain-rule-"].bg-white,
+[data-theme="arrakis-dune"] [id^="cube-r-"].bg-purple-500 {
+    background: #ffffff !important;
+    border: 1px solid rgba(2, 132, 199, 0.35) !important;
+    color: #0369a1 !important;
+    box-shadow: 0 2px 8px -2px rgba(72, 46, 22, 0.12) !important;
+}
+[data-theme="arrakis-dune"] input[type="checkbox"]::after {
+    background: #ffffff !important;
+    border-color: rgba(154, 118, 82, 0.22) !important;
+}
+[data-theme="arrakis-dune"] input[type="range"]::-webkit-slider-thumb {
+    background: #ffffff !important;
+    border-color: rgba(2, 132, 199, 0.45) !important;
+    box-shadow: 0 2px 8px rgba(72, 46, 22, 0.22) !important;
+}
+[data-theme="arrakis-dune"] input[type="range"]::-moz-range-thumb {
+    background: #ffffff !important;
+    border-color: rgba(2, 132, 199, 0.45) !important;
+}
+[data-theme="arrakis-dune"] .apple-chart-tooltip,
+[data-theme="arrakis-dune"] .haptic-float-badge,
+[data-theme="arrakis-dune"] .sonner-toast,
+[data-theme="arrakis-dune"] #split-drag-badge,
+[data-theme="arrakis-dune"] #adv-split-drag-badge {
+    background: rgba(255, 252, 247, 0.96) !important;
+    border-color: rgba(154, 118, 82, 0.28) !important;
+    color: #241911 !important;
+    box-shadow: 0 12px 28px -10px rgba(72, 46, 22, 0.18) !important;
+}
+[data-theme="arrakis-dune"] .apple-chart-hairline {
+    background: linear-gradient(180deg, transparent 0%, rgba(117, 95, 75, 0.55) 16%, rgba(117, 95, 75, 0.55) 84%, transparent 100%) !important;
+}
+[data-theme="arrakis-dune"] .apple-ma-row:hover {
+    background: rgba(154, 118, 82, 0.08) !important;
+}
+[data-theme="arrakis-dune"] .apple-ma-row.is-active {
+    background: rgba(2, 132, 199, 0.12) !important;
+    border-color: #0284c7 !important;
+}
+[data-theme="arrakis-dune"] .apple-set-icon.icon-blue    { background: rgba(2, 132, 199, 0.12); color: #0284c7; }
+[data-theme="arrakis-dune"] .apple-set-icon.icon-purple  { background: rgba(126, 34, 206, 0.11); color: #7e22ce; }
+[data-theme="arrakis-dune"] .apple-set-icon.icon-emerald { background: rgba(5, 150, 105, 0.12); color: #047857; }
+[data-theme="arrakis-dune"] .apple-set-icon.icon-rose    { background: rgba(184, 66, 51, 0.12); color: #b84233; }
+[data-theme="arrakis-dune"] .apple-set-icon.icon-amber   { background: rgba(184, 122, 61, 0.14); color: #a66220; }
+
+/* 2. BEIDE HELLEN THEMES (SUNRISE · PANEM & ARRAKIS · DUNE):
+      PASTELL-BADGES, ELO-RÄNGE, HOVER, TRANSPARENTE BUTTONS, KARTENRÜCKEN & SVGS */
+[data-theme="academic-light"] .text-red-200,
+[data-theme="academic-light"] .text-red-300,
+[data-theme="arrakis-dune"] .text-red-200,
+[data-theme="arrakis-dune"] .text-red-300 { color: #b91c1c !important; }
+
+[data-theme="academic-light"] .text-fuchsia-200,
+[data-theme="academic-light"] .text-fuchsia-300,
+[data-theme="arrakis-dune"] .text-fuchsia-200,
+[data-theme="arrakis-dune"] .text-fuchsia-300 { color: #a21caf !important; }
+
+[data-theme="academic-light"] .text-sky-200,
+[data-theme="academic-light"] .text-sky-300,
+[data-theme="academic-light"] .text-blue-200,
+[data-theme="academic-light"] .text-blue-300,
+[data-theme="arrakis-dune"] .text-sky-200,
+[data-theme="arrakis-dune"] .text-sky-300,
+[data-theme="arrakis-dune"] .text-blue-200,
+[data-theme="arrakis-dune"] .text-blue-300 { color: #0369a1 !important; }
+
+[data-theme="academic-light"] .text-teal-200,
+[data-theme="academic-light"] .text-teal-300,
+[data-theme="arrakis-dune"] .text-teal-200,
+[data-theme="arrakis-dune"] .text-teal-300 { color: #0f766e !important; }
+
+[data-theme="academic-light"] .text-orange-200,
+[data-theme="academic-light"] .text-orange-300,
+[data-theme="arrakis-dune"] .text-orange-200,
+[data-theme="arrakis-dune"] .text-orange-300 { color: #c2410c !important; }
+
+[data-theme="academic-light"] .text-purple-200,
+[data-theme="academic-light"] .text-purple-300,
+[data-theme="academic-light"] .text-purple-400,
+[data-theme="academic-light"] .text-violet-200,
+[data-theme="academic-light"] .text-violet-300,
+[data-theme="academic-light"] .text-indigo-200,
+[data-theme="academic-light"] .text-indigo-300,
+[data-theme="arrakis-dune"] .text-purple-200,
+[data-theme="arrakis-dune"] .text-purple-300,
+[data-theme="arrakis-dune"] .text-purple-400,
+[data-theme="arrakis-dune"] .text-violet-200,
+[data-theme="arrakis-dune"] .text-violet-300,
+[data-theme="arrakis-dune"] .text-indigo-200,
+[data-theme="arrakis-dune"] .text-indigo-300 { color: #6d28d9 !important; }
+
+[data-theme="academic-light"] .text-stone-200,
+[data-theme="academic-light"] .text-stone-300,
+[data-theme="academic-light"] .text-zinc-200,
+[data-theme="academic-light"] .text-zinc-300,
+[data-theme="academic-light"] .text-zinc-400,
+[data-theme="arrakis-dune"] .text-stone-200,
+[data-theme="arrakis-dune"] .text-stone-300,
+[data-theme="arrakis-dune"] .text-zinc-200,
+[data-theme="arrakis-dune"] .text-zinc-300,
+[data-theme="arrakis-dune"] .text-zinc-400 { color: #44403c !important; }
+
+/* Kein weißes Verschwinden beim Hovern auf hellen Themes */
+[data-theme="academic-light"] .hover\:text-white:hover,
+[data-theme="academic-light"] .group:hover .group-hover\:text-white {
+    color: #2c1e38 !important;
+}
+[data-theme="arrakis-dune"] .hover\:text-white:hover,
+[data-theme="arrakis-dune"] .group:hover .group-hover\:text-white {
+    color: #241911 !important;
+}
+
+/* Dezente Dark-Mode-Glass-Buttons auf hellem Grund klar sichtbar machen */
+[data-theme="academic-light"] .bg-white\/\[0\.02\],
+[data-theme="academic-light"] .bg-white\/\[0\.03\],
+[data-theme="academic-light"] .bg-white\/\[0\.04\],
+[data-theme="academic-light"] .bg-white\/\[0\.05\],
+[data-theme="academic-light"] .bg-white\/\[0\.06\],
+[data-theme="academic-light"] .bg-white\/\[0\.08\] {
+    background-color: rgba(255, 253, 248, 0.78) !important;
+}
+[data-theme="arrakis-dune"] .bg-white\/\[0\.02\],
+[data-theme="arrakis-dune"] .bg-white\/\[0\.03\],
+[data-theme="arrakis-dune"] .bg-white\/\[0\.04\],
+[data-theme="arrakis-dune"] .bg-white\/\[0\.05\],
+[data-theme="arrakis-dune"] .bg-white\/\[0\.06\],
+[data-theme="arrakis-dune"] .bg-white\/\[0\.08\] {
+    background-color: rgba(255, 252, 247, 0.78) !important;
+}
+
+/* Solide farbige Aktions-Buttons behalten immer gut lesbare Schrift */
+[data-theme="academic-light"] .bg-rose-500,
+[data-theme="academic-light"] .bg-rose-500 *,
+[data-theme="academic-light"] .bg-red-500,
+[data-theme="academic-light"] .bg-red-500 *,
+[data-theme="arrakis-dune"] .bg-rose-500,
+[data-theme="arrakis-dune"] .bg-rose-500 *,
+[data-theme="arrakis-dune"] .bg-red-500,
+[data-theme="arrakis-dune"] .bg-red-500 *,
+[data-theme="arrakis-dune"] .bg-purple-500,
+[data-theme="arrakis-dune"] .bg-purple-500 * {
+    color: #ffffff !important;
+}
+
+/* Verdeckte Gegnerkarten im Verhör behalten dunkle Rückseite & klare weiße Beschriftung */
+[data-theme="academic-light"] #vh-bot-hand > div,
+[data-theme="academic-light"] #vh-int-body button.bg-gradient-to-br,
+[data-theme="academic-light"] #ai-hand-container > div.bg-gradient-to-br {
+    background: linear-gradient(145deg, #2b1e38 0%, #193b30 100%) !important;
+    border-color: #c68b2c !important;
+}
+[data-theme="arrakis-dune"] #vh-bot-hand > div,
+[data-theme="arrakis-dune"] #vh-int-body button.bg-gradient-to-br,
+[data-theme="arrakis-dune"] #ai-hand-container > div.bg-gradient-to-br {
+    background: linear-gradient(145deg, #7c4519 0%, #3d210b 100%) !important;
+    border-color: #d99b52 !important;
+}
+[data-theme="academic-light"] #vh-bot-hand > div span,
+[data-theme="academic-light"] #vh-int-body button.bg-gradient-to-br span,
+[data-theme="academic-light"] #ai-hand-container > div.bg-gradient-to-br span,
+[data-theme="arrakis-dune"] #vh-bot-hand > div span,
+[data-theme="arrakis-dune"] #vh-int-body button.bg-gradient-to-br span,
+[data-theme="arrakis-dune"] #ai-hand-container > div.bg-gradient-to-br span {
+    color: #fffaf0 !important;
+}
+
+/* SVG-Beschriftungen auf hellen Diagramm- und Ring-Flächen dunkel & scharf machen */
+[data-theme="academic-light"] #svg-cycle-ring > text,
+[data-theme="academic-light"] #mc-convergence-svg text[fill="#e2e8f0"],
+[data-theme="academic-light"] #mc-convergence-svg text[fill="#cbd5e1"],
+[data-theme="academic-light"] #mc-convergence-svg text[fill="#f8fafc"],
+[data-theme="academic-light"] #mc-convergence-svg text[fill="#94a3b8"],
+[data-theme="academic-light"] #phase-curve-svg text[fill="#e2e8f0"],
+[data-theme="academic-light"] #phase-curve-svg text[fill="#cbd5e1"],
+[data-theme="academic-light"] #phase-curve-svg text[fill="#f8fafc"],
+[data-theme="academic-light"] #phase-curve-svg text[fill="#94a3b8"],
+[data-theme="academic-light"] #ai-radar-svg text[fill="#e2e8f0"],
+[data-theme="academic-light"] #ai-radar-svg text[fill="#cbd5e1"],
+[data-theme="academic-light"] #ai-radar-svg text[fill="#f8fafc"],
+[data-theme="academic-light"] #ai-radar-svg text[fill="#94a3b8"],
+[data-theme="academic-light"] #ma-eval-chart svg text[fill="#e2e8f0"],
+[data-theme="academic-light"] #ma-eval-chart svg text[fill="#cbd5e1"],
+[data-theme="academic-light"] #ma-eval-chart svg text[fill="#94a3b8"] {
+    fill: #2c1e38 !important;
+}
+[data-theme="arrakis-dune"] #svg-cycle-ring > text,
+[data-theme="arrakis-dune"] #mc-convergence-svg text[fill="#e2e8f0"],
+[data-theme="arrakis-dune"] #mc-convergence-svg text[fill="#cbd5e1"],
+[data-theme="arrakis-dune"] #mc-convergence-svg text[fill="#f8fafc"],
+[data-theme="arrakis-dune"] #mc-convergence-svg text[fill="#94a3b8"],
+[data-theme="arrakis-dune"] #phase-curve-svg text[fill="#e2e8f0"],
+[data-theme="arrakis-dune"] #phase-curve-svg text[fill="#cbd5e1"],
+[data-theme="arrakis-dune"] #phase-curve-svg text[fill="#f8fafc"],
+[data-theme="arrakis-dune"] #phase-curve-svg text[fill="#94a3b8"],
+[data-theme="arrakis-dune"] #ai-radar-svg text[fill="#e2e8f0"],
+[data-theme="arrakis-dune"] #ai-radar-svg text[fill="#cbd5e1"],
+[data-theme="arrakis-dune"] #ai-radar-svg text[fill="#f8fafc"],
+[data-theme="arrakis-dune"] #ai-radar-svg text[fill="#94a3b8"],
+[data-theme="arrakis-dune"] #ma-eval-chart svg text[fill="#e2e8f0"],
+[data-theme="arrakis-dune"] #ma-eval-chart svg text[fill="#cbd5e1"],
+[data-theme="arrakis-dune"] #ma-eval-chart svg text[fill="#94a3b8"] {
+    fill: #241911 !important;
+}
+
+/* 3. GARGANTUA & KA-CHOW!: SAUBERER BUTTON-, SEGMENT- & ICON-KONTRAST */
+[data-theme="gargantua-interstellar"] .bg-cyan-400 *,
+[data-theme="gargantua-interstellar"] .bg-cyan-500 *,
+[data-theme="gargantua-interstellar"] .modal-pill-cta *,
+[data-theme="gargantua-interstellar"] .vh-cluster-cta-btn * {
+    color: #160b04 !important;
+}
+[data-theme="gargantua-interstellar"] [id^="sdk-diff-"].bg-white,
+[data-theme="gargantua-interstellar"] [id^="sdk-mode-"].bg-white,
+[data-theme="gargantua-interstellar"] [id^="eg-switch-"].bg-white,
+[data-theme="gargantua-interstellar"] [id^="mc-dist-"].bg-white,
+[data-theme="gargantua-interstellar"] [id^="phase-met-"].bg-white,
+[data-theme="gargantua-interstellar"] [id^="brain-rule-"].bg-white {
+    background: linear-gradient(180deg, rgba(251, 191, 36, 0.28) 0%, rgba(234, 88, 12, 0.14) 100%) !important;
+    border: 1px solid rgba(251, 191, 36, 0.50) !important;
+    color: #fffbeb !important;
+}
+
+[data-theme="kachow-cars"] .bg-cyan-400 *,
+[data-theme="kachow-cars"] .bg-cyan-500 *,
+[data-theme="kachow-cars"] .modal-pill-cta *,
+[data-theme="kachow-cars"] .vh-cluster-cta-btn * {
+    color: #ffffff !important;
+}
+[data-theme="kachow-cars"] [id^="sdk-diff-"].bg-white,
+[data-theme="kachow-cars"] [id^="sdk-mode-"].bg-white,
+[data-theme="kachow-cars"] [id^="eg-switch-"].bg-white,
+[data-theme="kachow-cars"] [id^="mc-dist-"].bg-white,
+[data-theme="kachow-cars"] [id^="phase-met-"].bg-white,
+[data-theme="kachow-cars"] [id^="brain-rule-"].bg-white {
+    background: #e11d2e !important;
+    border: 1px solid rgba(250, 204, 21, 0.55) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px -4px rgba(225, 29, 46, 0.55) !important;
+}
+[data-theme="kachow-cars"] .apple-cam-btn.is-active,
+[data-theme="kachow-cars"] .apple-filter-chip.is-active,
+[data-theme="kachow-cars"] .apple-fullspace-btn.is-active {
+    background: rgba(225, 29, 46, 0.28) !important;
+    border-color: rgba(250, 204, 21, 0.55) !important;
+    color: #ffffff !important;
+}

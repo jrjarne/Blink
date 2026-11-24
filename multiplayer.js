@@ -202,6 +202,15 @@
                 <div class="text-xs font-bold uppercase tracking-[0.25em] text-cyan-400 mono mb-3" id="cr-countdown-label">Kursraum startet gleich</div>
                 <div id="cr-countdown-digit" class="text-7xl sm:text-8xl font-extrabold text-white heading-font">3</div>
             </div>
+
+            <!-- 5. VERHÖR ZUG-POPUP („DU BIST DRAN!“ MIT SOUND) -->
+            <div id="vh-turn-toast" class="vh-turn-toast pointer-events-none" aria-live="polite">
+                <span id="vh-turn-toast-dot" class="w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0 animate-pulse"></span>
+                <div class="min-w-0 text-left">
+                    <div id="vh-turn-toast-title" class="text-xs sm:text-sm font-extrabold text-white leading-tight">Du bist dran!</div>
+                    <div id="vh-turn-toast-sub" class="text-[10.5px] mono text-slate-300 leading-tight mt-0.5">Ziehe vom Stapel oder rufe M₁ zurück</div>
+                </div>
+            </div>
         `;
         while (wrap.firstElementChild) {
             document.body.appendChild(wrap.firstElementChild);
@@ -285,6 +294,7 @@
         statusText: 'Getrennt',
         oppName: '',
         oppProfile: null,
+        seriesScore: { host: 0, guest: 0 },
         hostGame: null,
         viewMeta: {
             intStep: null,
@@ -314,6 +324,7 @@
         vhNet.statusText = 'Getrennt';
         vhNet.oppName = '';
         vhNet.oppProfile = null;
+        vhNet.seriesScore = { host: 0, guest: 0 };
         vhNet.hostGame = null;
         vhNet.viewMeta = { intStep: null, intDemand: null, intMatchIndices: [], oppSlotIndices: [], intAttackerIsMe: false };
 
@@ -432,18 +443,10 @@
     }
 
     function vhHostPlaceCard(g, role, card) {
-        const hand = g.hands[role];
-        let slot = (typeof g.lastCleared[role] === 'number' && hand[g.lastCleared[role]] === null)
-            ? g.lastCleared[role]
-            : hand.findIndex(c => !c);
-        if (slot === -1) {
-            slot = hand.length;
-            hand.push(card);
-        } else {
-            hand[slot] = card;
-        }
-        if (g.lastCleared[role] === slot) g.lastCleared[role] = null;
-        return slot;
+        g.hands[role] = g.hands[role].filter(Boolean);
+        g.hands[role].push(card);
+        g.lastCleared[role] = null;
+        return g.hands[role].length - 1;
     }
 
     function vhHostPushLog(g, html) {
@@ -459,8 +462,8 @@
         }
         const deck125 = shuffleArray(CARDS_125);
         const firstDiscard = deck125.pop();
-        const hostStart = [...deck125.splice(0, 5), null];
-        const guestStart = [...deck125.splice(0, 5), null];
+        const hostStart = deck125.splice(0, 5);
+        const guestStart = deck125.splice(0, 5);
         const starter = Math.random() < 0.5 ? 'host' : 'guest';
         const starterName = starter === 'host' ? getMyNameSafe() : (vhNet.oppName || 'Gegner');
 
@@ -503,6 +506,7 @@
 
         let viewIntStep = null;
         let viewPendingCard = null;
+        let viewPendingIdx = null;
         let viewMatchIndices = [];
 
         if (g.phase === 'interrogation') {
@@ -510,8 +514,18 @@
                 viewIntStep = g.intStep === 'defender_pick' ? 'wait_defender' : g.intStep;
                 if (g.intStep === 'decide') viewPendingCard = g.pendingCard;
             } else {
-                viewIntStep = g.intStep === 'defender_pick' ? 'defender_pick' : 'wait_attacker';
-                if (g.intStep === 'defender_pick') viewMatchIndices = g.intMatchIndices;
+                if (g.intStep === 'defender_pick') {
+                    viewIntStep = 'defender_pick';
+                    viewMatchIndices = g.intMatchIndices;
+                } else if (g.intStep === 'decide') {
+                    viewIntStep = 'wait_decision';
+                    viewPendingCard = g.pendingCard;
+                    viewPendingIdx = g.pendingIdx;
+                } else if (g.intStep === 'no_match') {
+                    viewIntStep = 'wait_no_match';
+                } else {
+                    viewIntStep = 'wait_attacker';
+                }
             }
         }
 
@@ -521,7 +535,7 @@
             phase: g.phase,
             deckCount: g.deck.length,
             discardHistory: g.discardHistory.slice(-2),
-            myHand: g.hands[targetRole],
+            myHand: g.hands[targetRole].filter(Boolean),
             oppHandCount: oppLiveSlots.length,
             oppSlotIndices: oppLiveSlots,
             myTrios: g.trios[targetRole],
@@ -533,8 +547,13 @@
             intDemand: g.intDemand,
             intMatchIndices: viewMatchIndices,
             pendingCard: viewPendingCard,
+            pendingIdx: viewPendingIdx,
             intNote: g.intNote,
             logs: g.logs,
+            seriesScore: {
+                host: vhNet.seriesScore ? (vhNet.seriesScore.host || 0) : 0,
+                guest: vhNet.seriesScore ? (vhNet.seriesScore.guest || 0) : 0
+            },
             winInfo: g.winInfo ? { didWin: g.winInfo.winnerRole === targetRole, cluster: g.winInfo.cluster, winnerName: g.winInfo.winnerName } : null
         };
     }
@@ -567,6 +586,12 @@
         vhState.intNote = view.intNote || '';
         vhState.logs = view.logs || [];
         vhState.winInfo = view.winInfo || null;
+        if (view.seriesScore && typeof view.seriesScore === 'object') {
+            vhNet.seriesScore = {
+                host: view.seriesScore.host || 0,
+                guest: view.seriesScore.guest || 0
+            };
+        }
         if (!view.isMyTurn || view.phase === 'interrogation' || view.phase === 'ended') {
             vhState.selectedIdx = null;
             vhState.sktDraftIndices = [];
@@ -577,7 +602,8 @@
             intDemand: view.intDemand,
             intMatchIndices: view.intMatchIndices || [],
             oppSlotIndices: view.oppSlotIndices || [],
-            intAttackerIsMe: Boolean(view.intAttackerIsMe)
+            intAttackerIsMe: Boolean(view.intAttackerIsMe),
+            pendingIdx: typeof view.pendingIdx === 'number' ? view.pendingIdx : null
         };
 
         if (!wasRunning && view.isRunning) {
@@ -621,6 +647,8 @@
         if (action.kind === 'CALL_CLUSTER') {
             const winClu = findValidCluster5FromPool(g.hands[role].filter(Boolean), g.trios[role]);
             if (!winClu) return;
+            if (!vhNet.seriesScore) vhNet.seriesScore = { host: 0, guest: 0 };
+            vhNet.seriesScore[role] = (vhNet.seriesScore[role] || 0) + 1;
             g.isRunning = false;
             g.phase = 'ended';
             g.winInfo = { winnerRole: role, winnerName: actorName, cluster: winClu };
@@ -691,8 +719,8 @@
             if (g.phase === 'action' && g.recalledKey && keyOf(...card) === g.recalledKey) return;
 
             const prevTop = g.discardHistory.length > 0 ? g.discardHistory[g.discardHistory.length - 1] : null;
-            g.hands[role][idx] = null;
-            g.lastCleared[role] = idx;
+            g.hands[role].splice(idx, 1);
+            g.lastCleared[role] = null;
             g.discardHistory.push(card);
             g.recalledKey = null;
 
@@ -791,7 +819,7 @@
                 vhHostPlaceCard(g, role, card);
                 g.phase = 'bonus_discard';
                 vhHostPushLog(g, `<span class="text-emerald-400 font-bold">${actorName}:</span> Übernimmt (${card.join(',')})`);
-                vhHostBroadcastState();
+                vhHostBroadcastState(`${actorName} übernimmt (${card.join(',')}) auf die Hand.`, 'neutral');
             } else {
                 g.discardHistory.push(card);
                 g.turn = oppRole;
@@ -799,7 +827,7 @@
                 g.intType = null;
                 g.intAttacker = null;
                 vhHostPushLog(g, `<span class="text-rose-400 font-bold">Strafabwurf:</span> ${oppName} muss (${card.join(',')}) abwerfen`);
-                vhHostBroadcastState();
+                vhHostBroadcastState(`${actorName} lehnt (${card.join(',')}) ab → Ablagestapel M₁.`, 'warn');
             }
             return;
         }
@@ -832,6 +860,13 @@
             if (msg.profile && typeof msg.profile === 'object') vhNet.oppProfile = msg.profile;
             renderVerhoerOnlineModal();
             if (typeof renderVerhoerStandaloneUI === 'function') renderVerhoerStandaloneUI();
+            return;
+        }
+
+        if (msg.type === 'VH_H2H_RESET') {
+            vhNet.seriesScore = { host: 0, guest: 0 };
+            if (typeof renderVerhoerStandaloneUI === 'function') renderVerhoerStandaloneUI();
+            showSonnerToast('Verhör Head-to-Head auf 0 : 0 zurückgesetzt.', 'neutral');
             return;
         }
 
@@ -1010,13 +1045,26 @@
             }
         }
 
-        // Bestehende Verhör-Funktionen sauber für Online 1v1 ummanteln
-        const wrapFn = (name, onlineHandler) => {
+        // Stellt lab.js beim Ziehen/Rückruf/Übernehmen kurz den freien 6. Slot bereit,
+        // während die Hand visuell lückenlos kompakt bleibt
+        const ensureOfflineDrawSlot = () => {
+            if (typeof vhState === 'undefined' || !Array.isArray(vhState.playerHand)) return;
+            const liveCount = vhState.playerHand.filter(Boolean).length;
+            if (liveCount < 6 && !vhState.playerHand.some(c => !c)) {
+                vhState.playerHand.push(null);
+            }
+        };
+
+        // Bestehende Verhör-Funktionen sauber für Online 1v1 & kompakte Offline-Hand ummanteln
+        const wrapFn = (name, onlineHandler, offlinePrep = null) => {
             if (typeof window[name] !== 'function' || window[name].__vhNetWrapped) return;
             const orig = window[name];
             const wrapped = function (...args) {
                 if (vhNet.active) return onlineHandler.apply(this, args);
-                return orig.apply(this, args);
+                if (typeof offlinePrep === 'function') offlinePrep.apply(this, args);
+                const res = orig.apply(this, args);
+                compactVerhoerHandIfNeeded();
+                return res;
             };
             wrapped.__vhNetWrapped = true;
             window[name] = wrapped;
@@ -1040,6 +1088,10 @@
             if (!vhState.isRunning || vhState.turn !== 'player' || vhState.phase !== 'draw') return;
             if (typeof playSound === 'function') playSound('play');
             vhNetDispatchAction({ kind: 'DRAW_DECK' });
+        }, () => {
+            if (vhState.isRunning && vhState.turn === 'player' && vhState.phase === 'draw') {
+                ensureOfflineDrawSlot();
+            }
         });
 
         wrapFn('vhOnDiscardPileClick', () => {
@@ -1052,6 +1104,10 @@
             }
             if ((vhState.phase === 'action' || vhState.phase === 'bonus_discard') && vhState.selectedIdx !== null) {
                 vhConfirmSelectedDiscard();
+            }
+        }, () => {
+            if (vhState.isRunning && vhState.turn === 'player' && vhState.phase === 'draw') {
+                ensureOfflineDrawSlot();
             }
         });
 
@@ -1095,6 +1151,8 @@
         wrapFn('vhResolveDecision', (takeCard) => {
             if (typeof playSound === 'function') playSound(takeCard ? 'play' : 'tick');
             vhNetDispatchAction({ kind: 'RESOLVE_DECISION', takeCard: Boolean(takeCard) });
+        }, (takeCard) => {
+            if (takeCard) ensureOfflineDrawSlot();
         });
 
         wrapFn('vhEndPlayerTurn', () => {
@@ -1137,10 +1195,11 @@
             vhNetDispatchAction({ kind: 'CALL_CLUSTER' });
         });
 
-        // Post-Render-Hook für Verhör-UI (zeigt Gegner-Name/Avatar & Online-Verhör-Schritte)
+        // Pre- & Post-Render-Hook für Verhör-UI (Karten zusammenrücken, Cluster-Button ohne Spoiler & Online-Verhör)
         if (typeof window.renderVerhoerStandaloneUI === 'function' && !window.renderVerhoerStandaloneUI.__vhNetPost) {
             const origRender = window.renderVerhoerStandaloneUI;
             const wrappedRender = function () {
+                compactVerhoerHandIfNeeded();
                 origRender();
                 postRenderVerhoerOnline();
             };
@@ -1149,24 +1208,299 @@
         }
     }
 
+   const vhTurnAlert = {
+        wasMyTurn: false,
+        wasDefenderPick: false,
+        hideTimer: null,
+        audioCtx: null
+    };
+
+    function playVerhoerTurnChime(kind = 'turn') {
+        const soundChk = document.getElementById('chk-sound-enabled');
+        if (soundChk && !soundChk.checked) return;
+        const volEl = document.getElementById('range-sound-volume');
+        const vol = Math.max(0.08, Math.min(1, (volEl ? parseFloat(volEl.value) : 25) / 100));
+
+        try {
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) {
+                if (typeof playSound === 'function') playSound('flip');
+                return;
+            }
+            if (!vhTurnAlert.audioCtx) vhTurnAlert.audioCtx = new Ctx();
+            const ctx = vhTurnAlert.audioCtx;
+            if (ctx.state === 'suspended') ctx.resume();
+
+            const now = ctx.currentTime;
+            const master = ctx.createGain();
+            master.gain.setValueAtTime(0.85 * vol, now);
+            master.connect(ctx.destination);
+
+            // 1. Warmes Kirchenorgel-Fundament (Interstellar a-Moll / F-Dur-Quinte)
+            const padFilter = ctx.createBiquadFilter();
+            padFilter.type = 'lowpass';
+            padFilter.frequency.setValueAtTime(520, now);
+            padFilter.connect(master);
+
+            const padFreqs = kind === 'interrogation' ? [87.31, 130.81, 220.0] : [110.0, 164.81, 220.0];
+            padFreqs.forEach((f, idx) => {
+                const osc = ctx.createOscillator();
+                const g = ctx.createGain();
+                osc.type = idx === 0 ? 'sawtooth' : 'triangle';
+                osc.frequency.setValueAtTime(f, now);
+                osc.detune.setValueAtTime(idx === 1 ? 4 : (idx === 2 ? -3 : 0), now);
+                g.gain.setValueAtTime(0.0001, now);
+                g.gain.linearRampToValueAtTime((idx === 0 ? 0.055 : 0.045), now + 0.16);
+                g.gain.exponentialRampToValueAtTime(0.0001, now + 1.38);
+                osc.connect(g);
+                g.connect(padFilter);
+                osc.start(now);
+                osc.stop(now + 1.42);
+            });
+
+            // 2. Gläsernes Cornfield-Chase Piano-Arpeggio (A4–E5–B4–E5–C5) mit Raum-Echo
+            const arpNotes = kind === 'interrogation'
+                ? [493.88, 659.25, 523.25, 659.25, 587.33, 659.25]
+                : [440.0, 659.25, 493.88, 659.25, 523.25];
+            const stepSec = kind === 'interrogation' ? 0.105 : 0.122;
+
+            const triggerPianoNote = (freq, startAt, level, dur) => {
+                const oscMain = ctx.createOscillator();
+                const oscHarm = ctx.createOscillator();
+                const gMain = ctx.createGain();
+                const gHarm = ctx.createGain();
+
+                oscMain.type = 'triangle';
+                oscMain.frequency.setValueAtTime(freq, startAt);
+                oscHarm.type = 'sine';
+                oscHarm.frequency.setValueAtTime(freq * 2, startAt);
+
+                gMain.gain.setValueAtTime(0.0001, startAt);
+                gMain.gain.linearRampToValueAtTime(level, startAt + 0.011);
+                gMain.gain.exponentialRampToValueAtTime(0.0001, startAt + dur);
+
+                gHarm.gain.setValueAtTime(0.0001, startAt);
+                gHarm.gain.linearRampToValueAtTime(level * 0.24, startAt + 0.008);
+                gHarm.gain.exponentialRampToValueAtTime(0.0001, startAt + dur * 0.52);
+
+                oscMain.connect(gMain);
+                oscHarm.connect(gHarm);
+                gMain.connect(master);
+                gHarm.connect(master);
+
+                oscMain.start(startAt);
+                oscHarm.start(startAt);
+                oscMain.stop(startAt + dur + 0.03);
+                oscHarm.stop(startAt + dur + 0.03);
+            };
+
+            arpNotes.forEach((freq, i) => {
+                const t = now + i * stepSec;
+                const isLast = i === arpNotes.length - 1;
+                triggerPianoNote(freq, t, isLast ? 0.20 : 0.16, isLast ? 0.92 : 0.56);
+                // Sanftes kosmisches Raum-Echo
+                triggerPianoNote(freq, t + 0.24, 0.038, 0.50);
+            });
+        } catch (e) {
+            if (typeof playSound === 'function') playSound('flip');
+        }
+    }
+
+    function showVerhoerTurnPopup(title, subtitle, kind = 'turn') {
+        const view = document.getElementById('game-view-verhoer');
+        const page = document.getElementById('page-game');
+        if (!view || view.classList.contains('hidden') || !page || page.classList.contains('hidden')) return;
+
+        const toast = document.getElementById('vh-turn-toast');
+        const titleEl = document.getElementById('vh-turn-toast-title');
+        const subEl = document.getElementById('vh-turn-toast-sub');
+        const dotEl = document.getElementById('vh-turn-toast-dot');
+        if (!toast) return;
+
+        if (titleEl) titleEl.textContent = title;
+        if (subEl) subEl.textContent = subtitle;
+        if (dotEl) {
+            dotEl.className = `w-2.5 h-2.5 rounded-full shrink-0 animate-pulse ${kind === 'interrogation' ? 'bg-amber-400' : 'bg-cyan-400'}`;
+        }
+        toast.classList.toggle('is-interrogation', kind === 'interrogation');
+        toast.classList.remove('is-visible');
+        void toast.offsetWidth;
+        toast.classList.add('is-visible');
+
+        playVerhoerTurnChime(kind);
+        if (window.BlinkHaptics && typeof window.BlinkHaptics.vibrate === 'function') {
+            window.BlinkHaptics.vibrate(kind === 'interrogation' ? [22, 35, 22] : [16, 28, 16]);
+        }
+
+        if (vhTurnAlert.hideTimer) clearTimeout(vhTurnAlert.hideTimer);
+        vhTurnAlert.hideTimer = setTimeout(() => {
+            toast.classList.remove('is-visible');
+        }, 2400);
+    }
+
+    function replaceBotTextInTree(rootEl, oppName) {
+        if (!rootEl || !oppName) return;
+        const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT);
+        let node;
+        while ((node = walker.nextNode())) {
+            if (!/bot/i.test(node.nodeValue)) continue;
+            node.nodeValue = node.nodeValue
+                .replace(/\bdes\s+Taktik-Bots\b/gi, `von ${oppName}`)
+                .replace(/\bvom\s+Taktik-Bot\b/gi, `von ${oppName}`)
+                .replace(/\bbeim\s+Taktik-Bot\b/gi, `bei ${oppName}`)
+                .replace(/\bzum\s+Taktik-Bot\b/gi, `zu ${oppName}`)
+                .replace(/\b(?:den|dem|der)\s+Taktik-Bot\b/gi, oppName)
+                .replace(/\bTaktik-Bot\b/gi, oppName)
+                .replace(/\bdes\s+Bots\b/gi, `von ${oppName}`)
+                .replace(/\bvom\s+Bot\b/gi, `von ${oppName}`)
+                .replace(/\bbeim\s+Bot\b/gi, `bei ${oppName}`)
+                .replace(/\bzum\s+Bot\b/gi, `zu ${oppName}`)
+                .replace(/\b(?:den|dem|der)\s+Bot\b/gi, oppName)
+                .replace(/\bBots\b/g, `${oppName}s`)
+                .replace(/\bBot\b/g, oppName);
+        }
+    }
+
+    function updateVerhoerTurnFeedback(oppName) {
+        const handBox = document.getElementById('vh-player-hand-box');
+        const handHint = document.getElementById('vh-hand-hint');
+        const isDefenderPick = Boolean(vhNet.active && vhState.isRunning && vhState.phase === 'interrogation' && vhNet.viewMeta.intStep === 'defender_pick');
+        const isMyDrawTurn = Boolean(vhState.isRunning && vhState.turn === 'player' && vhState.phase === 'draw');
+        const isMyTurnNow = Boolean(vhState.isRunning && (vhState.turn === 'player' || isDefenderPick) && vhState.phase !== 'ended');
+
+        if (handBox) {
+            handBox.classList.toggle('vh-my-turn-glow', isMyTurnNow && vhState.phase !== 'interrogation');
+            handBox.classList.toggle('vh-int-hand-focus', vhState.isRunning && vhState.phase === 'interrogation');
+        }
+        if (handHint && vhState.isRunning && vhState.phase === 'interrogation') {
+            handHint.textContent = 'Deine Handkarten zum Vergleichen sichtbar';
+        }
+
+        if (!vhState.isRunning) {
+            vhTurnAlert.wasMyTurn = false;
+            vhTurnAlert.wasDefenderPick = false;
+            const toast = document.getElementById('vh-turn-toast');
+            if (toast) toast.classList.remove('is-visible');
+            return;
+        }
+
+        if (isMyDrawTurn && !vhTurnAlert.wasMyTurn) {
+            showVerhoerTurnPopup('Du bist dran!', 'Ziehe vom Nachziehstapel oder rufe M₁ zurück', 'turn');
+        } else if (isDefenderPick && !vhTurnAlert.wasDefenderPick) {
+            const demandLbl = vhNet.viewMeta.intDemand?.label || 'eine Eigenschaft';
+            showVerhoerTurnPopup('Verhör · Du bist gefragt!', `${oppName} fordert ${demandLbl}`, 'interrogation');
+        }
+
+        vhTurnAlert.wasMyTurn = vhState.turn === 'player';
+        vhTurnAlert.wasDefenderPick = isDefenderPick;
+    }
+
+    function compactVerhoerHandIfNeeded() {
+        if (typeof vhState === 'undefined' || !Array.isArray(vhState.playerHand)) return;
+        if (!vhState.playerHand.some(c => !c)) return;
+        const idxMap = new Map();
+        const compacted = [];
+        vhState.playerHand.forEach((c, oldIdx) => {
+            if (c) {
+                idxMap.set(oldIdx, compacted.length);
+                compacted.push(c);
+            }
+        });
+        vhState.playerHand = compacted;
+        if (vhState.selectedIdx !== null) {
+            vhState.selectedIdx = idxMap.has(vhState.selectedIdx) ? idxMap.get(vhState.selectedIdx) : null;
+        }
+        if (Array.isArray(vhState.sktDraftIndices) && vhState.sktDraftIndices.length > 0) {
+            vhState.sktDraftIndices = vhState.sktDraftIndices
+                .map(oldIdx => (idxMap.has(oldIdx) ? idxMap.get(oldIdx) : -1))
+                .filter(i => i !== -1);
+        }
+        if ('lastClearedSlot' in vhState) vhState.lastClearedSlot = null;
+    }
+
+    function applyVerhoerNeutralClusterBtnAndHandRow() {
+        const handEl = document.getElementById('vh-player-hand');
+        if (handEl) {
+            handEl.classList.add('vh-hand-compact-row');
+            handEl.classList.remove('grid', 'grid-cols-3', 'sm:grid-cols-6', 'gap-2');
+        }
+        const deckBtn = document.getElementById('vh-deck-btn');
+        if (deckBtn && typeof vhState !== 'undefined') {
+            deckBtn.disabled = !(vhState.isRunning && vhState.turn === 'player' && vhState.phase === 'draw');
+        }
+        const intPanel = document.getElementById('vh-interrogation-panel');
+        if (intPanel && typeof vhState !== 'undefined') {
+            intPanel.classList.toggle('hidden', !(vhState.isRunning && vhState.phase === 'interrogation'));
+        }
+        const tagClu = document.getElementById('vh-btn-cluster-tag');
+        if (tagClu) {
+            tagClu.textContent = '';
+            tagClu.classList.add('hidden');
+        }
+        const btnClu = document.getElementById('vh-btn-cluster');
+        if (btnClu) {
+            const active = typeof vhState !== 'undefined' && Boolean(vhState.isRunning);
+            btnClu.disabled = !active;
+            btnClu.className = active
+                ? 'vh-cluster-cta-btn px-5 py-2.5 rounded-full font-extrabold text-xs sm:text-sm tracking-wide transition inline-flex items-center gap-2 cursor-pointer'
+                : 'vh-cluster-cta-btn is-idle px-5 py-2.5 rounded-full font-extrabold text-xs sm:text-sm tracking-wide transition inline-flex items-center gap-2 opacity-50 cursor-default';
+        }
+    }
+
     function postRenderVerhoerOnline() {
-        const oppLabelEl = document.querySelector('#game-view-verhoer .xl\\:col-span-6 .text-xs.font-bold.text-white');
-        const oppIconWrap = oppLabelEl ? oppLabelEl.closest('.flex.items-center.gap-2\\.5')?.firstElementChild : null;
+        applyVerhoerNeutralClusterBtnAndHandRow();
+        document.querySelectorAll('#vh-player-hand .vh-card-under-review').forEach(el => {
+            el.classList.remove('vh-card-under-review');
+        });
+        const oppLabelEl = document.getElementById('vh-opp-name-label') || document.querySelector('#game-view-verhoer .xl\\:col-span-6 .text-xs.font-bold.text-white');
+        const oppIconWrap = document.getElementById('vh-opp-avatar-slot') || (oppLabelEl ? oppLabelEl.closest('.flex.items-center.gap-2\\.5')?.firstElementChild : null);
+        const botBarName = document.getElementById('vh-bar-bot-name') || document.getElementById('vh-bar-bot-lbl')?.previousElementSibling;
+        const botSktOwner = document.getElementById('vh-bot-skt-owner');
+        const step3El = document.getElementById('vh-step-3');
+        const lobbyDesc = document.getElementById('vh-lobby-desc');
         const xrayBtn = document.getElementById('vh-btn-xray');
         const xrayBody = document.getElementById('vh-xray-body');
         const botBarLbl = document.getElementById('vh-bar-bot-lbl');
         const botBar = document.getElementById('vh-bar-bot');
 
+        if (oppIconWrap && !oppIconWrap.dataset.botSvg) {
+            oppIconWrap.dataset.botSvg = oppIconWrap.innerHTML;
+        }
+        if (lobbyDesc && !lobbyDesc.dataset.botHtml) {
+            lobbyDesc.dataset.botHtml = lobbyDesc.innerHTML;
+        }
+
         if (!vhNet.active) {
             if (oppLabelEl) oppLabelEl.textContent = 'Taktik-Bot';
+            if (oppIconWrap && oppIconWrap.dataset.botSvg) oppIconWrap.innerHTML = oppIconWrap.dataset.botSvg;
+            if (botBarName) botBarName.textContent = 'Bot';
+            if (botSktOwner) botSktOwner.textContent = 'Bot';
+            if (step3El) step3El.textContent = '3. Verhör / Bot';
+            if (lobbyDesc && lobbyDesc.dataset.botHtml) {
+                lobbyDesc.innerHTML = lobbyDesc.dataset.botHtml;
+            }
             if (xrayBtn) xrayBtn.classList.remove('hidden');
+            renderVerhoerH2HUI('');
+            updateVerhoerTurnFeedback('Taktik-Bot');
             return;
         }
 
-        const oppName = vhNet.connected ? (vhNet.oppName || 'Online-Gegner') : 'Warte auf Gegner...';
-        if (oppLabelEl) oppLabelEl.textContent = oppName;
-        if (oppIconWrap && vhNet.connected) {
-            oppIconWrap.innerHTML = renderAvatarSafe(vhNet.oppProfile, 28);
+        const oppName = vhNet.connected ? (vhNet.oppName || 'Online-Gegner') : 'Gegner';
+        const oppDisplay = vhNet.connected ? oppName : 'Warte auf Gegner...';
+
+        if (oppLabelEl) oppLabelEl.textContent = oppDisplay;
+        if (oppIconWrap) {
+            if (vhNet.connected) oppIconWrap.innerHTML = renderAvatarSafe(vhNet.oppProfile, 28);
+            else if (oppIconWrap.dataset.botSvg) oppIconWrap.innerHTML = oppIconWrap.dataset.botSvg;
+        }
+        if (botBarName) botBarName.textContent = oppName;
+        if (botSktOwner) botSktOwner.textContent = oppName;
+        if (step3El) step3El.textContent = `3. Verhör / ${oppName.slice(0, 12)}`;
+        if (lobbyDesc) {
+            lobbyDesc.innerHTML = vhNet.connected
+                ? `Online-Duell gegen <strong class="text-white">${escHtml(oppName)}</strong> im <strong>$\\mathbb{F}_5^3$ (125 Karten)</strong> — sammle als Erster ein vollständiges <strong>5er-Cluster</strong> aus Hand und SKTs.`
+                : `Raum <strong class="text-cyan-300 mono">${escHtml(vhNet.roomCode)}</strong> ist offen — warte auf deinen Online-Gegner im <strong>$\\mathbb{F}_5^3$</strong>.`;
+            if (typeof safeRenderMathJax === 'function') safeRenderMathJax();
         }
         if (xrayBtn) xrayBtn.classList.add('hidden');
         if (xrayBody) xrayBody.classList.add('hidden');
@@ -1176,18 +1510,32 @@
         if (botBar) botBar.style.width = `${Math.min(100, vhState.aiTrios.length * 45)}%`;
 
         const bannerTxt = document.getElementById('vh-banner-text');
-        if (bannerTxt && vhState.isRunning) {
-            if (vhState.phase === 'interrogation') {
-                if (vhNet.viewMeta.intStep === 'defender_pick') {
-                    bannerTxt.textContent = `${oppName} fordert ${vhNet.viewMeta.intDemand?.label || 'eine Eigenschaft'} — wähle deine Karte!`;
-                } else if (vhNet.viewMeta.intStep === 'wait_attacker') {
-                    bannerTxt.textContent = `${oppName} führt gerade ein Verhör gegen dich aus...`;
-                } else if (vhNet.viewMeta.intStep === 'wait_defender') {
-                    bannerTxt.textContent = `Warte darauf, welche passende Karte ${oppName} vorzeigt...`;
+        if (bannerTxt) {
+            if (!vhState.isRunning && vhState.phase === 'idle') {
+                bannerTxt.textContent = vhNet.connected
+                    ? (vhNet.role === 'host'
+                        ? `Verbunden mit ${oppName} — klicke auf „Spielen“, um zu starten.`
+                        : `Verbunden mit ${oppName} — warte auf den Spielstart...`)
+                    : `Online-Raum ${vhNet.roomCode} offen — warte auf Gegner...`;
+            } else if (vhState.isRunning) {
+                if (vhState.phase === 'interrogation') {
+                    if (vhNet.viewMeta.intStep === 'defender_pick') {
+                        bannerTxt.textContent = `${oppName} fordert ${vhNet.viewMeta.intDemand?.label || 'eine Eigenschaft'} — wähle deine Karte!`;
+                    } else if (vhNet.viewMeta.intStep === 'wait_decision') {
+                        const cTxt = vhState.pendingCard ? ` (${vhState.pendingCard.join(',')})` : '';
+                        bannerTxt.textContent = `${oppName} prüft deine Karte${cTxt} — Übernehmen oder Abwurf auf M₁?`;
+                    } else if (vhNet.viewMeta.intStep === 'wait_no_match') {
+                        bannerTxt.textContent = `Keine passende Karte bei dir — Zug wechselt gleich...`;
+                    } else if (vhNet.viewMeta.intStep === 'wait_attacker') {
+                        bannerTxt.textContent = `${oppName} führt gerade ein Verhör gegen dich aus...`;
+                    } else if (vhNet.viewMeta.intStep === 'wait_defender') {
+                        bannerTxt.textContent = `Warte darauf, welche passende Karte ${oppName} vorzeigt...`;
+                    }
+                } else if (vhState.turn === 'ai') {
+                    bannerTxt.textContent = `${oppName} ist am Zug...`;
                 }
-            } else if (vhState.turn === 'ai') {
-                bannerTxt.textContent = `${oppName} ist am Zug...`;
             }
+            replaceBotTextInTree(bannerTxt, oppName);
         }
 
         // Online-spezifische Verhör-Overlays rendern
@@ -1200,11 +1548,47 @@
             if (step === 'wait_attacker') {
                 if (intTitle) intTitle.textContent = vhState.intType === 'strict' ? '⚡ Verschärftes Verhör läuft' : 'Standard-Verhör läuft';
                 if (intBadge) intBadge.textContent = escHtml(oppName);
-                intBody.innerHTML = `<div class="py-3 text-center space-y-1"><div class="text-sm font-bold text-white">${escHtml(oppName)} führt ein Verhör aus...</div><p class="text-xs text-slate-400">Bitte warte kurz auf die Auswahl deines Gegners.</p></div>`;
+                intBody.innerHTML = `<div class="py-3 text-center space-y-1"><div class="text-sm font-bold text-white">${escHtml(oppName)} führt ein Verhör aus...</div><p class="text-xs text-slate-400">Bitte warte kurz auf die Auswahl von ${escHtml(oppName)}.</p></div>`;
+            } else if (step === 'wait_decision') {
+                const c = vhState.pendingCard;
+                const isStrict = vhState.intType === 'strict';
+                if (intTitle) intTitle.textContent = isStrict ? '⚡ Verschärftes Verhör · Deine Karte wird geprüft' : 'Standard-Verhör · Deine Karte wird geprüft';
+                if (intBadge) intBadge.textContent = `${oppName} entscheidet`;
+                if (c) {
+                    const [x, y, z] = c;
+                    intBody.innerHTML = `
+                        <div class="flex flex-col sm:flex-row items-center gap-3.5 p-2.5 rounded-xl bg-slate-950/80 border border-amber-400/40">
+                            <div class="w-20 card-63-88 rounded-xl bg-white border-3 border-amber-400 p-1 flex flex-col justify-between shadow-xl shrink-0 overflow-hidden">
+                                ${renderLargePlayingCardInner(c, true)}
+                            </div>
+                            <div class="space-y-1 text-center sm:text-left min-w-0">
+                                <div class="text-xs sm:text-sm font-extrabold text-white">
+                                    ${escHtml(oppName)} prüft deine Karte <span class="mono text-amber-300">(${x},${y},${z})</span>
+                                </div>
+                                <div class="text-[11px] font-semibold text-slate-300">
+                                    ${PALETTE_X[x].count}× ${PALETTE_Y[y].name} ${PALETTE_Z[z].name}
+                                </div>
+                                <p class="text-[11px] text-slate-400 leading-relaxed">
+                                    ${escHtml(oppName)} entscheidet gerade, ob diese Karte auf die eigene Hand wandert oder auf <strong class="text-white">M₁</strong> abgeworfen wird.
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    intBody.innerHTML = `<div class="py-3 text-center space-y-1"><div class="text-sm font-bold text-white">${escHtml(oppName)} entscheidet über deine Karte...</div></div>`;
+                }
+                if (typeof vhNet.viewMeta.pendingIdx === 'number') {
+                    const reviewedEl = document.getElementById(`vh-card-${vhNet.viewMeta.pendingIdx}`);
+                    if (reviewedEl) reviewedEl.classList.add('vh-card-under-review');
+                }
+            } else if (step === 'wait_no_match') {
+                if (intTitle) intTitle.textContent = 'Standard-Verhör · Kein Treffer';
+                if (intBadge) intBadge.textContent = escHtml(oppName);
+                intBody.innerHTML = `<div class="py-3 text-center space-y-1"><div class="text-sm font-bold text-white">Keine passende Karte gefunden</div><p class="text-xs text-slate-400">Du hast keine Karte mit <strong class="text-amber-300">${escHtml(vhNet.viewMeta.intDemand?.label || '')}</strong>. Warte kurz auf den Zugwechsel...</p></div>`;
             } else if (step === 'wait_defender') {
                 if (intTitle) intTitle.textContent = 'Standard-Verhör';
-                if (intBadge) intBadge.textContent = 'Warte auf Gegner';
-                intBody.innerHTML = `<div class="py-3 text-center space-y-1"><div class="text-sm font-bold text-white">${escHtml(oppName)} hat mehrere passende Karten</div><p class="text-xs text-slate-400">Dein Gegner wählt gerade aus, welche Karte er dir zeigt...</p></div>`;
+                if (intBadge) intBadge.textContent = `Warte auf ${oppName}`;
+                intBody.innerHTML = `<div class="py-3 text-center space-y-1"><div class="text-sm font-bold text-white">${escHtml(oppName)} hat mehrere passende Karten</div><p class="text-xs text-slate-400">${escHtml(oppName)} wählt gerade aus, welche Karte gezeigt wird...</p></div>`;
             } else if (step === 'defender_pick') {
                 if (intTitle) intTitle.textContent = `Verhör: ${vhNet.viewMeta.intDemand?.label || ''}`;
                 if (intBadge) intBadge.textContent = 'Karte vorzeigen';
@@ -1235,7 +1619,12 @@
                     </div>
                 `;
             }
+            // Ersetzt verbleibende „Bot“-Texte aus lab.js (z. B. bei choose_prop, decide, no_match)
+            replaceBotTextInTree(intPanel, oppName);
         }
+
+        // Auch eventuelle „Bot“-Hinweise bei den gegnerischen SKTs bereinigen
+        replaceBotTextInTree(document.getElementById('vh-bot-trios'), oppName);
 
         // End-Overlay-Text mit echtem Gegnernamen
         if (vhState.phase === 'ended' && vhState.winInfo) {
@@ -1246,6 +1635,49 @@
                 ? `Du hast ${oppName} im Online-Verhör besiegt.`
                 : `${oppName} hat zuerst ein vollständiges 5er-Cluster gebildet.`;
         }
+
+        renderVerhoerH2HUI(oppName);
+        updateVerhoerTurnFeedback(oppName);
+    }
+
+    function renderVerhoerH2HUI(oppName) {
+        const pill = document.getElementById('vh-h2h-pill');
+        const endBanner = document.getElementById('vh-end-h2h-banner');
+        const show = Boolean(vhNet.active && vhNet.connected);
+
+        if (pill) pill.classList.toggle('hidden', !show);
+        if (endBanner) endBanner.classList.toggle('hidden', !(show && vhState.phase === 'ended'));
+        if (!show) return;
+
+        const sc = vhNet.seriesScore || { host: 0, guest: 0 };
+        const isGuest = vhNet.role === 'guest';
+        const myWins = isGuest ? (sc.guest || 0) : (sc.host || 0);
+        const oppWins = isGuest ? (sc.host || 0) : (sc.guest || 0);
+
+        if (pill) {
+            pill.innerHTML = `
+                <span class="text-[9.5px] uppercase tracking-wider text-slate-400 mono">H2H</span>
+                <span class="text-xs sm:text-sm font-extrabold mono text-cyan-300">${myWins}</span>
+                <span class="text-[11px] text-slate-500 font-bold">:</span>
+                <span class="text-xs sm:text-sm font-extrabold mono text-rose-400">${oppWins}</span>
+                <button type="button" onclick="window.BlinkMultiplayer.vhResetH2H()" title="Serie auf 0 : 0 zurücksetzen"
+                    class="ml-0.5 w-4 h-4 rounded-full bg-white/[0.06] hover:bg-white/[0.18] text-[9.5px] text-slate-300 flex items-center justify-center transition">↺</button>
+            `;
+        }
+
+        if (endBanner && vhState.phase === 'ended') {
+            if (typeof buildH2HBannerHTML === 'function') {
+                endBanner.innerHTML = buildH2HBannerHTML(getMyNameSafe(), oppName || 'Gegner', myWins, oppWins, 'window.BlinkMultiplayer.vhResetH2H()');
+            }
+        }
+    }
+
+    function resetVerhoerSeriesScore() {
+        vhNet.seriesScore = { host: 0, guest: 0 };
+        if (vhNet.connected) vhNetSend({ type: 'VH_H2H_RESET' });
+        if (typeof playSound === 'function') playSound('tick');
+        if (typeof renderVerhoerStandaloneUI === 'function') renderVerhoerStandaloneUI();
+        if (typeof showSonnerToast === 'function') showSonnerToast('Verhör Head-to-Head auf 0 : 0 zurückgesetzt.', 'neutral');
     }
 
     // ------------------------------------------------------------------------
@@ -2493,6 +2925,7 @@
         vhJoinRoom: vhNetJoinRoom,
         vhStartOnline: vhHostStartOnlineMatch,
         vhDisconnect: () => vhNetDisconnect(false),
+        vhResetH2H: resetVerhoerSeriesScore,
         vhDefenderPick: (slotIdx) => vhNetDispatchAction({ kind: 'DEFENDER_SHOW_CARD', idx: slotIdx }),
         openClassroom: openClassroomModal,
         crCreate: crCreateRoom,
