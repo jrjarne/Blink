@@ -5127,3 +5127,37 @@ body[data-page="advanced-model"] {
         inset 0 1px 0 rgba(255, 255, 255, 0.15),
         0 34px 80px -20px rgba(0, 0, 0, 0.82) !important;
 }
+/* ============================================================================
+   CLOUD-KONTO STATUS-PUNKT & PROFIL-TAB-SCHIENE
+   ============================================================================ */
+#profile-sheet-tabs {
+    background: rgba(4, 7, 14, 0.72) !important;
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+    box-shadow: inset 0 1.5px 3px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+[data-theme="onyx-oled"] #profile-sheet-tabs {
+    background: #0a0a0c !important;
+}
+[data-theme="academic-light"] #profile-sheet-tabs {
+    background: rgba(216, 218, 212, 0.76) !important;
+    border-color: rgba(24, 24, 27, 0.08) !important;
+}
+
+.cloud-status-dot {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 9px;
+    height: 9px;
+    border-radius: 9999px;
+    background: #64748b;
+    border: 2px solid #0b1120;
+    transition: background-color 200ms ease, box-shadow 200ms ease;
+}
+.cloud-status-dot.is-online {
+    background: #34d399;
+    box-shadow: 0 0 8px rgba(52, 211, 153, 0.75);
+}
+[data-theme="academic-light"] .cloud-status-dot {
+    border-color: #f2f3ef;
+}
