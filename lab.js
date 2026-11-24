@@ -342,7 +342,7 @@
 
                     let chainCnt = 0;
                     for (let j = 0; j < hand.length; j++) {
-                        if (j === i) continue;
+                        if (j === i || !hand[j]) continue;
                         const d = hammingDistance(hand[j], c);
                         if (ruleMode === 'cluster' ? d === 3 : d <= 2) chainCnt++;
                     }
@@ -351,7 +351,8 @@
                     let blockCnt = 0;
                     if (oppHand && oppHand.length > 0) {
                         for (let j = 0; j < oppHand.length; j++) {
-                            const d = hammingDistance(c, oppHand[j]);
+                            if (!oppHand[j]) continue;
+                        const d = hammingDistance(c, oppHand[j]);
                             if (ruleMode === 'cluster' ? d < 3 : d === 3) blockCnt++;
                         }
                     }
@@ -1299,7 +1300,9 @@
             vhState.turn = 'player';
             vhState.phase = 'draw';
             vhState.discardHistory = [firstDiscard];
-            vhState.playerHand = deck125.splice(0, 5);
+            vhState.playerHand = [...deck125.splice(0, 5), null];
+            vhState.lastClearedSlot = 5;
+            vhState.lastDrawnSlot = 5;
             vhState.aiHand = deck125.splice(0, 5);
             vhState.deck = deck125;
             vhState.playerTrios = [];
@@ -1320,16 +1323,32 @@
             renderVerhoerStandaloneUI();
         }
 
+        function vhPlaceCardInHand(card) {
+            let slot = (typeof vhState.lastClearedSlot === 'number' && vhState.playerHand[vhState.lastClearedSlot] === null)
+                ? vhState.lastClearedSlot
+                : vhState.playerHand.findIndex(c => !c);
+            if (slot === -1) {
+                slot = vhState.playerHand.length;
+                vhPlaceCardInHand(card);
+            } else {
+                vhState.playerHand[slot] = card;
+            }
+            if (vhState.lastClearedSlot === slot) vhState.lastClearedSlot = null;
+            vhState.lastDrawnSlot = slot;
+            return slot;
+        }
+
         function vhDrawFromDeck() {
             if (!vhState.isRunning || vhState.turn !== 'player' || vhState.phase !== 'draw') return;
             if (vhState.deck.length === 0) vhState.deck = shuffleArray(CARDS_125);
             const card = vhState.deck.shift();
-            vhState.playerHand.push(card);
+            vhPlaceCardInHand(card);
             vhState.recalledKey = null;
             vhState.selectedIdx = null;
             vhState.phase = 'action';
             playSound('play');
             vhAddLog(`<span class="text-cyan-400 font-bold">Du:</span> Blind vom Stapel gezogen`);
+            if (window.BlinkUnifiedPhysics) requestAnimationFrame(() => window.BlinkUnifiedPhysics.animateDealFromDeck('vh-deck-btn', `vh-card-${vhState.lastDrawnSlot}`));
             renderVerhoerStandaloneUI();
         }
 
@@ -1338,7 +1357,7 @@
             if (vhState.phase === 'draw') {
                 if (vhState.discardHistory.length === 0) return;
                 const taken = vhState.discardHistory.pop();
-                vhState.playerHand.push(taken);
+                vhPlaceCardInHand(taken);
                 vhState.recalledKey = keyOf(...taken);
                 vhState.selectedIdx = null;
                 vhState.phase = 'action';
@@ -1347,6 +1366,7 @@
                 }
                 playSound('flip');
                 vhAddLog(`<span class="text-amber-300 font-bold">Du:</span> Rückruf (${taken.join(',')}) von M₁`);
+                if (window.BlinkUnifiedPhysics) requestAnimationFrame(() => window.BlinkUnifiedPhysics.animateDealFromDeck('vh-discard-pile', `vh-card-${vhState.lastDrawnSlot}`, 'amber'));
                 renderVerhoerStandaloneUI();
                 return;
             }
@@ -1390,7 +1410,8 @@
 
             const commitDiscard = () => {
                 const prevTop = vhTopDiscard();
-                vhState.playerHand.splice(idx, 1);
+                vhState.playerHand[idx] = null;
+                vhState.lastClearedSlot = idx;
                 vhState.discardHistory.push(card);
                 vhState.selectedIdx = null;
                 vhState.sktDraftIndices = [];
@@ -1480,15 +1501,17 @@
             vhState.intStep = null;
 
             if (takeCard) {
-                vhState.playerHand.push(card);
+                vhPlaceCardInHand(card);
                 vhState.phase = 'bonus_discard';
                 playSound('play');
                 vhAddLog(`<span class="text-emerald-400 font-bold">Du:</span> (${card.join(',')}) übernommen`);
+                if (window.BlinkUnifiedPhysics) requestAnimationFrame(() => window.BlinkUnifiedPhysics.animateDealFromDeck('vh-bot-hand', `vh-card-${vhState.lastDrawnSlot}`, 'emerald'));
                 renderVerhoerStandaloneUI();
             } else {
                 vhState.discardHistory.push(card);
                 playSound('tick');
                 vhAddLog(`<span class="text-rose-400 font-bold">Strafabwurf:</span> Bot wirft (${card.join(',')}) auf M₁`);
+                if (window.BlinkUnifiedPhysics) requestAnimationFrame(() => window.BlinkUnifiedPhysics.animateCardOntoPile('vh-bot-hand', 'vh-discard-pile', 'rose'));
                 vhEndPlayerTurn();
             }
         }
@@ -1604,6 +1627,11 @@
 
             vhState.sktDraftIndices.push(idx);
             if (vhState.selectedIdx === idx) vhState.selectedIdx = null;
+            const _vhSrcRect = document.getElementById(`vh-card-${idx}`)?.getBoundingClientRect();
+            const _vhSlotNum = vhState.sktDraftIndices.length;
+            if (_vhSrcRect && window.BlinkUnifiedPhysics && performance.now() >= (window._hapticSuppressClickUntil || 0)) {
+                requestAnimationFrame(() => window.BlinkUnifiedPhysics.animateRectToSelector(_vhSrcRect, `#vh-skt-dropzone > button:nth-child(${_vhSlotNum})`, 'purple'));
+            }
             playSound('tick');
             renderVerhoerStandaloneUI();
 
@@ -1634,13 +1662,13 @@
                             areCardsCompletelyDifferent(c2, c3);
 
             if (isValid) {
-                const sortedDesc = [...indices].sort((a, b) => b - a);
-                const removed = sortedDesc.map(i => vhState.playerHand.splice(i, 1)[0]).reverse();
+                const sortedAsc = [...indices].sort((a, b) => a - b);
+                const removed = sortedAsc.map(i => vhState.playerHand[i]);
                 vhState.playerTrios.push(removed);
-                for (let d = 0; d < 3; d++) {
+                sortedAsc.forEach(i => {
                     if (vhState.deck.length === 0) vhState.deck = shuffleArray(CARDS_125);
-                    vhState.playerHand.push(vhState.deck.shift());
-                }
+                    vhState.playerHand[i] = vhState.deck.shift();
+                });
                 vhState.sktDraftIndices = [];
                 vhState.selectedIdx = null;
                 playSound('flip');
@@ -1668,7 +1696,7 @@
 
         function vhCallCluster() {
             if (!vhState.isRunning) return;
-            const winCluster = findValidCluster5FromPool(vhState.playerHand, vhState.playerTrios);
+            const winCluster = findValidCluster5FromPool(vhState.playerHand.filter(Boolean), vhState.playerTrios);
             if (!winCluster) {
                 showSonnerToast('Noch kein vollständiges 5er-Cluster vorhanden!', 'warn');
                 return;
@@ -1702,7 +1730,7 @@
 
         function vhExecuteBotTurn() {
             if (!vhState.isRunning || vhState.turn !== 'ai') return;
-            const actualKeys = new Set(vhState.playerHand.map(c => keyOf(...c)));
+            const actualKeys = new Set(vhState.playerHand.filter(Boolean).map(c => keyOf(...c)));
             vhState.aiMemory.knownPlayerCards = vhState.aiMemory.knownPlayerCards.filter(c => actualKeys.has(keyOf(...c)));
 
             const top = vhTopDiscard();
@@ -1754,20 +1782,27 @@
             vhState.discardHistory.push(disc);
             const dH = prevTop ? hammingDistance(disc, prevTop) : 3;
             vhAddLog(`<span class="text-rose-400 font-bold">Bot:</span> (${disc.join(',')}) → M₁`);
+            if (window.BlinkUnifiedPhysics) requestAnimationFrame(() => window.BlinkUnifiedPhysics.animateCardOntoPile('vh-bot-hand', 'vh-discard-pile', 'rose'));
 
-            if (dH <= 2 && vhState.playerHand.length > 0) {
+            const liveHandIndices = vhState.playerHand.map((c, i) => c ? i : -1).filter(i => i !== -1);
+            if (dH <= 2 && liveHandIndices.length > 0) {
                 let tIdx = -1;
                 if (vhState.aiMemory.knownPlayerCards.length > 0) {
                     const k = keyOf(...vhState.aiMemory.knownPlayerCards[0]);
-                    tIdx = vhState.playerHand.findIndex(c => keyOf(...c) === k);
+                    tIdx = vhState.playerHand.findIndex(c => c && keyOf(...c) === k);
                 }
-                if (tIdx === -1) tIdx = Math.floor(Math.random() * vhState.playerHand.length);
-                const forced = vhState.playerHand.splice(tIdx, 1)[0];
+                if (tIdx === -1) tIdx = liveHandIndices[Math.floor(Math.random() * liveHandIndices.length)];
+                const forced = vhState.playerHand[tIdx];
                 vhState.discardHistory.push(forced);
                 if (vhState.deck.length === 0) vhState.deck = shuffleArray(CARDS_125);
-                vhState.playerHand.push(vhState.deck.shift());
+                vhState.playerHand[tIdx] = vhState.deck.shift();
+                vhState.lastDrawnSlot = tIdx;
                 vhState.aiMemory.lastBotThought = `Löst Verhör aus und zwingt deine (${forced.join(',')}) auf M₁.`;
                 vhAddLog(`<span class="text-rose-400 font-bold">Bot-Verhör:</span> Deine (${forced.join(',')}) → M₁`);
+                if (window.BlinkUnifiedPhysics) requestAnimationFrame(() => {
+                    window.BlinkUnifiedPhysics.animateCardOntoPile('vh-player-hand', 'vh-discard-pile', 'amber');
+                    window.BlinkUnifiedPhysics.animateDealFromDeck('vh-deck-btn', `vh-card-${vhState.lastDrawnSlot}`);
+                });
             } else {
                 vhState.aiMemory.lastBotThought = `Warf (${disc.join(',')}) still ab, um seinen Kern zu schützen.`;
             }
@@ -1995,13 +2030,16 @@
             const handEl = document.getElementById('vh-player-hand');
             const canDiscard = vhState.isRunning && vhState.turn === 'player' && (vhState.phase === 'action' || vhState.phase === 'bonus_discard');
             const canDragSkt = vhCanUseSktDrop();
-            if (handCnt) handCnt.textContent = String(vhState.playerHand.length);
+            if (handCnt) handCnt.textContent = String(vhState.playerHand.filter(Boolean).length);
             if (handHint) handHint.textContent = canDiscard
                 ? 'Klick: Abwerfen · Ins SKT-Feld ziehen: SKT prüfen'
                 : (isDrawPhase ? 'Erst oben 6. Karte ziehen (oder SKT ziehen)' : 'Warte...');
 
             if (handEl) {
                 handEl.innerHTML = vhState.playerHand.map((card, idx) => {
+                    if (!card) {
+                        return `<div class="flex flex-col items-center"><div id="vh-card-${idx}" class="w-full card-63-88 rounded-xl border-2 border-dashed border-white/[0.08] bg-white/[0.015] pointer-events-none opacity-40"></div></div>`;
+                    }
                     const isSel = vhState.selectedIdx === idx;
                     const isInSkt = vhState.sktDraftIndices.includes(idx);
                     const isLocked = vhState.phase === 'action' && vhState.recalledKey === keyOf(...card);
@@ -2048,9 +2086,10 @@
             }
 
             // 7. Fortschritt & SKT-/Cluster-Buttons rechts
-            const pProg = getMaxClusterSubsetSize(vhState.playerHand, vhState.playerTrios);
+            const activeVhHand = vhState.playerHand.filter(Boolean);
+            const pProg = getMaxClusterSubsetSize(activeVhHand, vhState.playerTrios);
             const bProg = getMaxClusterSubsetSize(vhState.aiHand, vhState.aiTrios);
-            const hasCluster = findValidCluster5FromPool(vhState.playerHand, vhState.playerTrios) !== null;
+            const hasCluster = findValidCluster5FromPool(activeVhHand, vhState.playerTrios) !== null;
 
             const pill = document.getElementById('vh-progress-pill');
             const pLbl = document.getElementById('vh-bar-player-lbl');
@@ -2207,6 +2246,7 @@
 
             const stEl = document.getElementById('cas-status-text');
             if (stEl) stEl.textContent = 'Wirf Karten in Spalte 1–5 ein, um 5er-Cluster aufzulösen.';
+            if (window.BlinkUnifiedPhysics) requestAnimationFrame(() => window.BlinkUnifiedPhysics.animateGridDealWave('#cas-grid > button.bg-white', 45));
             const pill = document.getElementById('cas-combo-pill');
             if (pill) pill.textContent = 'Läuft';
 
@@ -2227,6 +2267,7 @@
 
         function skipCascadeCard() {
             if (cascadeState.gameOver || cascadeState.isAnimating || cascadeState.skipsLeft <= 0) return;
+            if (window.BlinkUnifiedPhysics) window.BlinkUnifiedPhysics.animateCascadeSkip();
             cascadeState.skipsLeft--;
             cascadeState.currentCard = cascadeState.nextCard;
             cascadeState.nextCard = drawSmartCascadeCard();
@@ -2252,6 +2293,13 @@
                     cascadeState.board[5 - colCards.length + i][col] = colCards[i];
                 }
                 cascadeState.rotatesLeft--;
+                if (window.BlinkUnifiedPhysics) {
+                    cascadeState.rotateMode = false;
+                    playSound('flip');
+                    renderCascadeUI();
+                    window.BlinkUnifiedPhysics.animateCascadeRotate(col, colCards.length, () => resolveCascadeMatches(1));
+                    return;
+                }
                 cascadeState.rotateMode = false;
                 playSound('flip');
                 resolveCascadeMatches(1);
@@ -2624,6 +2672,7 @@
             if (lbl) lbl.textContent = isPractice ? 'Zufalls-Training · 4×3 Feld' : `Daily Challenge · ${dailyState.dateKey}`;
             const fb = document.getElementById('daily-feedback-text');
             if (fb) fb.textContent = `In diesem 4×3-Feld sind genau ${sols.length} Cluster versteckt.`;
+            if (window.BlinkUnifiedPhysics) requestAnimationFrame(() => window.BlinkUnifiedPhysics.animateGridDealWave('#daily-cards-grid > button', 26));
 
             renderDailyUI();
             syncActiveGameModeMusic();
@@ -2639,6 +2688,7 @@
                 return;
             }
             if (dailyState.selectedIndices.length >= 5) return;
+            if (window.BlinkUnifiedPhysics) requestAnimationFrame(() => window.BlinkUnifiedPhysics.popSelectedCard(`daily-card-${idx}`));
             dailyState.selectedIndices.push(idx);
             playSound('tick');
             renderDailyUI();
@@ -2679,7 +2729,11 @@
                 if (dupZ) reasons.push('Symbol');
                 if (fb) fb.textContent = `Kein Cluster – Dopplung bei: ${reasons.join(', ')}.`;
 
-                dailyState.selectedIndices.forEach(i => triggerInvalidShake(`daily-card-${i}`));
+                if (window.BlinkUnifiedPhysics) {
+                    window.BlinkUnifiedPhysics.playDailyRepulsion(dailyState.selectedIndices);
+                } else {
+                    dailyState.selectedIndices.forEach(i => triggerInvalidShake(`daily-card-${i}`));
+                }
                 setTimeout(() => {
                     dailyState.selectedIndices = [];
                     renderDailyUI();
@@ -2882,6 +2936,7 @@
             }
 
             sudokuState.selectedCell = sudokuState.fixed.findIndex(f => !f);
+            if (window.BlinkUnifiedPhysics) requestAnimationFrame(() => window.BlinkUnifiedPhysics.animateGridDealWave('#sudoku-grid > button', 14));
 
             [10, 14, 17].forEach(n => {
                 const btn = document.getElementById(`sdk-diff-${n}`);
@@ -2950,6 +3005,11 @@
             sudokuState.notes[idx] = createEmptySudokuNote();
             playSound('play');
 
+            const _skipSdkFly = Boolean(window._hapticSkipNextFly);
+            window._hapticSkipNextFly = false;
+            if (!_skipSdkFly && window.BlinkUnifiedPhysics) {
+                window.BlinkUnifiedPhysics.scheduleSudokuFlight(idx);
+            }
             const nextEmpty = sudokuState.board.findIndex((c, i) => !sudokuState.fixed[i] && c === null);
             if (nextEmpty !== -1) sudokuState.selectedCell = nextEmpty;
 
@@ -3457,6 +3517,7 @@
 
             const fb = document.getElementById('eg-feedback-text');
             if (fb) fb.textContent = `Lege alle ${puz.hand.length} Handkarten in der richtigen Reihenfolge ab, ohne ein Deadlock auszulösen.`;
+            if (window.BlinkUnifiedPhysics) requestAnimationFrame(() => window.BlinkUnifiedPhysics.animateEndgameDealWave());
             renderEndgameUI();
             syncActiveGameModeMusic();
         }
@@ -3651,6 +3712,7 @@
                                  ondragstart="onEndgameHandDragStart(event, ${idx})"
                                  ondragend="onEndgameHandDragEnd(event, ${idx})"
                                  onclick="selectEndgameHandCard(${idx})"
+                        ondblclick="quickPlayEndgameHandCard(${idx})"
                                  class="game-card flex-1 min-w-0 max-w-[126px] card-63-88 rounded-2xl bg-white border-4 ${isSel ? 'border-cyan-400 selected-card' : 'border-slate-300 hover:border-slate-400'} shadow-xl flex flex-col justify-between p-1.5 sm:p-2 text-left relative overflow-hidden">
                                 ${renderLargePlayingCardInner(card, true)}
                             </div>

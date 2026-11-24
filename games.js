@@ -791,7 +791,7 @@ const BOT_DIFFICULTY_PRESETS = {
             if (gameState.useTrainedBrain && typeof getActiveTrainedAI === 'function') {
                 const ai = getActiveTrainedAI();
                 if (ai) {
-                    const rem = gameState.aiDeck.length + gameState.aiHand.length;
+                    const rem = gameState.aiDeck.length + gameState.aiHand.filter(Boolean).length;
                     delay = computeAIReflexIntervalMs(ai, rem, hadStreak, wasColorMatch);
                 }
             }
@@ -1099,7 +1099,10 @@ function startArenaTimerInterval() {
 
             if (gameState.mode === 'ai' && gameState.ruleMode !== 'verhoer') restartAILoop();
             renderBlinkGameUI();
-            if (gameState.ruleMode !== 'verhoer') checkDeadlockStatus();
+            if (gameState.ruleMode !== 'verhoer') {
+                checkDeadlockStatus();
+                if (window.BlinkUnifiedPhysics) window.BlinkUnifiedPhysics.animateArenaOpeningDeal();
+            }
             if (gameState.mode === 'online' && p2pState.role === 'host') {
                 p2pSendStateSync('Online-Duell gestartet! Viel Erfolg.', 'success');
             }
@@ -1285,7 +1288,10 @@ function startArenaTimerInterval() {
                     : 'w-[126px] sm:w-[145px] md:w-[158px] shrink-0';
 
                 handContainer.innerHTML = gameState.playerHand.map((card, idx) => {
-                    const isSelected = gameState.selectedHandIndex === idx;
+                    if (!card) {
+                    return `<div id="hand-card-el-${idx}" class="${cardWidthCls} card-63-88 rounded-2xl border-2 border-dashed border-white/[0.08] bg-white/[0.015] pointer-events-none opacity-40"></div>`;
+                }
+                const isSelected = gameState.selectedHandIndex === idx;
                     const isRecalled = isVerhoer && gameState.recalledCardKey === keyOf(card[0], card[1], card[2]);
                     const borderCls = isSelected ? 'border-cyan-400 selected-card' : 'border-slate-300 hover:border-slate-400';
 
@@ -1352,20 +1358,20 @@ function startArenaTimerInterval() {
                 if (barProg) barProg.style.width = `${Math.round((playerTotal / maxInitial) * 100)}%`;
 
                 if (isVersus) {
-                    const aiTotal = gameState.aiDeck.length + gameState.aiHand.length;
+                    const aiTotal = gameState.aiDeck.length + gameState.aiHand.filter(Boolean).length;
                     const subStats = document.getElementById('opponent-sub-stats');
                     const aiScore = document.getElementById('score-ai-total');
                     const aiProg = document.getElementById('bar-ai-progress');
                     const aiHC = document.getElementById('ai-hand-container');
 
                     if (subStats) {
-                        subStats.innerHTML = `Karten übrig: <strong id="ai-total-remaining" class="text-rose-400">${aiTotal}</strong> (Stapel: <span id="ai-deck-count">${gameState.aiDeck.length}</span> • Hand: <span id="ai-hand-count">${gameState.aiHand.length}</span>)`;
+                        subStats.innerHTML = `Karten übrig: <strong id="ai-total-remaining" class="text-rose-400">${aiTotal}</strong> (Stapel: <span id="ai-deck-count">${gameState.aiDeck.length}</span> • Hand: <span id="ai-hand-count">${gameState.aiHand.filter(Boolean).length}</span>)`;
                     }
                     if (aiScore) aiScore.textContent = `${aiTotal} Karten`;
                     if (aiProg) aiProg.style.width = `${Math.round((aiTotal / maxInitial) * 100)}%`;
 
                     if (aiHC) {
-                        aiHC.innerHTML = gameState.aiHand.map(([x, y, z]) => `
+                        aiHC.innerHTML = gameState.aiHand.filter(Boolean).map(([x, y, z]) => `
                             <div class="w-12 sm:w-14 card-63-88 rounded-lg bg-white border-2 border-slate-300 p-1 flex flex-col items-center justify-center shadow" title="KI-Handkarte">
                                 ${renderCardSymbolsHTML(x, y, z, 11)}
                             </div>
@@ -2021,16 +2027,24 @@ updatePlayerEloAfterMatch(1200, true, 'Taktik-Bot (Verhör)', 28);
  const commitPlay = () => {
  if (!hand[handIdx]) return;
  gameState.centerPiles[pileIdx] = playedCard;
- hand.splice(handIdx, 1);
+hand[handIdx] = null;
+            if (actor === 'player') gameState.lastClearedHandSlot = handIdx;
 
- const autoDraw = gameState.mode === 'online' || document.getElementById('chk-auto-draw').checked;
- let drewCard = false;
- if (actor === 'ai' || autoDraw) {
- while (hand.length < 3 && deck.length > 0) {
- hand.push(deck.shift());
- drewCard = true;
- }
- }
+            const autoDraw = gameState.mode === 'online' || document.getElementById('chk-auto-draw').checked;
+            const drawnSlots = [];
+            if (actor === 'ai' || autoDraw) {
+                if (deck.length > 0) {
+                    hand[handIdx] = deck.shift();
+                    drawnSlots.push(handIdx);
+                }
+                for (let s = 0; s < hand.length && deck.length > 0; s++) {
+                    if (!hand[s]) {
+                        hand[s] = deck.shift();
+                        drawnSlots.push(s);
+                    }
+                }
+            }
+            const drewCard = drawnSlots.length > 0;
 
  if (actor === 'player') {
  gameState.selectedHandIndex = null;
@@ -2053,7 +2067,11 @@ updatePlayerEloAfterMatch(1200, true, 'Taktik-Bot (Verhör)', 28);
  : reasons[0];
  window.BlinkHaptics.floatBadge(pileEl, badgeText, gameState.streak >= 3 ? 'emerald' : tone);
  if (drewCard) {
- const freshEl = document.getElementById(`hand-card-el-${gameState.playerHand.length - 1}`);
+const freshSlotIdx = drawnSlots.length > 0 ? drawnSlots[0] : handIdx;
+                        const freshEl = document.getElementById(`hand-card-el-${freshSlotIdx}`);
+                        if (window.BlinkUnifiedPhysics && freshEl) {
+                            window.BlinkUnifiedPhysics.animateDealFromDeck('player-draw-pile-btn', freshEl.id);
+                        } else
  window.BlinkHaptics.stampPop(freshEl);
  }
  }
@@ -2063,7 +2081,7 @@ updatePlayerEloAfterMatch(1200, true, 'Taktik-Bot (Verhör)', 28);
  if (gameState.isRunning) checkDeadlockStatus();
  if (gameState.isRunning && gameState.isTrainingMatch) {
  gameState.movesSincePause++;
- const remMin = Math.min(gameState.playerDeck.length + gameState.playerHand.length, gameState.aiDeck.length + gameState.aiHand.length);
+ const remMin = Math.min(gameState.playerDeck.length + gameState.playerHand.filter(Boolean).length, gameState.aiDeck.length + gameState.aiHand.filter(Boolean).length);
  if (remMin <= 9) maybeTriggerAITrainingPause('endgame');
  else if (actor === 'player' && gameState.streak >= 3) maybeTriggerAITrainingPause('streak');
  else maybeTriggerAITrainingPause('general');
@@ -2102,11 +2120,21 @@ p2pSendStateSync('', 'neutral');
                 verhoerDrawFromDeck();
                 return;
             }
-            if (gameState.playerHand.length < 3 && gameState.playerDeck.length > 0) {
-                gameState.playerHand.push(gameState.playerDeck.shift());
-                renderBlinkGameUI();
-                checkDeadlockStatus();
+            if (gameState.playerDeck.length === 0) return;
+            let emptySlot = (typeof gameState.lastClearedHandSlot === 'number' && gameState.playerHand[gameState.lastClearedHandSlot] === null)
+                ? gameState.lastClearedHandSlot
+                : gameState.playerHand.findIndex(c => !c);
+            if (emptySlot === -1 && gameState.playerHand.length < 3) {
+                emptySlot = gameState.playerHand.length;
             }
+            if (emptySlot === -1) return;
+            gameState.playerHand[emptySlot] = gameState.playerDeck.shift();
+            if (gameState.lastClearedHandSlot === emptySlot) gameState.lastClearedHandSlot = null;
+            renderBlinkGameUI();
+            if (window.BlinkUnifiedPhysics) {
+                window.BlinkUnifiedPhysics.animateDealFromDeck('player-draw-pile-btn', `hand-card-el-${emptySlot}`);
+            }
+            checkDeadlockStatus();
         }
 
         function executeAIMoveStep() {
@@ -2190,6 +2218,7 @@ p2pSendStateSync('', 'neutral');
             }
 
             setGameBanner(`Neue Mittelkarten aufgedeckt! Weiter geht's.`, 'neutral');
+            if (window.BlinkUnifiedPhysics) requestAnimationFrame(() => window.BlinkUnifiedPhysics.animateArenaRestock());
             renderBlinkGameUI();
             checkWinCondition();
             checkDeadlockStatus();
@@ -2203,8 +2232,8 @@ p2pSendStateSync('', 'neutral');
 
         function checkWinCondition() {
             if (gameState.ruleMode === 'verhoer') return;
-            const playerTotal = gameState.playerDeck.length + gameState.playerHand.length;
-            const aiTotal = gameState.aiDeck.length + gameState.aiHand.length;
+            const playerTotal = gameState.playerDeck.length + gameState.playerHand.filter(Boolean).length;
+            const aiTotal = gameState.aiDeck.length + gameState.aiHand.filter(Boolean).length;
             const elapsed = (performance.now() - gameState.startTime) / 1000;
             const timeStr = formatElapsedTime(elapsed);
             const oppNameEl = document.getElementById('opponent-name-label');

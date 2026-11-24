@@ -168,6 +168,7 @@
     function hapticPileImpact(targetEl, tone = 'cyan') {
         if (!targetEl) return;
         playHapticFoley('cardSnap', tone === 'purple' ? 1.12 : (tone === 'amber' ? 0.94 : 1.0));
+        if (window.BlinkUnifiedPhysics) window.BlinkUnifiedPhysics.applyPileScatter(targetEl);
         hapticVibrate(9);
 
         targetEl.classList.remove('haptic-pile-thump');
@@ -344,6 +345,11 @@
         '[id^="daily-card-"]',
         '[id^="eg-pile-"]',
         '#cas-current-card',
+        '#cas-grid > button.bg-white',
+        '#sudoku-grid > button.bg-white',
+        '#sdk-picker-preview.bg-white',
+        '#vh-skt-dropzone > button',
+        '#vh-player-trios .card-63-88',
         '#card-list-grid > button',
         '#adv-cards-grid > div'
     ].join(',');
@@ -449,6 +455,28 @@
             }
         }
 
+        // 3a. Blink-Sudoku Vorschaukarte direkt auf ein Feld ziehen
+        const sdkPrev = targetNode.closest('#sdk-picker-preview');
+        if (sdkPrev && typeof sudokuState !== 'undefined' && !sudokuState.solved && sudokuState.inputMode === 'card') {
+            return { context: 'sudoku', handIdx: 0, el: sdkPrev };
+        }
+
+        // 3a-2. Bereits eingesetzte (nicht fixierte) Karte aus dem Blink-Sudoku rausziehen / verschieben
+        const sdkGrid = document.getElementById('sudoku-grid');
+        const sdkCell = targetNode.closest('#sudoku-grid > button');
+        if (sdkGrid && sdkCell && typeof sudokuState !== 'undefined' && !sudokuState.solved) {
+            const cellIdx = Array.from(sdkGrid.children).indexOf(sdkCell);
+            if (cellIdx >= 0 && !sudokuState.fixed[cellIdx] && sudokuState.board[cellIdx]) {
+                return { context: 'sudoku-remove', handIdx: cellIdx, el: sdkCell };
+            }
+        }
+
+        // 3b. Cluster-Cascade aktive Karte direkt über Spalte 1–5 ziehen
+        const casCard = targetNode.closest('#cas-current-card');
+        if (casCard && typeof cascadeState !== 'undefined' && !cascadeState.gameOver && !cascadeState.isAnimating && !cascadeState.rotateMode) {
+            return { context: 'cascade', handIdx: 0, el: casCard };
+        }
+
         // 3. Endgame Handkarte
         const egCard = targetNode.closest('[id^="eg-hand-"]');
         if (egCard && typeof endgameState !== 'undefined' && endgameState.status === 'playing') {
@@ -474,6 +502,50 @@
             const skt = document.getElementById('vh-player-skt-box');
             if (disc && disc.offsetParent !== null) list.push({ type: 'vh-discard', idx: 0, el: disc });
             if (skt && skt.offsetParent !== null) list.push({ type: 'vh-skt', idx: 1, el: skt });
+        } else if (context === 'sudoku') {
+            const grid = document.getElementById('sudoku-grid');
+            if (grid && typeof sudokuState !== 'undefined') {
+                Array.from(grid.children).forEach((el, i) => {
+                    if (!sudokuState.fixed[i] && el.offsetParent !== null) {
+                        list.push({ type: 'sudoku-cell', idx: i, el });
+                    }
+                });
+            }
+        } else if (context === 'sudoku-remove') {
+            const grid = document.getElementById('sudoku-grid');
+            if (grid && typeof sudokuState !== 'undefined') {
+                Array.from(grid.children).forEach((el, i) => {
+                    if (i !== dragPhysics.handIdx && !sudokuState.fixed[i] && el.offsetParent !== null) {
+                        list.push({ type: 'sudoku-move-cell', idx: i, el });
+                    }
+                });
+            }
+        } else if (context === 'cascade') {
+            const grid = document.getElementById('cas-grid');
+            const triggers = document.getElementById('cas-col-triggers');
+            if (grid && typeof cascadeState !== 'undefined') {
+                for (let c = 0; c < 5; c++) {
+                    let targetRow = -1;
+                    for (let r = 4; r >= 0; r--) {
+                        if (cascadeState.board[r] && cascadeState.board[r][c] === null) {
+                            targetRow = r;
+                            break;
+                        }
+                    }
+                    if (targetRow !== -1) {
+                        for (let r = 0; r <= targetRow; r++) {
+                            const cellEl = grid.children[r * 5 + c];
+                            if (cellEl && cellEl.offsetParent !== null) {
+                                list.push({ type: 'cascade-col', idx: c, el: cellEl });
+                            }
+                        }
+                        const trigEl = triggers ? triggers.children[c] : null;
+                        if (trigEl && trigEl.offsetParent !== null) {
+                            list.push({ type: 'cascade-col', idx: c, el: trigEl });
+                        }
+                    }
+                }
+            }
         } else if (context === 'endgame') {
             const n = (typeof endgameState !== 'undefined' && endgameState.piles) ? endgameState.piles.length : 0;
             for (let i = 0; i < n; i++) {
@@ -504,24 +576,52 @@
         return best;
     }
 
+    function resolveLiveDragSource(context, handIdx, fallbackEl) {
+        if (fallbackEl && fallbackEl.isConnected) return fallbackEl;
+        if (context === 'arena') return document.getElementById(`hand-card-el-${handIdx}`);
+        if (context === 'verhoer') return document.getElementById(`vh-card-${handIdx}`);
+        if (context === 'endgame') return document.getElementById(`eg-hand-${handIdx}`);
+        if (context === 'sudoku') return document.getElementById('sdk-picker-preview');
+        if (context === 'sudoku-remove') return document.getElementById('sudoku-grid')?.children[handIdx] || null;
+        if (context === 'cascade') return document.getElementById('cas-current-card');
+        return null;
+    }
+
     function beginPhysicsDrag() {
-        const src = dragPhysics.sourceEl;
+        const src = resolveLiveDragSource(dragPhysics.context, dragPhysics.handIdx, dragPhysics.sourceEl);
+        if (!src || !src.isConnected) {
+            dragPhysics.active = false;
+            return;
+        }
+        dragPhysics.sourceEl = src;
         const rect = src.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) {
+            dragPhysics.active = false;
+            return;
+        }
         resetCardTilt(src);
 
         const ghost = src.cloneNode(true);
         ghost.removeAttribute('id');
-        ghost.classList.remove('selected-card', 'dragging-card', 'shake-invalid', 'is-tilting');
+        ghost.classList.remove(
+            'game-card', 'selected-card', 'dragging-card', 'shake-invalid', 'is-tilting',
+            'haptic-deal-pop', 'haptic-pile-thump', 'haptic-drag-source-hidden',
+            'phys-magnet-repel', 'phys-sudoku-resonance', 'phys-cascade-falling', 'phys-cascade-shock'
+        );
         ghost.classList.add('haptic-drag-ghost');
-        ghost.style.position = 'fixed';
-        ghost.style.left = '0px';
-        ghost.style.top = '0px';
-        ghost.style.width = `${rect.width}px`;
-        ghost.style.height = `${rect.height}px`;
+        ghost.style.setProperty('position', 'fixed', 'important');
+        ghost.style.setProperty('animation', 'none', 'important');
+        ghost.style.left = `${rect.left.toFixed(1)}px`;
+        ghost.style.top = `${rect.top.toFixed(1)}px`;
+        ghost.style.width = `${rect.width.toFixed(1)}px`;
+        ghost.style.height = `${rect.height.toFixed(1)}px`;
         ghost.style.margin = '0';
         ghost.style.zIndex = '9999';
         ghost.style.pointerEvents = 'none';
-        ghost.style.willChange = 'transform';
+        ghost.style.visibility = 'visible';
+        ghost.style.opacity = '1';
+        ghost.style.willChange = 'left, top, transform';
+        ghost.style.transform = 'perspective(820px) scale(1.06)';
 
         document.body.appendChild(ghost);
         src.classList.add('haptic-drag-source-hidden');
@@ -550,7 +650,16 @@
             let targetX = dragPhysics.ptrX - dragPhysics.grabOffsetX;
             let targetY = dragPhysics.ptrY - dragPhysics.grabOffsetY;
 
-            const mag = findMagneticTarget(dragPhysics.ptrX, dragPhysics.ptrY);
+            let mag = findMagneticTarget(dragPhysics.ptrX, dragPhysics.ptrY);
+            if (dragPhysics.context === 'sudoku-remove') {
+                const grid = document.getElementById('sudoku-grid');
+                if (grid) {
+                    const gr = grid.getBoundingClientRect();
+                    const isOutside = dragPhysics.ptrX < gr.left || dragPhysics.ptrX > gr.right || dragPhysics.ptrY < gr.top || dragPhysics.ptrY > gr.bottom;
+                    dragPhysics.ghostEl.classList.toggle('phys-drag-discarding', isOutside);
+                    if (isOutside) mag = null;
+                }
+            }
             const prevEl = dragPhysics.hoveredTarget ? dragPhysics.hoveredTarget.el : null;
             const nextEl = mag ? mag.el : null;
 
@@ -577,6 +686,8 @@
             dragPhysics.curY += (targetY - dragPhysics.curY) * 0.44;
 
             const vx = dragPhysics.curX - dragPhysics.prevX;
+            dragPhysics.lastVx = vx;
+            dragPhysics.lastVy = dragPhysics.curY - dragPhysics.prevY;
             const vy = dragPhysics.curY - dragPhysics.prevY;
             dragPhysics.prevX = dragPhysics.curX;
             dragPhysics.prevY = dragPhysics.curY;
@@ -590,8 +701,9 @@
             dragPhysics.rotX += (goalRotX - dragPhysics.rotX) * 0.28;
 
             const dragScale = mag ? 1.04 : 1.085;
+            dragPhysics.ghostEl.style.left = `${dragPhysics.curX.toFixed(1)}px`;
+            dragPhysics.ghostEl.style.top = `${dragPhysics.curY.toFixed(1)}px`;
             dragPhysics.ghostEl.style.transform =
-                `translate3d(${dragPhysics.curX.toFixed(1)}px, ${dragPhysics.curY.toFixed(1)}px, 0) ` +
                 `perspective(820px) rotateX(${dragPhysics.rotX.toFixed(2)}deg) rotateY(${dragPhysics.rotY.toFixed(2)}deg) rotateZ(${dragPhysics.rotZ.toFixed(2)}deg) scale(${dragScale})`;
 
             dragPhysics.rafId = requestAnimationFrame(loop);
@@ -600,25 +712,34 @@
     }
 
     function animateGhostReturn(ghost, src) {
+        const reboundEl = dragPhysics._reboundEl || null;
+        dragPhysics._reboundEl = null;
+        if (reboundEl && ghost && window.BlinkUnifiedPhysics) {
+            window.BlinkUnifiedPhysics.animateReboundReturn(ghost, src, reboundEl);
+            return;
+        }
         if (!ghost) {
             if (src) src.classList.remove('haptic-drag-source-hidden');
             return;
         }
         playHapticFoley('return');
-        const dst = src ? src.getBoundingClientRect() : null;
+        const dst = (src && src.isConnected) ? src.getBoundingClientRect() : null;
         if (!dst || dst.width <= 0) {
             ghost.remove();
             if (src) src.classList.remove('haptic-drag-source-hidden');
             return;
         }
-        ghost.style.transition = 'transform 220ms cubic-bezier(0.22, 1.22, 0.36, 1), opacity 180ms ease';
+        ghost.classList.remove('haptic-drag-ghost');
+        ghost.style.transition = 'left 220ms cubic-bezier(0.22, 1.22, 0.36, 1), top 220ms cubic-bezier(0.22, 1.22, 0.36, 1), transform 220ms cubic-bezier(0.22, 1.22, 0.36, 1), opacity 180ms ease';
         requestAnimationFrame(() => {
-            ghost.style.transform = `translate3d(${dst.left.toFixed(1)}px, ${dst.top.toFixed(1)}px, 0) scale(1)`;
+            ghost.style.left = `${dst.left.toFixed(1)}px`;
+            ghost.style.top = `${dst.top.toFixed(1)}px`;
+            ghost.style.transform = 'scale(1)';
         });
         setTimeout(() => {
             ghost.remove();
             if (src) src.classList.remove('haptic-drag-source-hidden');
-        }, 225);
+        }, 230);
     }
 
     function finishPhysicsDrag(cancelled = false) {
@@ -632,9 +753,12 @@
         const wasDragging = dragPhysics.dragging;
         const ctxName = dragPhysics.context;
         const handIdx = dragPhysics.handIdx;
-        const src = dragPhysics.sourceEl;
+        const src = resolveLiveDragSource(ctxName, handIdx, dragPhysics.sourceEl);
         const ghost = dragPhysics.ghostEl;
-        const mag = !cancelled ? findMagneticTarget(dragPhysics.ptrX, dragPhysics.ptrY) : null;
+        let mag = !cancelled ? findMagneticTarget(dragPhysics.ptrX, dragPhysics.ptrY) : null;
+        if (!mag && !cancelled && window.BlinkUnifiedPhysics) {
+            mag = window.BlinkUnifiedPhysics.resolveFlickTarget(dragPhysics, findMagneticTarget);
+        }
 
         dragPhysics.targets.forEach(t => t.el.classList.remove('haptic-drop-magnet'));
         document.body.classList.remove('haptic-is-dragging');
@@ -651,6 +775,38 @@
 
         window._hapticSuppressClickUntil = performance.now() + 140;
 
+        if (ctxName === 'sudoku-remove' && !cancelled && typeof sudokuState !== 'undefined') {
+            const grid = document.getElementById('sudoku-grid');
+            const gr = grid ? grid.getBoundingClientRect() : null;
+            const isOutside = gr && (dragPhysics.ptrX < gr.left || dragPhysics.ptrX > gr.right || dragPhysics.ptrY < gr.top || dragPhysics.ptrY > gr.bottom);
+            if (isOutside) {
+                const vx = dragPhysics.lastVx || 0;
+                const vy = dragPhysics.lastVy || 0;
+                if (ghost) {
+                    ghost.classList.remove('haptic-drag-ghost');
+                    ghost.style.transition = 'left 200ms cubic-bezier(0.22, 1, 0.36, 1), top 200ms cubic-bezier(0.22, 1, 0.36, 1), transform 200ms cubic-bezier(0.22, 1, 0.36, 1), opacity 190ms ease';
+                    const tx = dragPhysics.curX + Math.max(-90, Math.min(90, vx * 5));
+                    const ty = dragPhysics.curY + Math.max(-90, Math.min(90, vy * 5)) + 16;
+                    const rot = dragPhysics.rotZ + (vx >= 0 ? 14 : -14);
+                    requestAnimationFrame(() => {
+                        ghost.style.left = `${tx.toFixed(1)}px`;
+                        ghost.style.top = `${ty.toFixed(1)}px`;
+                        ghost.style.transform = `rotateZ(${rot.toFixed(1)}deg) scale(0.72)`;
+                        ghost.style.opacity = '0';
+                    });
+                    setTimeout(() => ghost.remove(), 210);
+                }
+                if (src) src.classList.remove('haptic-drag-source-hidden');
+                sudokuState.board[handIdx] = null;
+                sudokuState.selectedCell = handIdx;
+                playHapticFoley('return', 1.05);
+                hapticVibrate(8);
+                if (typeof playSound === 'function') playSound('tick');
+                if (typeof renderSudokuUI === 'function') renderSudokuUI();
+                return;
+            }
+        }
+
         if (!mag) {
             animateGhostReturn(ghost, src);
             return;
@@ -662,6 +818,7 @@
         if (mag.type === 'arena-pile' && typeof gameState !== 'undefined' && typeof tryPlaySelectedOnPile === 'function') {
             const card = gameState.playerHand[handIdx];
             const isLegal = typeof canPlayCardOnPile === 'function' ? canPlayCardOnPile(card, mag.idx) : true;
+            dragPhysics._reboundEl = isLegal ? null : mag.el;
             if (isLegal) {
                 executed = true;
                 if (ghost) ghost.remove();
@@ -709,10 +866,45 @@
             vhAddIndexToSktDraft(handIdx);
             hapticPileImpact(mag.el, 'purple');
 
+        } else if (mag.type === 'sudoku-move-cell' && typeof sudokuState !== 'undefined') {
+            executed = true;
+            if (ghost) ghost.remove();
+            if (src) src.classList.remove('haptic-drag-source-hidden');
+            const prevLines = window.BlinkModePhysics ? window.BlinkModePhysics.getSudokuCompletedLineKeys() : null;
+            const movedCard = sudokuState.board[handIdx];
+            const swapCard = sudokuState.board[mag.idx];
+            sudokuState.board[mag.idx] = movedCard;
+            sudokuState.board[handIdx] = swapCard || null;
+            sudokuState.notes[mag.idx] = typeof createEmptySudokuNote === 'function' ? createEmptySudokuNote() : { x: [], y: [], z: [] };
+            sudokuState.selectedCell = mag.idx;
+            if (typeof playSound === 'function') playSound('play');
+            if (typeof renderSudokuUI === 'function') renderSudokuUI();
+            if (window.BlinkModePhysics) {
+                requestAnimationFrame(() => window.BlinkModePhysics.onSudokuCardPlaced(mag.idx, prevLines));
+            }
+            const destCell = document.getElementById('sudoku-grid')?.children[mag.idx];
+            if (destCell) hapticPileImpact(destCell, 'purple');
+
+        } else if (mag.type === 'sudoku-cell' && typeof sudokuState !== 'undefined' && typeof placePickedCardInSudoku === 'function') {
+            executed = true;
+            if (ghost) ghost.remove();
+            if (src) src.classList.remove('haptic-drag-source-hidden');
+            window._hapticSkipNextFly = true;
+            sudokuState.selectedCell = mag.idx;
+            placePickedCardInSudoku();
+            hapticPileImpact(mag.el, 'purple');
+
+        } else if (mag.type === 'cascade-col' && typeof cascadeState !== 'undefined' && typeof onCascadeColumnClick === 'function') {
+            executed = true;
+            if (ghost) ghost.remove();
+            if (src) src.classList.remove('haptic-drag-source-hidden');
+            onCascadeColumnClick(mag.idx);
+
         } else if (mag.type === 'eg-pile' && typeof endgameState !== 'undefined' && typeof playEndgameOnPile === 'function') {
             const card = endgameState.hand[handIdx];
             const mode = endgameState.currentPuzzle ? endgameState.currentPuzzle.mode : 'normal';
             const isLegal = typeof canPlayEndgameCard === 'function' ? canPlayEndgameCard(card, endgameState.piles, mag.idx, mode) : true;
+            dragPhysics._reboundEl = isLegal ? null : mag.el;
             if (isLegal) {
                 executed = true;
                 if (ghost) ghost.remove();
@@ -2534,4 +2726,524 @@
         getSudokuCompletedLineKeys,
         onSudokuCardPlaced
     };
+})();
+// ============================================================================
+// EINHEITLICHE KARTENPHYSIK FÜR ALLE 6 SPIELMODI
+// Flick-to-Play · Abpraller · Ablage-Drehung · Hand-Ausweichen · Deck-Flug
+// ============================================================================
+(function initBlinkUnifiedCardPhysics() {
+    if (window.__BLINK_UNIFIED_PHYSICS_READY) return;
+    window.__BLINK_UNIFIED_PHYSICS_READY = true;
+
+    const prefersReducedMotion = () =>
+        Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+    const resolveEl = (idOrSel) => {
+        if (!idOrSel) return null;
+        if (typeof idOrSel !== 'string') return idOrSel;
+        return /^[#.\[]/.test(idOrSel) ? document.querySelector(idOrSel) : document.getElementById(idOrSel);
+    };
+
+    // ------------------------------------------------------------------------
+    // 1. ORGANISCHE ABLAGE-DREHUNG & STAPEL-TIEFE (ARENA, VERHÖR, ENDGAMES)
+    // ------------------------------------------------------------------------
+    const PILE_IDS = new Set(['center-pile-0', 'center-pile-1', 'center-pile-2', 'vh-discard-pile', 'eg-pile-0', 'eg-pile-1', 'eg-pile-2']);
+    const pileScatterState = {};
+
+    function applyPileScatter(el, reset = false) {
+        if (!el || !el.id || !PILE_IDS.has(el.id)) return;
+        if (reset) {
+            pileScatterState[el.id] = { rot: 0, depth: 1 };
+        } else {
+            const prev = pileScatterState[el.id] || { rot: 0, depth: 1 };
+            const sign = prev.rot >= 0 ? -1 : 1;
+            const nextRot = 0;
+            pileScatterState[el.id] = { rot: nextRot, depth: Math.min(6, prev.depth + 1) };
+        }
+        const st = pileScatterState[el.id];
+        el.style.setProperty('--card-fan-rot', `${st.rot.toFixed(2)}deg`);
+        el.style.setProperty('--pile-depth', String(st.depth));
+        el.classList.add('phys-scattered-pile');
+    }
+
+    function restorePileScatter(container) {
+        if (!container) return;
+        container.querySelectorAll('[id^="eg-pile-"], [id^="center-pile-"], #vh-discard-pile').forEach(el => {
+            const st = pileScatterState[el.id];
+            if (!st) return;
+            el.style.setProperty('--card-fan-rot', `${st.rot.toFixed(2)}deg`);
+            el.style.setProperty('--pile-depth', String(st.depth));
+            el.classList.add('phys-scattered-pile');
+        });
+    }
+
+    // ------------------------------------------------------------------------
+    // 2. ELASTISCHES HAND-AUSWEICHEN (ARENA, DAS VERHÖR, ENDGAMES)
+    // ------------------------------------------------------------------------
+    const HAND_CONTAINERS = ['player-hand-container', 'vh-player-hand', 'eg-hand-container'];
+
+    function clearHandParting(container) {
+        if (!container) return;
+        container.querySelectorAll('.game-card, [id^="vh-card-"]').forEach(c => {
+            c.style.setProperty('--hand-shift-x', '0px');
+        });
+    }
+
+    function setupHandParting() {
+        return;
+        const isCoarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+        if (isCoarse) return;
+
+        HAND_CONTAINERS.forEach(id => {
+            const cont = document.getElementById(id);
+            if (!cont || cont.dataset.partingWired === '1') return;
+            cont.dataset.partingWired = '1';
+
+            cont.addEventListener('pointerover', (e) => {
+                if (e.pointerType === 'touch' || document.body.classList.contains('haptic-is-dragging')) return;
+                const card = e.target.closest('.game-card, [id^="vh-card-"]');
+                if (!card || !cont.contains(card)) return;
+                const cards = Array.from(cont.querySelectorAll('.game-card, [id^="vh-card-"]'));
+                const idx = cards.indexOf(card);
+                if (idx === -1) return;
+                cards.forEach((c, i) => {
+                    const diff = i - idx;
+                    const shift = diff === 0 ? 0 : (diff < 0 ? -Math.max(4, 11 - Math.abs(diff) * 3) : Math.max(4, 11 - Math.abs(diff) * 3));
+                    c.style.setProperty('--hand-shift-x', `${shift}px`);
+                });
+            }, { passive: true });
+
+            cont.addEventListener('pointerleave', () => clearHandParting(cont));
+        });
+    }
+
+    // ------------------------------------------------------------------------
+    // 3. FLICK-TO-PLAY & ELASTISCHER ABPRALLER BEI UNGÜLTIGEM ZUG
+    // ------------------------------------------------------------------------
+    function resolveFlickTarget(dragState, findTargetFn) {
+        if (!dragState || prefersReducedMotion()) return null;
+        const vx = dragState.lastVx || 0;
+        const vy = dragState.lastVy || 0;
+        const speed = Math.hypot(vx, vy);
+        if (speed < 9.5) return null;
+
+        for (let step = 3; step <= 13; step += 2) {
+            const hit = findTargetFn(dragState.ptrX + vx * step, dragState.ptrY + vy * step);
+            if (hit) return hit;
+        }
+        return null;
+    }
+
+    function animateReboundReturn(ghost, src, pileEl) {
+        if (!ghost) {
+            if (src) src.classList.remove('haptic-drag-source-hidden');
+            return;
+        }
+        const gRect = ghost.getBoundingClientRect();
+        const pRect = pileEl ? pileEl.getBoundingClientRect() : null;
+        const dst = src ? src.getBoundingClientRect() : null;
+        if (!dst || dst.width <= 0) {
+            ghost.remove();
+            if (src) src.classList.remove('haptic-drag-source-hidden');
+            return;
+        }
+
+        const gx = gRect.left + gRect.width * 0.5;
+        const gy = gRect.top + gRect.height * 0.5;
+        const px = pRect ? pRect.left + pRect.width * 0.5 : gx;
+        const py = pRect ? pRect.top + pRect.height * 0.5 : gy - 40;
+        const dx = gx - px;
+        const dy = gy - py;
+        const dist = Math.max(1, Math.hypot(dx, dy));
+        const bounceX = gRect.left + (dx / dist) * 34;
+        const bounceY = gRect.top + (dy / dist) * 34 + 14;
+        const spin = dx >= 0 ? 11 : -11;
+
+        if (window.BlinkHaptics) window.BlinkHaptics.foley('return', 0.86);
+
+        ghost.classList.remove('haptic-drag-ghost');
+        ghost.style.transition = 'left 115ms cubic-bezier(0.2, 0.85, 0.35, 1), top 115ms cubic-bezier(0.2, 0.85, 0.35, 1), transform 115ms cubic-bezier(0.2, 0.85, 0.35, 1)';
+        requestAnimationFrame(() => {
+            ghost.style.left = `${bounceX.toFixed(1)}px`;
+            ghost.style.top = `${bounceY.toFixed(1)}px`;
+            ghost.style.transform = `rotateZ(${spin}deg) scale(1.03)`;
+        });
+
+        setTimeout(() => {
+            if (!ghost.isConnected) return;
+            ghost.style.transition = 'left 250ms cubic-bezier(0.22, 1.24, 0.36, 1), top 250ms cubic-bezier(0.22, 1.24, 0.36, 1), transform 250ms cubic-bezier(0.22, 1.24, 0.36, 1)';
+            ghost.style.left = `${dst.left.toFixed(1)}px`;
+            ghost.style.top = `${dst.top.toFixed(1)}px`;
+            ghost.style.transform = 'rotateZ(0deg) scale(1)';
+            setTimeout(() => {
+                ghost.remove();
+                if (src) src.classList.remove('haptic-drag-source-hidden');
+            }, 255);
+        }, 115);
+    }
+
+    // ------------------------------------------------------------------------
+    // 4. DECK-RÜCKSTOSS, PARABOL-FLUG & AUSTEIL-WELLEN (ALLE MODI)
+    // ------------------------------------------------------------------------
+    function recoilDeck(idOrSel) {
+        const el = resolveEl(idOrSel);
+        if (!el || prefersReducedMotion()) return;
+        el.classList.remove('phys-deck-recoil');
+        void el.offsetWidth;
+        el.classList.add('phys-deck-recoil');
+        setTimeout(() => el.classList.remove('phys-deck-recoil'), 260);
+    }
+
+    function flyCloneBetweenRects(templateEl, startRect, targetEl, opts = {}) {
+        if (!templateEl || !startRect || !targetEl || prefersReducedMotion()) {
+            if (typeof opts.onLand === 'function') opts.onLand();
+            return;
+        }
+        const endRect = targetEl.getBoundingClientRect();
+        if (startRect.width <= 0 || endRect.width <= 0) {
+            if (typeof opts.onLand === 'function') opts.onLand();
+            return;
+        }
+
+        const duration = opts.duration || 175;
+        const clone = templateEl.cloneNode(true);
+        clone.removeAttribute('id');
+        clone.classList.remove('selected-card', 'dragging-card', 'shake-invalid', 'is-tilting');
+        clone.style.position = 'fixed';
+        clone.style.left = `${startRect.left}px`;
+        clone.style.top = `${startRect.top}px`;
+        clone.style.width = `${startRect.width}px`;
+        clone.style.height = `${startRect.height}px`;
+        clone.style.margin = '0';
+        clone.style.zIndex = '9998';
+        clone.style.pointerEvents = 'none';
+        clone.style.transition = 'none';
+        clone.style.transformOrigin = 'center center';
+        document.body.appendChild(clone);
+
+        if (opts.hideTarget !== false) targetEl.style.visibility = 'hidden';
+        if (window.BlinkHaptics) window.BlinkHaptics.foley('cardLift', opts.pitch || 1.04);
+
+        const dx = (endRect.left + endRect.width * 0.5) - (startRect.left + startRect.width * 0.5);
+        const dy = (endRect.top + endRect.height * 0.5) - (startRect.top + startRect.height * 0.5);
+        const scaleX = endRect.width / startRect.width;
+        const arcLift = Math.min(64, Math.max(20, Math.hypot(dx, dy) * 0.14));
+        const tiltZ = Math.max(-13, Math.min(13, dx * 0.032));
+        const t0 = performance.now();
+
+        const step = (now) => {
+            const p = Math.min(1, (now - t0) / duration);
+            const ease = 1 - Math.pow(1 - p, 3);
+            const arc = Math.sin(p * Math.PI) * arcLift;
+            const curX = dx * ease;
+            const curY = dy * ease - arc;
+            const curScale = 1 + (scaleX - 1) * ease + Math.sin(p * Math.PI) * 0.06;
+            const curRot = tiltZ * Math.sin(p * Math.PI);
+            clone.style.transform = `translate3d(${curX.toFixed(1)}px, ${curY.toFixed(1)}px, 0) rotateZ(${curRot.toFixed(2)}deg) scale(${curScale.toFixed(3)})`;
+
+            if (p < 1) {
+                requestAnimationFrame(step);
+            } else {
+                clone.remove();
+                if (targetEl.isConnected) targetEl.style.visibility = '';
+                if (opts.impactTone && window.BlinkHaptics) {
+                    window.BlinkHaptics.pileImpact(targetEl, opts.impactTone);
+                } else if (window.BlinkHaptics) {
+                    window.BlinkHaptics.stampPop(targetEl);
+                }
+                if (typeof opts.onLand === 'function') opts.onLand();
+            }
+        };
+        requestAnimationFrame(step);
+    }
+
+    function animateDealFromDeck(deckIdOrSel, cardIdOrSel, tone = null, onLand = null) {
+        const deckEl = resolveEl(deckIdOrSel);
+        const cardEl = resolveEl(cardIdOrSel);
+        if (!cardEl) {
+            if (typeof onLand === 'function') onLand();
+            return;
+        }
+        if (!deckEl || prefersReducedMotion()) {
+            if (window.BlinkHaptics) window.BlinkHaptics.stampPop(cardEl);
+            if (typeof onLand === 'function') onLand();
+            return;
+        }
+        const srcEl = (deckEl.id === 'vh-bot-hand' && deckEl.children.length > 0)
+            ? deckEl.children[Math.floor(deckEl.children.length / 2)]
+            : deckEl;
+        recoilDeck(deckEl);
+        flyCloneBetweenRects(cardEl, srcEl.getBoundingClientRect(), cardEl, {
+            duration: 175,
+            impactTone: tone,
+            onLand
+        });
+    }
+
+    function animateCardOntoPile(sourceIdOrSel, pileIdOrSel, tone = 'rose') {
+        const srcWrap = resolveEl(sourceIdOrSel);
+        const pileEl = resolveEl(pileIdOrSel);
+        if (!pileEl) return;
+        if (!srcWrap || prefersReducedMotion()) {
+            if (window.BlinkHaptics) window.BlinkHaptics.pileImpact(pileEl, tone);
+            return;
+        }
+        const srcEl = srcWrap.children.length > 0
+            ? srcWrap.children[Math.floor(srcWrap.children.length / 2)]
+            : srcWrap;
+        flyCloneBetweenRects(pileEl, srcEl.getBoundingClientRect(), pileEl, {
+            duration: 185,
+            impactTone: tone,
+            pitch: 0.96
+        });
+    }
+
+    function animateRectToSelector(startRect, targetSel, tone = 'purple') {
+        const targetEl = resolveEl(targetSel);
+        if (!targetEl || !startRect) return;
+        flyCloneBetweenRects(targetEl, startRect, targetEl, {
+            duration: 155,
+            impactTone: tone
+        });
+    }
+
+    function animateGridDealWave(selector, staggerMs = 22) {
+        if (prefersReducedMotion()) return;
+        const nodes = document.querySelectorAll(selector);
+        nodes.forEach((el, i) => {
+            el.style.opacity = '0';
+            el.style.transform = 'perspective(760px) translate3d(0, 14px, 0) scale(0.9)';
+            setTimeout(() => {
+                if (!el.isConnected) return;
+                el.style.opacity = '';
+                el.style.transform = '';
+                if (window.BlinkHaptics) window.BlinkHaptics.stampPop(el);
+                if (i % 4 === 0 && window.BlinkHaptics) window.BlinkHaptics.foley('cardLift', 0.94 + Math.min(0.24, i * 0.015));
+            }, i * staggerMs);
+        });
+    }
+
+    function animateArenaOpeningDeal() {
+        const numPiles = typeof getActivePileCount === 'function' ? getActivePileCount() : 2;
+        for (let i = 0; i < numPiles; i++) {
+            applyPileScatter(document.getElementById(`center-pile-${i}`), true);
+            setTimeout(() => animateDealFromDeck('player-draw-pile-btn', `center-pile-${i}`, 'cyan'), i * 75);
+        }
+        for (let h = 0; h < 3; h++) {
+            setTimeout(() => animateDealFromDeck('player-draw-pile-btn', `hand-card-el-${h}`), 110 + h * 70);
+        }
+    }
+
+    function animateArenaRestock() {
+        const numPiles = typeof getActivePileCount === 'function' ? getActivePileCount() : 2;
+        for (let i = 0; i < numPiles; i++) {
+            setTimeout(() => animateDealFromDeck('player-draw-pile-btn', `center-pile-${i}`, 'amber'), i * 65);
+        }
+    }
+
+    function animateEndgameDealWave() {
+        document.querySelectorAll('[id^="eg-pile-"]').forEach(p => applyPileScatter(p, true));
+        animateGridDealWave('#eg-piles-container [id^="eg-pile-"], #eg-hand-container .game-card', 45);
+    }
+
+    // ------------------------------------------------------------------------
+    // 5. DAILY CHALLENGE: KARTEN-POP & SCHWERPUNKT-ABSTOSSUNG BEI FEHLER
+    // ------------------------------------------------------------------------
+    function popSelectedCard(id) {
+        const el = document.getElementById(id);
+        if (!el || prefersReducedMotion()) return;
+        if (window.BlinkHaptics) {
+            window.BlinkHaptics.foley('cardLift', 1.06);
+            window.BlinkHaptics.stampPop(el);
+        }
+    }
+
+    function playDailyRepulsion(indices) {
+        if (!indices || indices.length === 0) return;
+        if (typeof playSound === 'function') playSound('error');
+        if (window.BlinkHaptics) window.BlinkHaptics.vibrate([14, 24, 14]);
+        if (prefersReducedMotion()) return;
+
+        const els = indices.map(i => document.getElementById(`daily-card-${i}`)).filter(Boolean);
+        if (els.length === 0) return;
+
+        const rects = els.map(el => el.getBoundingClientRect());
+        const cx = rects.reduce((s, r) => s + r.left + r.width * 0.5, 0) / rects.length;
+        const cy = rects.reduce((s, r) => s + r.top + r.height * 0.5, 0) / rects.length;
+
+        const bodies = els.map((el, i) => {
+            const dx = (rects[i].left + rects[i].width * 0.5) - cx;
+            const dy = (rects[i].top + rects[i].height * 0.5) - cy;
+            const d = Math.max(1, Math.hypot(dx, dy));
+            el.classList.add('phys-magnet-repel');
+            return { el, x: 0, y: 0, rot: 0, vx: (dx / d) * 220, vy: (dy / d) * 220, vrot: (dx >= 0 ? 1 : -1) * 90 };
+        });
+
+        const t0 = performance.now();
+        let last = 0;
+        const tick = (now) => {
+            const dt = last ? Math.min(0.028, (now - last) / 1000) : 0.016;
+            last = now;
+            let active = false;
+            for (const b of bodies) {
+                if (!b.el.isConnected) continue;
+                b.vx += (-b.x * 320 - b.vx * 14) * dt;
+                b.vy += (-b.y * 320 - b.vy * 14) * dt;
+                b.vrot += (-b.rot * 300 - b.vrot * 14) * dt;
+                b.x += b.vx * dt;
+                b.y += b.vy * dt;
+                b.rot += b.vrot * dt;
+                b.el.style.transform = `translate3d(${b.x.toFixed(2)}px, ${b.y.toFixed(2)}px, 0) rotateZ(${b.rot.toFixed(2)}deg)`;
+                if (now - t0 < 410 && (Math.abs(b.x) > 0.15 || Math.abs(b.y) > 0.15 || Math.abs(b.vx) > 1.5)) active = true;
+            }
+            if (active) {
+                requestAnimationFrame(tick);
+            } else {
+                bodies.forEach(b => {
+                    if (!b.el.isConnected) return;
+                    b.el.style.transform = '';
+                    b.el.classList.remove('phys-magnet-repel');
+                });
+            }
+        };
+        requestAnimationFrame(tick);
+    }
+
+    // ------------------------------------------------------------------------
+    // 6. SUDOKU-FLUG-KOORDINATION, ENDGAME-DOPPELKLICK & CASCADE-ROTATE/SKIP
+    // ------------------------------------------------------------------------
+    let pendingSudokuFlightIdx = -1;
+
+    function scheduleSudokuFlight(idx) {
+        pendingSudokuFlightIdx = idx;
+    }
+
+    function wireSudokuFlightHook() {
+        if (!window.BlinkModePhysics || typeof window.BlinkModePhysics.onSudokuCardPlaced !== 'function') return;
+        const orig = window.BlinkModePhysics.onSudokuCardPlaced;
+        window.BlinkModePhysics.onSudokuCardPlaced = function (placedIdx, prevCompletedLines) {
+            if (pendingSudokuFlightIdx === placedIdx && !prefersReducedMotion()) {
+                pendingSudokuFlightIdx = -1;
+                animateDealFromDeck('sdk-picker-preview', `#sudoku-grid > button:nth-child(${placedIdx + 1})`, 'purple', () => {
+                    orig(placedIdx, prevCompletedLines);
+                });
+                return;
+            }
+            pendingSudokuFlightIdx = -1;
+            orig(placedIdx, prevCompletedLines);
+        };
+    }
+
+    window.quickPlayEndgameHandCard = function (handIdx) {
+        if (typeof endgameState === 'undefined' || endgameState.status !== 'playing' || !endgameState.hand[handIdx]) return;
+        const card = endgameState.hand[handIdx];
+        const mode = endgameState.currentPuzzle ? endgameState.currentPuzzle.mode : 'normal';
+        for (let p = 0; p < endgameState.piles.length; p++) {
+            if (typeof canPlayEndgameCard === 'function' && canPlayEndgameCard(card, endgameState.piles, p, mode)) {
+                endgameState.selectedHandIdx = handIdx;
+                playEndgameOnPile(p);
+                return;
+            }
+        }
+        if (typeof triggerInvalidShake === 'function') triggerInvalidShake(`eg-hand-${handIdx}`);
+    };
+
+    function animateCascadeSkip() {
+        const curEl = document.getElementById('cas-current-card');
+        if (!curEl || prefersReducedMotion()) return;
+        const r = curEl.getBoundingClientRect();
+        if (r.width <= 0) return;
+        const clone = curEl.cloneNode(true);
+        clone.removeAttribute('id');
+        clone.style.cssText = `position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;margin:0;z-index:9995;pointer-events:none;transition:transform 240ms cubic-bezier(0.22,1,0.36,1),opacity 220ms ease;`;
+        document.body.appendChild(clone);
+        requestAnimationFrame(() => {
+            clone.style.transform = 'translate3d(78px, -18px, 0) rotateZ(18deg) scale(0.84)';
+            clone.style.opacity = '0';
+        });
+        setTimeout(() => clone.remove(), 260);
+        requestAnimationFrame(() => {
+            if (window.BlinkHaptics) window.BlinkHaptics.stampPop(document.getElementById('cas-current-card'));
+        });
+    }
+
+    function animateCascadeRotate(col, count, onDone) {
+        const grid = document.getElementById('cas-grid');
+        if (!grid || count < 2 || prefersReducedMotion()) {
+            if (typeof onDone === 'function') onDone();
+            return;
+        }
+        const topRow = 5 - count;
+        const c0 = grid.children[topRow * 5 + col];
+        const c1 = grid.children[(topRow + 1) * 5 + col];
+        const stepY = (c0 && c1) ? Math.max(40, c1.getBoundingClientRect().top - c0.getBoundingClientRect().top) : 88;
+        const topEl = grid.children[topRow * 5 + col];
+
+        // Die nach unten gerutschten Karten federnd einschwingen lassen
+        for (let r = topRow + 1; r < 5; r++) {
+            const el = grid.children[r * 5 + col];
+            if (!el) continue;
+            el.classList.add('phys-cascade-falling');
+            el.style.transform = `translate3d(0, ${(-stepY).toFixed(1)}px, 0)`;
+            requestAnimationFrame(() => {
+                el.style.transition = 'transform 220ms cubic-bezier(0.22, 1.24, 0.36, 1)';
+                el.style.transform = 'translate3d(0, 0, 0)';
+                setTimeout(() => {
+                    el.style.transition = '';
+                    el.style.transform = '';
+                    el.classList.remove('phys-cascade-falling');
+                }, 235);
+            });
+        }
+
+        // Die von ganz unten nach oben gerückte Karte im Bogen einfliegen lassen
+        if (topEl) {
+            const bRect = grid.children[4 * 5 + col]?.getBoundingClientRect();
+            flyCloneBetweenRects(topEl, bRect, topEl, {
+                duration: 215,
+                impactTone: 'purple',
+                onLand: onDone
+            });
+        } else if (typeof onDone === 'function') {
+            setTimeout(onDone, 230);
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // 7. INITIALISIERUNG & OBSERVER
+    // ------------------------------------------------------------------------
+    function bootUnifiedPhysics() {
+        setupHandParting();
+        wireSudokuFlightHook();
+
+        if (typeof MutationObserver !== 'undefined') {
+            const egPiles = document.getElementById('eg-piles-container');
+            if (egPiles) new MutationObserver(() => restorePileScatter(egPiles)).observe(egPiles, { childList: true });
+        }
+    }
+
+    window.BlinkUnifiedPhysics = {
+        applyPileScatter,
+        resolveFlickTarget,
+        animateReboundReturn,
+        recoilDeck,
+        animateDealFromDeck,
+        animateCardOntoPile,
+        animateRectToSelector,
+        animateGridDealWave,
+        animateArenaOpeningDeal,
+        animateArenaRestock,
+        animateEndgameDealWave,
+        popSelectedCard,
+        playDailyRepulsion,
+        scheduleSudokuFlight,
+        animateCascadeSkip,
+        animateCascadeRotate
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootUnifiedPhysics);
+    } else {
+        bootUnifiedPhysics();
+    }
 })();
