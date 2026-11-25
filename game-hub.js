@@ -1513,7 +1513,7 @@
     }
 })();
 // ============================================================================
-// EINHEITLICHE LINKE MODUS-LEISTE FÜR MODELLE, LABOR (KOMBINIERT) & KURS
+// EINHEITLICHE WORKSPACES FÜR MODELLE (3-SPALTEN-CLEAN), LABOR & KURS
 // ============================================================================
 (function initBlinkWorkspaceRails() {
     if (window.__BLINK_WORKSPACE_RAILS_READY) return;
@@ -1522,7 +1522,8 @@
     const ICONS = {
         basic:    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>`,
         advanced: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>`,
-        view:     `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="12" y1="3" x2="12" y2="21"></line></svg>`,
+        deck:     `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"></rect><line x1="9" y1="9" x2="15" y2="9"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>`,
+        space:    `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2"></circle><circle cx="18" cy="6" r="2"></circle><circle cx="6" cy="18" r="2"></circle><circle cx="18" cy="18" r="2"></circle><circle cx="12" cy="12" r="2.2"></circle></svg>`,
         struct:   `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"></circle><circle cx="18" cy="6" r="2.5"></circle><circle cx="12" cy="18" r="2.5"></circle><line x1="8.2" y1="7.2" x2="15.8" y2="7.2"></line><line x1="7.2" y1="8.2" x2="10.8" y2="15.8"></line><line x1="16.8" y1="8.2" x2="13.2" y2="15.8"></line></svg>`,
         mc:       `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>`,
         phase:    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>`,
@@ -1530,10 +1531,6 @@
     };
 
     const SHORT_LABELS = {
-        'layout-btn-split':    '3D & 2D Split',
-        'layout-btn-3d':       'Fokus 3D',
-        'layout-btn-2d':       'Fokus 2D',
-        'layout-btn-matrices': '60er-Galerie',
         'adv-struct-all':      'Vollraum (125)',
         'adv-struct-line':     'Strenges Cluster',
         'adv-struct-hyper120': 'Hyper-Cluster',
@@ -1549,22 +1546,19 @@
     ];
 
     const LAB_SPLIT_SPECS = [
-        {
-            id: 'montecarlo',
-            ctrl: '#mc-exp-deadlock, #mc-custom-slider, #mc-n-5000',
-            main: '#mc-result-title, #mc-bars-container, #mc-kpi-grid'
-        },
-        {
-            id: 'phase',
-            ctrl: '#phase-m-slider, #phase-met-prob, #phase-met-expected',
-            main: '#phase-curve-svg, #phase-kpi-grid'
-        },
-        {
-            id: 'brain',
-            ctrl: '#ai-roster-list, #lab-player-elo-val, #brain-rule-normal',
-            main: '#ai-radar-svg, #ai-traits-bars, #ai-avatar-box'
-        }
+        { id: 'montecarlo', ctrl: '#mc-exp-deadlock, #mc-custom-slider, #mc-n-5000', main: '#mc-result-title, #mc-bars-container, #mc-kpi-grid' },
+        { id: 'phase',      ctrl: '#phase-m-slider, #phase-met-prob, #phase-met-expected', main: '#phase-curve-svg, #phase-kpi-grid' },
+        { id: 'brain',      ctrl: '#ai-roster-list, #lab-player-elo-val, #brain-rule-normal', main: '#ai-radar-svg, #ai-traits-bars, #ai-avatar-box' }
     ];
+
+    const modelViewState = {
+        basicView: '3d',   // '3d' | 'ring' | 'bipartite' | 'matrix' | 'matrices'
+        basicCam: 'iso',
+        basicOptsOpen: false,
+        advView: '3d',     // '3d' | 'theory'
+        advCam: 'iso',
+        advOptsOpen: false
+    };
 
     function escHtml(str) {
         return String(str || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -1573,7 +1567,7 @@
     function isOrigBtnActive(btn) {
         if (!btn) return false;
         const c = btn.className || '';
-        return c.includes('pill-btn-active') || c.includes('bg-purple-500') || c.includes('bg-cyan-400') || c.includes('is-active');
+        return c.includes('pill-btn-active') || c.includes('bg-purple-500') || c.includes('bg-cyan-400') || c.includes('is-active') || btn.getAttribute('aria-pressed') === 'true';
     }
 
     function getSourceTabButtons(containerId, fallbackBtnId) {
@@ -1583,10 +1577,7 @@
             host = fb ? fb.parentElement : null;
         }
         if (!host) return { host: null, buttons: [] };
-        return {
-            host,
-            buttons: Array.from(host.querySelectorAll('button'))
-        };
+        return { host, buttons: Array.from(host.querySelectorAll('button')) };
     }
 
     function findTwoColumns(viewEl, firstSel, secondSel) {
@@ -1620,89 +1611,305 @@
             if (typeof syncAllSlidingPills === 'function') syncAllSlidingPills();
         };
         requestAnimationFrame(run);
-        setTimeout(run, 90);
-        setTimeout(run, 240);
+        setTimeout(run, 75);
+        setTimeout(run, 200);
     }
 
     // ------------------------------------------------------------------------
-    // 1. MODELLREITER (VOLLE BREITE + AUTO-RESIZE FÜR 3D & 2D)
+    // 1. MODELLREITER: 3-SPALTEN-LAYOUT (LINKS MODUS · MITTE GROSS · RECHTS INSPECTOR)
     // ------------------------------------------------------------------------
-    function setupModelPageShell(pageId, railId, subTabsId, fallbackBtnId) {
-        const page = document.getElementById(pageId);
-        if (!page || document.getElementById(railId)) return;
+    function setupBasicModel3Col() {
+        const page = document.getElementById('page-basic-model');
+        if (!page || document.getElementById('ws-rail-basic-model')) return;
 
         const sharedBar = document.getElementById('models-shared-bar');
         if (sharedBar) sharedBar.classList.add('g3-hidden-ctrl');
-
-        const { host: subTabsHost } = getSourceTabButtons(subTabsId, fallbackBtnId);
-        if (subTabsHost) subTabsHost.classList.add('g3-hidden-ctrl');
 
         const shell = document.createElement('div');
         shell.className = 'ws-model-shell';
 
         const leftRail = document.createElement('aside');
-        leftRail.id = railId;
+        leftRail.id = 'ws-rail-basic-model';
         leftRail.className = 'g3-left ws-model-left';
 
-        const mainPane = document.createElement('div');
-        mainPane.className = 'ws-model-pane';
+        const centerPane = document.createElement('div');
+        centerPane.id = 'ws-basic-pane';
+        centerPane.className = 'ws-model-pane ws-mview-3d';
+
+        const rightCol = document.createElement('aside');
+        rightCol.id = 'ws-right-basic-model';
+        rightCol.className = 'g3-right ws-model-right';
+        rightCol.innerHTML = `
+            <div class="aceternity-bento-card g3-right-card g3-accent-cyan p-4 space-y-3.5 ws-inspector-card">
+                <div id="ws-basic-ins-head"></div>
+                <div id="ws-basic-ins-views"></div>
+                <div id="ws-basic-ins-layers"></div>
+                <div id="ws-basic-ins-cam"></div>
+                <div id="ws-basic-ins-anim" class="hidden space-y-1.5"></div>
+                <div id="ws-basic-ins-opts-wrap" class="space-y-1.5">
+                    <button type="button" id="ws-basic-opts-toggle" onclick="window.BlinkWorkspaceRails.toggleModelOpts('basic')" class="ws-collapse-btn">
+                        <span>3D-Optionen</span>
+                        <svg class="ws-collapse-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div id="ws-basic-ins-opts-dock" class="hidden ws-docked-opts"></div>
+                </div>
+                <div id="ws-basic-ins-card-wrap" class="ws-docked-active-card">
+                    <div class="g3-setting-label mb-1.5">Aktive Karte</div>
+                    <div id="ws-basic-ins-card-dock"></div>
+                </div>
+            </div>
+        `;
 
         const existingChildren = Array.from(page.children);
-        if (existingChildren[0]) {
-            existingChildren[0].classList.add('ws-model-toolbar');
+        if (existingChildren[0] && existingChildren[0].querySelector('#basic-layer-tabs, #layout-btn-split')) {
+            existingChildren[0].classList.add('g3-hidden-ctrl');
         }
-        existingChildren.forEach(ch => mainPane.appendChild(ch));
+        existingChildren.forEach(ch => centerPane.appendChild(ch));
 
         shell.appendChild(leftRail);
-        shell.appendChild(mainPane);
+        shell.appendChild(centerPane);
+        shell.appendChild(rightCol);
         page.appendChild(shell);
 
-        if (subTabsHost && typeof MutationObserver !== 'undefined') {
-            const obs = new MutationObserver(() => renderModelRail(pageId));
-            obs.observe(subTabsHost, { subtree: true, attributes: true, attributeFilter: ['class'] });
+        // Native 3D-Optionen, Aktive Karte & 2D-Animationsleiste sauber nach rechts docken
+        const optsBody = document.getElementById('info-box-3d-body');
+        const optsDock = document.getElementById('ws-basic-ins-opts-dock');
+        if (optsBody && optsDock) {
+            optsBody.classList.remove('hidden');
+            optsDock.appendChild(optsBody);
+        }
+
+        const ttBody = document.getElementById('node-tooltip-body');
+        const cardDock = document.getElementById('ws-basic-ins-card-dock');
+        if (ttBody && cardDock) {
+            ttBody.classList.remove('hidden');
+            cardDock.appendChild(ttBody);
+        }
+
+        const panel2d = document.getElementById('panel-2d');
+        const animBtn = document.getElementById('btn-anim-play');
+        const animDock = document.getElementById('ws-basic-ins-anim');
+        if (panel2d) {
+            const sub2dBar = panel2d.firstElementChild;
+            if (animBtn && animBtn.parentElement && animDock) {
+                const animGroup = animBtn.parentElement;
+                animDock.innerHTML = `<div class="g3-setting-label">Zyklus-Animation</div>`;
+                animGroup.classList.add('ws-anim-row');
+                animDock.appendChild(animGroup);
+            }
+            if (sub2dBar && sub2dBar.querySelector('#sub2d-btn-ring, #basic-2d-tabs')) {
+                sub2dBar.classList.add('g3-hidden-ctrl');
+            }
+        }
+
+        // Zurück-Button in 60er-Galerie ausblenden (Ansicht wird rechts gewechselt)
+        const matWs = document.getElementById('basic-matrices-workspace');
+        if (matWs) {
+            matWs.querySelectorAll('button[onclick*="setLayoutMode"]').forEach(b => b.classList.add('g3-hidden-ctrl'));
+        }
+
+        // Beobachter für Vollraum-Button, Schicht-Tabs & Zähler
+        const fullBtn = document.getElementById('btn-basic-fullspace');
+        const layerTabs = document.getElementById('basic-layer-tabs');
+        const counterEl = document.getElementById('visible-counter');
+        if (typeof MutationObserver !== 'undefined') {
+            if (fullBtn) {
+                new MutationObserver(() => renderModelRail('basic-model'))
+                    .observe(fullBtn, { attributes: true, attributeFilter: ['class', 'aria-pressed'] });
+            }
+            if (layerTabs) {
+                new MutationObserver(() => renderBasicRightInspector())
+                    .observe(layerTabs, { subtree: true, attributes: true, attributeFilter: ['class'] });
+            }
+            if (counterEl) {
+                new MutationObserver(() => syncModelCounter('basic'))
+                    .observe(counterEl, { childList: true, characterData: true, subtree: true });
+            }
         }
 
         if (typeof ResizeObserver !== 'undefined') {
-            let resizeTick = null;
-            const ro = new ResizeObserver(() => {
-                if (resizeTick) cancelAnimationFrame(resizeTick);
-                resizeTick = requestAnimationFrame(() => {
-                    if (pageId === 'page-basic-model' && typeof resize3DCanvas === 'function') resize3DCanvas();
-                    if (pageId === 'page-advanced-model' && typeof resizeAdv3DCanvas === 'function') resizeAdv3DCanvas();
+            let tick = null;
+            new ResizeObserver(() => {
+                if (tick) cancelAnimationFrame(tick);
+                tick = requestAnimationFrame(() => {
+                    if (typeof resize3DCanvas === 'function') resize3DCanvas();
                 });
-            });
-            ro.observe(mainPane);
+            }).observe(centerPane);
         }
+
+        applyBasicModelView('3d', true);
+    }
+
+    function setupAdvModel3Col() {
+        const page = document.getElementById('page-advanced-model');
+        if (!page || document.getElementById('ws-rail-advanced-model')) return;
+
+        const sharedBar = document.getElementById('models-shared-bar');
+        if (sharedBar) sharedBar.classList.add('g3-hidden-ctrl');
+
+        const shell = document.createElement('div');
+        shell.className = 'ws-model-shell';
+
+        const leftRail = document.createElement('aside');
+        leftRail.id = 'ws-rail-advanced-model';
+        leftRail.className = 'g3-left ws-model-left';
+
+        const centerPane = document.createElement('div');
+        centerPane.id = 'ws-adv-pane';
+        centerPane.className = 'ws-model-pane ws-mview-3d';
+
+        const rightCol = document.createElement('aside');
+        rightCol.id = 'ws-right-advanced-model';
+        rightCol.className = 'g3-right ws-model-right';
+        rightCol.innerHTML = `
+            <div class="aceternity-bento-card g3-right-card g3-accent-purple p-4 space-y-3.5 ws-inspector-card">
+                <div id="ws-adv-ins-head"></div>
+                <div id="ws-adv-ins-views"></div>
+                <div id="ws-adv-ins-layers"></div>
+                <div id="ws-adv-ins-cam"></div>
+                <div id="ws-adv-ins-cube-dock"></div>
+                <div id="ws-adv-ins-opts-wrap" class="space-y-1.5">
+                    <button type="button" id="ws-adv-opts-toggle" onclick="window.BlinkWorkspaceRails.toggleModelOpts('adv')" class="ws-collapse-btn">
+                        <span>3D-Optionen</span>
+                        <svg class="ws-collapse-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div id="ws-adv-ins-opts-dock" class="hidden ws-docked-opts"></div>
+                </div>
+                <div id="ws-adv-ins-card-wrap" class="ws-docked-active-card">
+                    <div class="g3-setting-label mb-1.5">Aktiver Vektor · 𝔽₅³</div>
+                    <div id="ws-adv-ins-card-dock"></div>
+                </div>
+            </div>
+        `;
+
+        const existingChildren = Array.from(page.children);
+        if (existingChildren[0] && existingChildren[0].querySelector('#adv-struct-tabs, #adv-struct-all, #adv-layer-tabs, #adv-x-all')) {
+            existingChildren[0].classList.add('g3-hidden-ctrl');
+        }
+        existingChildren.forEach(ch => centerPane.appendChild(ch));
+
+        shell.appendChild(leftRail);
+        shell.appendChild(centerPane);
+        shell.appendChild(rightCol);
+        page.appendChild(shell);
+
+        // Native 3D-Optionen & Aktive-Vektor-Vorschau nach rechts docken
+        const advOptsDock = document.getElementById('ws-adv-ins-opts-dock');
+        const advOptsBody = document.getElementById('adv-3d-opts')
+            || (document.getElementById('adv-chk-ghost')?.closest('.apple-inset-group'))
+            || (document.getElementById('adv-chk-ghost')?.closest('div.flex'));
+        if (advOptsBody && advOptsDock) {
+            advOptsBody.classList.remove('hidden');
+            advOptsDock.appendChild(advOptsBody);
+        }
+
+        const advPrev = document.getElementById('adv-tt-card-preview');
+        const advCardDock = document.getElementById('ws-adv-ins-card-dock');
+        if (advPrev && advPrev.parentElement && advCardDock) {
+            const row = advPrev.parentElement;
+            row.classList.remove('hidden');
+            advCardDock.appendChild(row);
+        }
+
+        // Würfel-Steuerung (5×5×5 Würfel) aus #panel-adv-2d sauber in den rechten Inspector holen
+        const cubeCtrl = document.getElementById('adv-cube-controls');
+        const cubeDock = document.getElementById('ws-adv-ins-cube-dock');
+        if (cubeCtrl && cubeDock) {
+            cubeCtrl.classList.add('ws-docked-cube-ctrl');
+            cubeDock.appendChild(cubeCtrl);
+        }
+
+        // Alte 2D-Sub-Leiste in #panel-adv-2d ausblenden
+        const panelAdv2d = document.getElementById('panel-adv-2d');
+        if (panelAdv2d && panelAdv2d.firstElementChild && panelAdv2d.firstElementChild.querySelector('#adv-tab-grid')) {
+            panelAdv2d.firstElementChild.classList.add('g3-hidden-ctrl');
+        }
+
+        const { host: structHost } = getSourceTabButtons('adv-struct-tabs', 'adv-struct-all');
+        const { host: layerHost } = getSourceTabButtons('adv-layer-tabs', 'adv-x-all');
+        const advCounter = document.getElementById('adv-visible-counter');
+        if (typeof MutationObserver !== 'undefined') {
+            if (structHost) {
+                new MutationObserver(() => renderModelRail('advanced-model'))
+                    .observe(structHost, { subtree: true, attributes: true, attributeFilter: ['class'] });
+            }
+            if (layerHost) {
+                new MutationObserver(() => renderAdvRightInspector())
+                    .observe(layerHost, { subtree: true, attributes: true, attributeFilter: ['class'] });
+            }
+            if (advCounter) {
+                new MutationObserver(() => syncModelCounter('adv'))
+                    .observe(advCounter, { childList: true, characterData: true, subtree: true });
+            }
+        }
+
+        if (typeof ResizeObserver !== 'undefined') {
+            let tick = null;
+            new ResizeObserver(() => {
+                if (tick) cancelAnimationFrame(tick);
+                tick = requestAnimationFrame(() => {
+                    if (typeof resizeAdv3DCanvas === 'function') resizeAdv3DCanvas();
+                });
+            }).observe(centerPane);
+        }
+
+        applyAdvModelView('3d', true);
+    }
+
+    function syncModelCounter(which) {
+        const src = document.getElementById(which === 'basic' ? 'visible-counter' : 'adv-visible-counter');
+        const dst = document.getElementById(which === 'basic' ? 'ws-basic-counter-mirror' : 'ws-adv-counter-mirror');
+        if (src && dst) dst.textContent = src.textContent;
     }
 
     function renderModelRail(pageId) {
         const isBasic = pageId === 'basic-model';
-        const railId = isBasic ? 'ws-rail-basic-model' : 'ws-rail-advanced-model';
-        const railEl = document.getElementById(railId);
+        const railEl = document.getElementById(isBasic ? 'ws-rail-basic-model' : 'ws-rail-advanced-model');
         if (!railEl) return;
 
-        const { buttons } = isBasic
-            ? getSourceTabButtons('basic-layout-tabs', 'layout-btn-split')
-            : getSourceTabButtons('adv-struct-tabs', 'adv-struct-all');
-
-        const subHeading = isBasic ? 'Ansicht' : 'Struktur · 𝔽₅³';
-        const subAccent = isBasic ? 'cyan' : 'purple';
-        const subIcon = isBasic ? ICONS.view : ICONS.struct;
-
-        const subBtnsHtml = buttons.map((btn, idx) => {
-            const rawText = (btn.textContent || '').trim();
-            const label = SHORT_LABELS[btn.id] || rawText;
-            const active = isOrigBtnActive(btn);
-            const targetKey = btn.id ? `'${btn.id}'` : String(idx);
-            return `
-                <button type="button" title="${escHtml(rawText)}"
-                    onclick="window.BlinkWorkspaceRails.clickModelSub('${pageId}', ${targetKey})"
-                    class="g3-mode-btn g3-accent-${subAccent} ${active ? 'is-active' : ''}">
-                    <span class="g3-mode-icon">${subIcon}</span>
-                    <span class="g3-mode-name">${escHtml(label)}</span>
-                </button>
+        let subGroupHtml = '';
+        if (isBasic) {
+            const fullBtn = document.getElementById('btn-basic-fullspace');
+            const isFull = isOrigBtnActive(fullBtn);
+            subGroupHtml = `
+                <div class="g3-rail-group">
+                    <div class="g3-rail-heading">Kartenraum</div>
+                    <button type="button" onclick="window.BlinkWorkspaceRails.setBasicFullSpace(true)"
+                        class="g3-mode-btn g3-accent-sky ${isFull ? 'is-active' : ''}">
+                        <span class="g3-mode-icon">${ICONS.space}</span>
+                        <span class="g3-mode-name">Vollraum (180)</span>
+                    </button>
+                    <button type="button" onclick="window.BlinkWorkspaceRails.setBasicFullSpace(false)"
+                        class="g3-mode-btn g3-accent-cyan ${!isFull ? 'is-active' : ''}">
+                        <span class="g3-mode-icon">${ICONS.deck}</span>
+                        <span class="g3-mode-name">60er-Deck</span>
+                    </button>
+                </div>
             `;
-        }).join('');
+        } else {
+            const { buttons } = getSourceTabButtons('adv-struct-tabs', 'adv-struct-all');
+            if (buttons.length > 0) {
+                subGroupHtml = `
+                    <div class="g3-rail-group">
+                        <div class="g3-rail-heading">Struktur · 𝔽₅³</div>
+                        ${buttons.map((btn, idx) => {
+                            const rawText = (btn.textContent || '').trim();
+                            const label = SHORT_LABELS[btn.id] || rawText;
+                            const active = isOrigBtnActive(btn);
+                            const keyArg = btn.id ? `'${btn.id}'` : String(idx);
+                            return `
+                                <button type="button" title="${escHtml(rawText)}"
+                                    onclick="window.BlinkWorkspaceRails.clickAdvStruct(${keyArg})"
+                                    class="g3-mode-btn g3-accent-purple ${active ? 'is-active' : ''}">
+                                    <span class="g3-mode-icon">${ICONS.struct}</span>
+                                    <span class="g3-mode-name">${escHtml(label)}</span>
+                                </button>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            }
+        }
 
         railEl.innerHTML = `
             <div class="aceternity-bento-card g3-rail-card">
@@ -1719,34 +1926,333 @@
                         <span class="g3-mode-name">Erweitert (𝔽₅³)</span>
                     </button>
                 </div>
-                ${subBtnsHtml ? `
-                    <div class="g3-rail-group">
-                        <div class="g3-rail-heading">${subHeading}</div>
-                        ${subBtnsHtml}
-                    </div>
-                ` : ''}
+                ${subGroupHtml}
             </div>
         `;
     }
 
-    function clickModelSub(pageId, idOrIdx) {
-        const isBasic = pageId === 'basic-model';
-        const { buttons } = isBasic
-            ? getSourceTabButtons('basic-layout-tabs', 'layout-btn-split')
-            : getSourceTabButtons('adv-struct-tabs', 'adv-struct-all');
+    function renderBasicRightInspector() {
+        const head = document.getElementById('ws-basic-ins-head');
+        const views = document.getElementById('ws-basic-ins-views');
+        const layers = document.getElementById('ws-basic-ins-layers');
+        const cam = document.getElementById('ws-basic-ins-cam');
+        const animDock = document.getElementById('ws-basic-ins-anim');
+        const optsWrap = document.getElementById('ws-basic-ins-opts-wrap');
+        if (!head || !views) return;
 
-        const target = typeof idOrIdx === 'string'
-            ? document.getElementById(idOrIdx)
-            : buttons[idOrIdx];
+        const curCount = document.getElementById('visible-counter')?.textContent || '60 / 60';
+        const v = modelViewState.basicView;
+        const show3D = v === '3d';
+        const show2D = v === 'ring' || v === 'bipartite' || v === 'matrix';
 
-        if (target) target.click();
-        renderModelRail(pageId);
+        head.innerHTML = `
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h2 class="text-base font-extrabold text-white heading-font leading-tight">Grundmodell</h2>
+                        <span id="ws-basic-counter-mirror" class="g3-stat-pill">${escHtml(curCount)}</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-0.5">5×6×6 Raum · 60 Karten</p>
+                </div>
+            </div>
+        `;
+
+        const viewItems = [
+            { id: '3d',        label: '3D-Raum',      full: true },
+            { id: 'ring',      label: 'Ring-Zyklus',  full: false },
+            { id: 'bipartite', label: 'Bipartit',     full: false },
+            { id: 'matrix',    label: '6×6 Matrix',   full: false },
+            { id: 'matrices',  label: '60er-Galerie', full: false }
+        ];
+        views.innerHTML = `
+            <div class="g3-setting-block">
+                <div class="g3-setting-label">Ansicht</div>
+                <div class="ws-view-grid">
+                    ${viewItems.map(it => `
+                        <button type="button" onclick="window.BlinkWorkspaceRails.setBasicView('${it.id}')"
+                            class="g3-seg-btn ws-grid-pill ${it.full ? 'ws-grid-pill-full' : ''} ${v === it.id ? 'is-active' : ''}">${it.label}</button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        const { buttons: layerBtns } = getSourceTabButtons('basic-layer-tabs', 'basic-x-all');
+        if (layers && layerBtns.length > 0) {
+            layers.innerHTML = `
+                <div class="g3-setting-block">
+                    <div class="g3-setting-label">Schicht X</div>
+                    <div class="g3-seg-rail">
+                        ${layerBtns.map((b, idx) => `
+                            <button type="button" title="${escHtml(b.title || '')}"
+                                onclick="window.BlinkWorkspaceRails.clickLayerBtn('basic', ${b.id ? `'${b.id}'` : idx})"
+                                class="g3-seg-btn ws-layer-pill ${isOrigBtnActive(b) ? 'is-active' : ''}">${escHtml((b.textContent || '').trim())}</button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        if (cam) {
+            cam.classList.toggle('hidden', !show3D);
+            if (show3D) {
+                const cams = [
+                    { id: 'iso', label: 'Reset' },
+                    { id: 'xy',  label: '(X,Y)' },
+                    { id: 'xz',  label: '(X,Z)' },
+                    { id: 'yz',  label: '(Y,Z)' }
+                ];
+                cam.innerHTML = `
+                    <div class="g3-setting-block">
+                        <div class="g3-setting-label">Kamera</div>
+                        <div class="g3-seg-rail">
+                            ${cams.map(c => `
+                                <button type="button" onclick="window.BlinkWorkspaceRails.setCam('basic', '${c.id}')"
+                                    class="g3-seg-btn mono ${modelViewState.basicCam === c.id ? 'is-active' : ''}">${c.label}</button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        if (animDock) animDock.classList.toggle('hidden', !show2D);
+        if (optsWrap) optsWrap.classList.toggle('hidden', !show3D);
+    }
+
+    function renderAdvRightInspector() {
+        const head = document.getElementById('ws-adv-ins-head');
+        const views = document.getElementById('ws-adv-ins-views');
+        const layers = document.getElementById('ws-adv-ins-layers');
+        const cam = document.getElementById('ws-adv-ins-cam');
+        const optsWrap = document.getElementById('ws-adv-ins-opts-wrap');
+        if (!head || !views) return;
+
+        const curCount = document.getElementById('adv-visible-counter')?.textContent || '25 / 125';
+        const hasTheory = Boolean(document.getElementById('adv-view-theory'));
+        if (!hasTheory && modelViewState.advView !== '3d') modelViewState.advView = '3d';
+        const v = modelViewState.advView;
+        const show3D = v === '3d';
+
+        head.innerHTML = `
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h2 class="text-base font-extrabold text-white heading-font leading-tight">Erweitert · 𝔽₅³</h2>
+                        <span id="ws-adv-counter-mirror" class="g3-stat-pill">${escHtml(curCount)}</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-0.5">5×5×5 Vektorraum · 125 Karten</p>
+                </div>
+            </div>
+        `;
+
+        views.classList.toggle('hidden', !hasTheory);
+        if (hasTheory) {
+            const viewItems = [
+                { id: '3d',     label: '3D-Raum' },
+                { id: 'theory', label: 'Theorie' }
+            ];
+            views.innerHTML = `
+                <div class="g3-setting-block">
+                    <div class="g3-setting-label">Ansicht</div>
+                    <div class="g3-seg-rail">
+                        ${viewItems.map(it => `
+                            <button type="button" onclick="window.BlinkWorkspaceRails.setAdvView('${it.id}')"
+                                class="g3-seg-btn ${v === it.id ? 'is-active' : ''}">${it.label}</button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        } else {
+            views.innerHTML = '';
+        }
+
+        const { buttons: layerBtns } = getSourceTabButtons('adv-layer-tabs', 'adv-x-all');
+        if (layers && layerBtns.length > 0) {
+            layers.innerHTML = `
+                <div class="g3-setting-block">
+                    <div class="g3-setting-label">Schicht X</div>
+                    <div class="g3-seg-rail">
+                        ${layerBtns.map((b, idx) => `
+                            <button type="button"
+                                onclick="window.BlinkWorkspaceRails.clickLayerBtn('adv', ${b.id ? `'${b.id}'` : idx})"
+                                class="g3-seg-btn ws-layer-pill ${isOrigBtnActive(b) ? 'is-active' : ''}">${escHtml((b.textContent || '').trim())}</button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        if (cam) {
+            cam.classList.toggle('hidden', !show3D);
+            if (show3D) {
+                const cams = [
+                    { id: 'iso', label: 'Reset' },
+                    { id: 'xy',  label: '(X,Y)' },
+                    { id: 'xz',  label: '(X,Z)' },
+                    { id: 'yz',  label: '(Y,Z)' }
+                ];
+                cam.innerHTML = `
+                    <div class="g3-setting-block">
+                        <div class="g3-setting-label">Kamera</div>
+                        <div class="g3-seg-rail">
+                            ${cams.map(c => `
+                                <button type="button" onclick="window.BlinkWorkspaceRails.setCam('adv', '${c.id}')"
+                                    class="g3-seg-btn mono ${modelViewState.advCam === c.id ? 'is-active' : ''}">${c.label}</button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        if (optsWrap) optsWrap.classList.toggle('hidden', !show3D);
+    }
+
+    function applyBasicModelView(viewId, silent = false) {
+        const valid = ['3d', 'ring', 'bipartite', 'matrix', 'matrices'];
+        const nextView = valid.includes(viewId) ? viewId : '3d';
+        if (!silent && modelViewState.basicView !== nextView && typeof playSound === 'function') playSound('tick');
+        modelViewState.basicView = nextView;
+
+        const pane = document.getElementById('ws-basic-pane');
+        if (pane) {
+            pane.classList.remove('ws-mview-3d', 'ws-mview-2d', 'ws-mview-matrices');
+            if (nextView === '3d') pane.classList.add('ws-mview-3d');
+            else if (nextView === 'matrices') pane.classList.add('ws-mview-matrices');
+            else pane.classList.add('ws-mview-2d');
+        }
+
+        if (nextView === 'matrices') {
+            const matBtn = document.getElementById('layout-btn-matrices');
+            if (matBtn) matBtn.click();
+            else if (typeof setLayoutMode === 'function') setLayoutMode('matrices');
+        } else {
+            const matWs = document.getElementById('basic-matrices-workspace');
+            if (matWs && !matWs.classList.contains('hidden')) {
+                const splitBtn = document.getElementById('layout-btn-split');
+                if (splitBtn) splitBtn.click();
+                else if (typeof setLayoutMode === 'function') setLayoutMode('split');
+            }
+            if (nextView === 'ring' || nextView === 'bipartite' || nextView === 'matrix') {
+                const subBtn = document.getElementById(`sub2d-btn-${nextView}`);
+                if (subBtn) subBtn.click();
+                else if (typeof set2DSubView === 'function') set2DSubView(nextView);
+            }
+        }
+
+        renderBasicRightInspector();
         triggerModelCanvasResize();
     }
 
+    function applyAdvModelView(viewId, silent = false) {
+        const hasTheory = Boolean(document.getElementById('adv-view-theory'));
+        const nextView = (viewId === 'theory' && hasTheory) ? 'theory' : '3d';
+        if (!silent && modelViewState.advView !== nextView && typeof playSound === 'function') playSound('tick');
+        modelViewState.advView = nextView;
+
+        const pane = document.getElementById('ws-adv-pane');
+        if (pane) {
+            pane.classList.remove('ws-mview-3d', 'ws-mview-2d');
+            pane.classList.add(nextView === '3d' ? 'ws-mview-3d' : 'ws-mview-2d');
+        }
+
+        if (nextView === 'theory') {
+            const tabBtn = document.getElementById('adv-tab-theory');
+            if (tabBtn) tabBtn.click();
+            else if (typeof setAdv2DTab === 'function') setAdv2DTab('theory');
+        }
+
+        renderAdvRightInspector();
+        triggerModelCanvasResize();
+    }
+
+    function setBasicFullSpace(wantFull) {
+        const fullBtn = document.getElementById('btn-basic-fullspace');
+        const currentlyFull = isOrigBtnActive(fullBtn);
+        if (currentlyFull !== Boolean(wantFull)) {
+            if (fullBtn) fullBtn.click();
+            else if (typeof toggleBasicFullSpace === 'function') toggleBasicFullSpace();
+        }
+        renderModelRail('basic-model');
+    }
+
+    function clickAdvStruct(idOrIdx) {
+        const { buttons } = getSourceTabButtons('adv-struct-tabs', 'adv-struct-all');
+        const target = typeof idOrIdx === 'string' ? document.getElementById(idOrIdx) : buttons[idOrIdx];
+        if (target) target.click();
+        renderModelRail('advanced-model');
+    }
+
+    function clickLayerBtn(which, idOrIdx) {
+        const { buttons } = which === 'basic'
+            ? getSourceTabButtons('basic-layer-tabs', 'basic-x-all')
+            : getSourceTabButtons('adv-layer-tabs', 'adv-x-all');
+        const target = typeof idOrIdx === 'string' ? document.getElementById(idOrIdx) : buttons[idOrIdx];
+        if (target) target.click();
+        if (which === 'basic') renderBasicRightInspector();
+        else renderAdvRightInspector();
+    }
+
+    function setCam(which, mode) {
+        if (typeof playSound === 'function') playSound('tick');
+        if (which === 'basic') {
+            modelViewState.basicCam = mode;
+            if (typeof setCameraView === 'function') setCameraView(mode);
+            renderBasicRightInspector();
+        } else {
+            modelViewState.advCam = mode;
+            if (typeof setAdvCameraView === 'function') setAdvCameraView(mode);
+            renderAdvRightInspector();
+        }
+    }
+
+    function toggleModelOpts(which) {
+        const isBasic = which === 'basic';
+        const key = isBasic ? 'basicOptsOpen' : 'advOptsOpen';
+        modelViewState[key] = !modelViewState[key];
+        if (typeof playSound === 'function') playSound('tick');
+
+        const dock = document.getElementById(isBasic ? 'ws-basic-ins-opts-dock' : 'ws-adv-ins-opts-dock');
+        const btn = document.getElementById(isBasic ? 'ws-basic-opts-toggle' : 'ws-adv-opts-toggle');
+        if (dock) dock.classList.toggle('hidden', !modelViewState[key]);
+        if (btn) btn.classList.toggle('is-open', modelViewState[key]);
+    }
+
     // ------------------------------------------------------------------------
-    // 2. LABORREITER: BLOCK 1 (MODI) + BLOCK 2 (STEUERUNG) IN EINER KARTE VEREINT
+    // 2. LABORREITER: KOMBINIERTE LINKE KARTE & SPIELERPROFIL IM KI-TRAINING ENTFERNT
     // ------------------------------------------------------------------------
+    function hideLabPlayerProfileCard() {
+        const brainView = document.getElementById('lab-view-brain');
+        const subdock = document.getElementById('ws-lab-subdock');
+        const roots = [subdock, brainView].filter(Boolean);
+        roots.forEach(root => {
+            const anchor = root.querySelector('#lab-player-elo-val, #lab-player-name-heading, #lab-player-avatar-slot');
+            if (!anchor) return;
+            let cur = anchor;
+            while (cur && cur.parentElement && cur.parentElement !== root) {
+                const p = cur.parentElement;
+                if (p.querySelector('#ai-roster-list, #ai-radar-svg, #ai-avatar-box, #ws-lab-nav-slot')) break;
+                if (cur.classList.contains('aceternity-bento-card') || cur.classList.contains('fu-card') || cur.classList.contains('ws-lab-sub-card')) {
+                    break;
+                }
+                cur = p;
+            }
+            if (cur && !cur.querySelector('#ai-roster-list, #ai-radar-svg, #ai-avatar-box')) {
+                cur.classList.add('g3-hidden-ctrl');
+            }
+        });
+
+        // Falls im KI-Kader-Dock jetzt nur noch 1 sichtbare Karte liegt, nahtlos glätten
+        const brainDockItem = document.querySelector('[data-ws-lab-ctrl="brain"]');
+        if (brainDockItem) {
+            const visibleCards = Array.from(brainDockItem.children).filter(el => !el.classList.contains('g3-hidden-ctrl') && !el.classList.contains('hidden'));
+            if (visibleCards.length === 1) {
+                visibleCards[0].classList.remove('ws-lab-sub-card');
+                visibleCards[0].classList.add('ws-lab-flat-card');
+            }
+        }
+    }
+
     function setupLabShell() {
         const pageLab = document.getElementById('page-lab');
         const mcView = document.getElementById('lab-view-montecarlo');
@@ -1785,7 +2291,6 @@
         shell.appendChild(leftRail);
         shell.appendChild(mainCol);
 
-        // Die Steuerungs-Spalte (Block 2) jedes Labor-Tabs direkt unter den Modus-Buttons andocken
         const subdock = document.getElementById('ws-lab-subdock');
         LAB_SPLIT_SPECS.forEach(spec => {
             const view = document.getElementById(`lab-view-${spec.id}`);
@@ -1810,6 +2315,8 @@
 
             subdock.appendChild(ctrlCol);
         });
+
+        hideLabPlayerProfileCard();
     }
 
     function renderLabRail() {
@@ -1841,6 +2348,7 @@
             });
             subdock.classList.toggle('hidden', visible === 0);
         }
+        hideLabPlayerProfileCard();
     }
 
     function selectLab(tabId) {
@@ -1922,6 +2430,8 @@
     function syncAllRails() {
         renderModelRail('basic-model');
         renderModelRail('advanced-model');
+        renderBasicRightInspector();
+        renderAdvRightInspector();
         renderLabRail();
         renderLessonRail();
     }
@@ -1940,8 +2450,13 @@
         };
 
         wrapAfter('navigateTo', (pageId) => {
-            if (pageId === 'basic-model' || pageId === 'advanced-model') {
-                renderModelRail(pageId);
+            if (pageId === 'basic-model') {
+                renderModelRail('basic-model');
+                renderBasicRightInspector();
+                triggerModelCanvasResize();
+            } else if (pageId === 'advanced-model') {
+                renderModelRail('advanced-model');
+                renderAdvRightInspector();
                 triggerModelCanvasResize();
             } else if (pageId === 'lab') {
                 renderLabRail();
@@ -1951,17 +2466,15 @@
         });
 
         wrapAfter('setLabSubTab', () => renderLabRail());
+        wrapAfter('renderBrainLabUI', () => hideLabPlayerProfileCard());
         wrapAfter('openLessonPage', () => renderLessonRail());
         wrapAfter('setAdvStructureMode', () => renderModelRail('advanced-model'));
-        wrapAfter('setBasicLayout', () => {
-            renderModelRail('basic-model');
-            triggerModelCanvasResize();
-        });
+        wrapAfter('toggleBasicFullSpace', () => renderModelRail('basic-model'));
     }
 
     function initAllRails() {
-        setupModelPageShell('page-basic-model', 'ws-rail-basic-model', 'basic-layout-tabs', 'layout-btn-split');
-        setupModelPageShell('page-advanced-model', 'ws-rail-advanced-model', 'adv-struct-tabs', 'adv-struct-all');
+        setupBasicModel3Col();
+        setupAdvModel3Col();
         setupLabShell();
         setupLessonShell();
         wireRailsHooks();
@@ -1969,7 +2482,13 @@
     }
 
     window.BlinkWorkspaceRails = {
-        clickModelSub,
+        setBasicView: applyBasicModelView,
+        setAdvView: applyAdvModelView,
+        setBasicFullSpace,
+        clickAdvStruct,
+        clickLayerBtn,
+        setCam,
+        toggleModelOpts,
         selectLab,
         syncAllRails
     };
