@@ -7013,3 +7013,1322 @@ body[data-page="advanced-model"] {
     border-color: rgba(250, 204, 21, 0.55) !important;
     color: #ffffff !important;
 }
+
+/* ============================================================================
+   EINHEITLICHER ONLINE-HUB (FESTER TOP-BUTTON, MODUS-PILLS & SAUBERE SIDEBAR)
+   ============================================================================ */
+.mp-legacy-hidden {
+    display: none !important;
+}
+
+.mp-global-online-btn {
+    min-height: 36px;
+}
+.mp-global-online-btn.is-waiting {
+    border-color: rgba(251, 191, 36, 0.55) !important;
+    box-shadow: 0 0 18px -6px rgba(251, 191, 36, 0.45);
+}
+
+.mp-mode-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 10px 8px;
+    border-radius: 16px;
+    border: 1.5px solid rgba(255, 255, 255, 0.09);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+.mp-mode-pill:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text-primary);
+}
+.mp-mode-pill.is-selected {
+    background: linear-gradient(180deg, rgba(34, 211, 238, 0.22) 0%, rgba(34, 211, 238, 0.08) 100%);
+    border-color: rgba(34, 211, 238, 0.65);
+    color: #ffffff;
+    box-shadow: 0 0 0 2.5px rgba(34, 211, 238, 0.16);
+}
+
+.mp-code-display-btn {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+}
+.mp-code-display-btn:hover {
+    background: rgba(34, 211, 238, 0.10);
+    border-color: rgba(34, 211, 238, 0.35);
+}
+
+/* Theme-Abstimmung für alle 6 Designs */
+[data-theme="onyx-oled"] .mp-mode-pill.is-selected {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: #ffffff;
+    box-shadow: 0 0 0 2.5px rgba(255, 255, 255, 0.14);
+}
+[data-theme="gargantua-interstellar"] .mp-mode-pill.is-selected {
+    background: rgba(245, 158, 11, 0.18);
+    border-color: #fbbf24;
+    box-shadow: 0 0 0 2.5px rgba(245, 158, 11, 0.18);
+}
+[data-theme="kachow-cars"] .mp-mode-pill.is-selected {
+    background: rgba(225, 29, 46, 0.24);
+    border-color: #facc15;
+    box-shadow: 0 0 0 2.5px rgba(225, 29, 46, 0.22);
+}
+[data-theme="academic-light"] .mp-mode-pill,
+[data-theme="arrakis-dune"] .mp-mode-pill {
+    background: rgba(255, 254, 252, 0.78);
+    border-color: rgba(118, 96, 138, 0.20);
+    color: var(--text-secondary);
+}
+[data-theme="academic-light"] .mp-mode-pill.is-selected {
+    background: #fffdf9;
+    border-color: #d4922a;
+    color: #2b1d38;
+    box-shadow: 0 0 0 2.5px rgba(212, 146, 42, 0.18);
+}
+[data-theme="arrakis-dune"] .mp-mode-pill.is-selected {
+    background: #ffffff;
+    border-color: #0284c7;
+    color: #241911;
+    box-shadow: 0 0 0 2.5px rgba(2, 132, 199, 0.16);
+}
+[data-theme="academic-light"] .mp-code-display-btn,
+[data-theme="arrakis-dune"] .mp-code-display-btn {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(154, 118, 82, 0.22);
+}
+
+/* ============================================================================
+   EINHEITLICHE AUSRICHTUNG DER SUB-SWITCHES AN DEN SEITENINHALT
+   ============================================================================ */
+
+/* 1. SPIELEN-MODUS (Inhalt: max-w-[1640px] + p-3 / sm:p-6) */
+#game-top-tabs-bar,
+#sparring-top-bar {
+    padding-left: max(0.75rem, calc((100% - 1640px) / 2)) !important;
+    padding-right: max(0.75rem, calc((100% - 1640px) / 2)) !important;
+}
+/* Doppeltes Label ausblenden, damit Switches (links) & Online-Button (rechts) sauber stehen */
+#game-top-tabs-bar > div:not(#game-mode-tabs) {
+    display: none !important;
+}
+@media (min-width: 640px) {
+    #game-top-tabs-bar,
+    #sparring-top-bar {
+        padding-left: max(1.5rem, calc((100% - 1640px) / 2)) !important;
+        padding-right: max(1.5rem, calc((100% - 1640px) / 2)) !important;
+    }
+}
+
+/* 2. LABORMODUS (Inhalt: max-w-[1560px] + p-4 / sm:p-6 / lg:p-8) */
+#page-lab > div:first-child {
+    padding-left: max(1rem, calc((100% - 1560px) / 2)) !important;
+    padding-right: max(1rem, calc((100% - 1560px) / 2)) !important;
+}
+@media (min-width: 640px) {
+    #page-lab > div:first-child {
+        padding-left: max(1.5rem, calc((100% - 1560px) / 2)) !important;
+        padding-right: max(1.5rem, calc((100% - 1560px) / 2)) !important;
+    }
+}
+@media (min-width: 1024px) {
+    #page-lab > div:first-child {
+        padding-left: max(2rem, calc((100% - 1560px) / 2)) !important;
+        padding-right: max(2rem, calc((100% - 1560px) / 2)) !important;
+    }
+}
+
+/* 3. MODELLMODUS (Switch-Leisten & 3D/2D-Arbeitsbereich bündig auf 1640px) */
+#models-shared-bar,
+#page-basic-model > div:first-child,
+#page-advanced-model > div:first-child {
+    padding-left: max(1rem, calc((100% - 1640px) / 2)) !important;
+    padding-right: max(1rem, calc((100% - 1640px) / 2)) !important;
+}
+#basic-split-workspace,
+#adv-split-workspace {
+    width: 100%;
+    max-width: 1640px;
+    margin-left: auto;
+    margin-right: auto;
+}
+@media (min-width: 1641px) {
+    #basic-split-workspace,
+    #adv-split-workspace {
+        border-left: 1px solid var(--border-subtle);
+        border-right: 1px solid var(--border-subtle);
+    }
+}
+
+/* 4. KURS-MODUS (Inhalt: max-w-5xl = 1024px + p-6 / sm:p-10) */
+#page-lesson > div:first-child {
+    padding-left: max(1.5rem, calc((100% - 1024px) / 2)) !important;
+    padding-right: max(1.5rem, calc((100% - 1024px) / 2)) !important;
+}
+@media (min-width: 640px) {
+    #page-lesson > div:first-child {
+        padding-left: max(2.5rem, calc((100% - 1024px) / 2)) !important;
+        padding-right: max(2.5rem, calc((100% - 1024px) / 2)) !important;
+    }
+}
+
+/* ============================================================================
+   BLINK 3-SPALTEN-SPIELBEREICH & FOKUSMODUS (ALLE 6 SPIELMODI & 6 THEMES)
+   ============================================================================ */
+.g3-hidden-ctrl {
+    display: none !important;
+}
+
+#page-game {
+    padding: 0 !important;
+}
+
+.g3-shell {
+    width: 100%;
+    max-width: 1640px;
+    margin: 0 auto;
+    padding: 16px 24px 32px;
+    display: grid;
+    grid-template-columns: 204px minmax(0, 1fr) 340px;
+    gap: 20px;
+    align-items: start;
+    transition: max-width 240ms cubic-bezier(0.22, 1, 0.36, 1), gap 240ms ease;
+}
+.g3-shell.is-sparring {
+    grid-template-columns: minmax(0, 1fr);
+}
+.g3-shell.is-sparring .g3-left,
+.g3-shell.is-sparring .g3-right {
+    display: none !important;
+}
+
+/* FOKUSMODUS: Linke Leiste weg, Spielfeld spürbar größer, rechte Spalte minimiert */
+.g3-shell.is-focus-mode .g3-left {
+    display: none !important;
+}
+.g3-shell.is-focus-mode.is-focus-arena {
+    max-width: 1480px;
+    grid-template-columns: minmax(0, 1fr) 264px;
+    gap: 20px;
+}
+.g3-shell.is-focus-mode.is-focus-verhoer {
+    max-width: 1560px;
+    grid-template-columns: minmax(0, 1fr);
+}
+.g3-shell.is-focus-mode.is-focus-verhoer .g3-right {
+    display: none !important;
+}
+.g3-shell.is-focus-mode.is-focus-puzzle {
+    max-width: 1480px;
+    grid-template-columns: minmax(0, 1fr) 356px;
+    gap: 20px;
+}
+.g3-shell.is-focus-puzzle #sudoku-grid {
+    max-width: 560px !important;
+}
+.g3-shell.is-focus-puzzle #cas-grid,
+.g3-shell.is-focus-puzzle #cas-col-triggers {
+    max-width: 540px !important;
+}
+
+.g3-focus-mini-bar {
+    padding: 12px 14px;
+    border-radius: 20px;
+}
+
+/* Start-Overlay für die 4 Rätselmodi (analog zur Blink-Arena vor Spielbeginn) */
+.g3-puzzle-board-host {
+    position: relative !important;
+}
+.g3-puzzle-lobby-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    border-radius: inherit;
+    background: rgba(5, 9, 18, 0.84);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+.g3-puzzle-lobby-overlay.hidden {
+    display: none !important;
+}
+.g3-lobby-icon-badge {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--g3-accent, #22d3ee) 16%, transparent);
+    border: 1px solid color-mix(in srgb, var(--g3-accent, #22d3ee) 38%, transparent);
+    color: var(--g3-accent, #22d3ee);
+}
+[data-theme="academic-light"] .g3-puzzle-lobby-overlay,
+[data-theme="arrakis-dune"] .g3-puzzle-lobby-overlay {
+    background: rgba(252, 249, 244, 0.86);
+}
+
+/* Blink-Arena: Nur die Karten-Zähler-Zeile ausblenden (Name & Elo bleiben sichtbar) */
+#opponent-sub-stats,
+#opponent-zone div:has(> #ai-total-remaining),
+#game-view-arena div:has(> #score-player-total) {
+    display: none !important;
+}
+
+/* Name oben, Elo-Badge sauber direkt darunter (Gegner & Spieler) */
+.g3-name-elo-stack {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 4px !important;
+}
+.g3-name-elo-stack #player-name-input {
+    line-height: 1.2 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+/* Einheitlicher roter „Partie beenden“-Button für alle Duell- & Online-Modi */
+.g3-abort-btn {
+    padding: 8px 16px !important;
+    border-radius: 9999px !important;
+    border: 1px solid rgba(244, 63, 94, 0.38) !important;
+    background: rgba(244, 63, 94, 0.12) !important;
+    color: #fda4af !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    line-height: 1.25 !important;
+    cursor: pointer;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease !important;
+}
+.g3-abort-btn:hover {
+    background: rgba(244, 63, 94, 0.22) !important;
+    border-color: rgba(244, 63, 94, 0.62) !important;
+    color: #ffe4e6 !important;
+}
+.g3-abort-btn.hidden {
+    display: none !important;
+}
+[data-theme="academic-light"] .g3-abort-btn,
+[data-theme="arrakis-dune"] .g3-abort-btn {
+    background: rgba(225, 29, 72, 0.10) !important;
+    border-color: rgba(225, 29, 72, 0.34) !important;
+    color: #be123c !important;
+}
+[data-theme="academic-light"] .g3-abort-btn:hover,
+[data-theme="arrakis-dune"] .g3-abort-btn:hover {
+    background: rgba(225, 29, 72, 0.18) !important;
+    border-color: rgba(225, 29, 72, 0.55) !important;
+    color: #9f1239 !important;
+}
+
+.g3-left,
+.g3-right {
+    position: sticky;
+    top: 16px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.g3-center {
+    min-width: 0;
+}
+.g3-center > div {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.g3-single-col-grid:not(.hidden) {
+    display: block !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.g3-single-col-grid.hidden {
+    display: none !important;
+}
+.g3-full-span {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+}
+
+/* Kartenfortschritt (nur während laufender Arena-Partie sichtbar) */
+.g3-merged-section {
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.g3-merged-subcard {
+    background: rgba(6, 10, 20, 0.42) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 16px !important;
+    padding: 12px 14px !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+}
+
+/* Bestenliste im Abschluss-Pop-up (#match-summary-overlay) */
+#match-summary-overlay > div {
+    max-width: min(560px, 94vw) !important;
+    max-height: 90dvh;
+    overflow-y: auto;
+}
+.g3-summary-leaderboard {
+    background: rgba(6, 10, 20, 0.55) !important;
+    border: 1px solid rgba(255, 255, 255, 0.09) !important;
+    border-radius: 16px !important;
+    padding: 12px 14px !important;
+    text-align: left;
+    margin-top: 4px !important;
+}
+
+/* Rechter Dock-Bereich für Daily / Sudoku / Endgame / Cascade */
+.g3-right-dock {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+}
+.g3-right-dock .g3-dock-item {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+}
+
+@media (max-width: 1179px) {
+    .g3-shell,
+    .g3-shell.is-focus-mode.is-focus-arena,
+    .g3-shell.is-focus-mode.is-focus-puzzle {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 12px 14px 28px;
+        gap: 16px;
+    }
+    .g3-left,
+    .g3-right {
+        position: static;
+    }
+    .g3-rail-card {
+        display: flex !important;
+        flex-direction: row !important;
+        overflow-x: auto;
+        gap: 8px !important;
+        padding: 8px !important;
+    }
+    .g3-rail-group {
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 6px !important;
+    }
+    .g3-rail-heading {
+        display: none !important;
+    }
+}
+
+/* Linke Spielmodi-Spalte */
+.g3-rail-card {
+    padding: 14px 12px;
+    border-radius: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.g3-rail-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.g3-rail-heading {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--text-secondary);
+    opacity: 0.72;
+    padding: 2px 10px 4px;
+}
+.g3-mode-btn {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 13px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    font-weight: 700;
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+.g3-mode-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+.g3-mode-btn.is-active {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: color-mix(in srgb, var(--g3-accent, #22d3ee) 48%, transparent);
+    color: var(--text-primary);
+}
+.g3-mode-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    transition: background-color 150ms ease, color 150ms ease;
+}
+.g3-mode-btn.is-active .g3-mode-icon {
+    background: color-mix(in srgb, var(--g3-accent, #22d3ee) 18%, transparent);
+    color: var(--g3-accent, #22d3ee);
+}
+.g3-mode-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.g3-live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 9999px;
+    flex-shrink: 0;
+}
+.g3-live-dot.is-ok   { background: #34d399; box-shadow: 0 0 8px rgba(52, 211, 153, 0.8); }
+.g3-live-dot.is-wait { background: #fbbf24; box-shadow: 0 0 8px rgba(251, 191, 36, 0.8); }
+
+.g3-accent-cyan    { --g3-accent: #22d3ee; }
+.g3-accent-amber   { --g3-accent: #fbbf24; }
+.g3-accent-emerald { --g3-accent: #34d399; }
+.g3-accent-purple  { --g3-accent: #c084fc; }
+.g3-accent-sky     { --g3-accent: #38bdf8; }
+.g3-accent-rose    { --g3-accent: #fb7185; }
+
+/* Rechter Einstellungs- & Aktions-Block */
+.g3-right-card {
+    border-radius: 24px;
+}
+.g3-rules-icon-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 150ms ease;
+}
+.g3-rules-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--text-primary);
+    border-color: var(--border-focus);
+}
+
+.g3-stat-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 7px;
+    border-radius: 9999px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-secondary);
+}
+.g3-stat-pill.is-done {
+    background: rgba(16, 185, 129, 0.16);
+    border-color: rgba(52, 211, 153, 0.40);
+    color: #34d399;
+}
+.g3-live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    border-radius: 9999px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    font-weight: 800;
+    background: rgba(16, 185, 129, 0.16);
+    border: 1px solid rgba(52, 211, 153, 0.45);
+    color: #6ee7b7;
+}
+
+.g3-setting-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.g3-setting-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+    color: var(--text-secondary);
+    padding-left: 2px;
+}
+.g3-seg-rail {
+    display: flex;
+    gap: 3px;
+    padding: 3px;
+    border-radius: 9999px;
+    background: rgba(6, 10, 20, 0.50);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.g3-seg-btn {
+    flex: 1 1 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 6px 6px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 140ms ease;
+}
+.g3-seg-btn:hover { color: var(--text-primary); }
+.g3-seg-btn.is-active {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.24);
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.g3-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 12px;
+    border-radius: 9999px;
+    font-size: 11.5px;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 150ms ease;
+}
+.g3-action-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.11);
+    border-color: var(--border-focus);
+}
+.g3-action-btn:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+}
+.g3-action-btn.is-deadlock {
+    background: #fbbf24 !important;
+    border-color: #fde68a !important;
+    color: #0f172a !important;
+    box-shadow: 0 0 18px rgba(251, 191, 36, 0.40);
+}
+.g3-count-pill {
+    padding: 1px 6px;
+    border-radius: 9999px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    font-weight: 800;
+    background: rgba(34, 211, 238, 0.18);
+    color: #67e8f9;
+}
+
+.g3-ai-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 11px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 140ms ease;
+}
+.g3-ai-item:hover { background: rgba(255, 255, 255, 0.07); color: var(--text-primary); }
+.g3-ai-item.is-active {
+    background: rgba(16, 185, 129, 0.14);
+    border-color: rgba(52, 211, 153, 0.52);
+    color: var(--text-primary);
+}
+
+.g3-online-box {
+    padding: 12px;
+    border-radius: 16px;
+    background: rgba(6, 10, 20, 0.45);
+    border: 1px solid rgba(34, 211, 238, 0.22);
+}
+.g3-code-pill {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    cursor: pointer;
+}
+.g3-code-pill:hover {
+    background: rgba(34, 211, 238, 0.14);
+    border-color: rgba(34, 211, 238, 0.45);
+}
+.g3-code-input {
+    background: rgba(6, 10, 20, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+}
+.g3-code-input:focus { border-color: var(--border-focus); }
+.g3-player-chip {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 8px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    min-width: 0;
+}
+
+/* Theme-Abstimmung für alle 6 Designs */
+[data-theme="academic-light"] .g3-accent-cyan,    [data-theme="arrakis-dune"] .g3-accent-cyan    { --g3-accent: #0284c7; }
+[data-theme="academic-light"] .g3-accent-amber,   [data-theme="arrakis-dune"] .g3-accent-amber   { --g3-accent: #b45309; }
+[data-theme="academic-light"] .g3-accent-emerald, [data-theme="arrakis-dune"] .g3-accent-emerald { --g3-accent: #047857; }
+[data-theme="academic-light"] .g3-accent-purple,  [data-theme="arrakis-dune"] .g3-accent-purple  { --g3-accent: #7c3aed; }
+[data-theme="academic-light"] .g3-accent-sky,     [data-theme="arrakis-dune"] .g3-accent-sky     { --g3-accent: #0369a1; }
+[data-theme="academic-light"] .g3-accent-rose,    [data-theme="arrakis-dune"] .g3-accent-rose    { --g3-accent: #be123c; }
+
+[data-theme="academic-light"] .g3-mode-btn.is-active,
+[data-theme="arrakis-dune"] .g3-mode-btn.is-active {
+    background: #ffffff;
+    box-shadow: 0 4px 12px -6px rgba(44, 30, 56, 0.16);
+}
+[data-theme="academic-light"] .g3-mode-icon,
+[data-theme="arrakis-dune"] .g3-mode-icon,
+[data-theme="academic-light"] .g3-rules-icon-btn,
+[data-theme="arrakis-dune"] .g3-rules-icon-btn,
+[data-theme="academic-light"] .g3-action-btn,
+[data-theme="arrakis-dune"] .g3-action-btn {
+    background: rgba(255, 254, 252, 0.85);
+    border-color: var(--border-subtle);
+    color: var(--text-primary);
+}
+[data-theme="academic-light"] .g3-seg-rail,
+[data-theme="arrakis-dune"] .g3-seg-rail {
+    background: rgba(44, 30, 56, 0.06);
+    border-color: var(--border-subtle);
+}
+[data-theme="academic-light"] .g3-seg-btn.is-active,
+[data-theme="arrakis-dune"] .g3-seg-btn.is-active {
+    background: #ffffff;
+    border-color: var(--border-subtle);
+    color: var(--text-primary);
+    box-shadow: 0 2px 8px -3px rgba(44, 30, 56, 0.14);
+}
+[data-theme="academic-light"] .g3-merged-section,
+[data-theme="arrakis-dune"] .g3-merged-section {
+    border-top-color: var(--border-subtle);
+}
+[data-theme="academic-light"] .g3-merged-subcard,
+[data-theme="arrakis-dune"] .g3-merged-subcard,
+[data-theme="academic-light"] .g3-summary-leaderboard,
+[data-theme="arrakis-dune"] .g3-summary-leaderboard,
+[data-theme="academic-light"] .g3-online-box,
+[data-theme="arrakis-dune"] .g3-online-box,
+[data-theme="academic-light"] .g3-ai-item,
+[data-theme="arrakis-dune"] .g3-ai-item {
+    background: rgba(255, 254, 252, 0.78) !important;
+    border-color: var(--border-subtle) !important;
+}
+[data-theme="academic-light"] .g3-code-pill,
+[data-theme="arrakis-dune"] .g3-code-pill,
+[data-theme="academic-light"] .g3-code-input,
+[data-theme="arrakis-dune"] .g3-code-input,
+[data-theme="academic-light"] .g3-player-chip,
+[data-theme="arrakis-dune"] .g3-player-chip {
+    background: rgba(255, 255, 255, 0.90);
+    border-color: var(--border-subtle);
+    color: var(--text-primary);
+}
+[data-theme="academic-light"] .g3-live-badge,
+[data-theme="arrakis-dune"] .g3-live-badge { color: #047857; }
+[data-theme="academic-light"] .g3-count-pill,
+[data-theme="arrakis-dune"] .g3-count-pill {
+    background: rgba(2, 132, 199, 0.14);
+    color: #0369a1;
+}
+
+[data-theme="kachow-cars"] .g3-seg-btn.is-active {
+    background: #e11d2e;
+    border-color: rgba(250, 204, 21, 0.55);
+    color: #ffffff;
+}
+[data-theme="gargantua-interstellar"] .g3-seg-btn.is-active {
+    background: rgba(245, 158, 11, 0.24);
+    border-color: rgba(251, 191, 36, 0.52);
+    color: #fffbeb;
+}
+
+/* ============================================================================
+   EINHEITLICHE REGEL-ICONS & HARMONISCHER „CLUSTER RUFEN!“-BUTTON (ALLE 6 THEMES)
+   ============================================================================ */
+
+/* Verhör-?-Button nur im Fokusmodus sichtbar (sonst sitzt das ?-Icon in der rechten Spalte) */
+.g3-verhoer-focus-rules {
+    display: none !important;
+}
+.g3-shell.is-focus-verhoer .g3-verhoer-focus-rules {
+    display: inline-flex !important;
+}
+
+/* Einheitliche 32px-Höhe für „Partie beenden“ & „Cluster rufen!“ */
+.g3-abort-btn {
+    min-height: 32px !important;
+    padding: 0 14px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* „Cluster rufen!“ im Verhör: markant wie der primäre CTA, aber exakt auf HUD-Höhe */
+.vh-cluster-cta-btn {
+    height: 32px !important;
+    padding: 0 14px !important;
+    border-radius: 9999px !important;
+    font-size: 11.5px !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    letter-spacing: 0.02em !important;
+    gap: 6px !important;
+    background: #22d3ee !important;
+    border: 1px solid rgba(255, 255, 255, 0.34) !important;
+    color: #041016 !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.45),
+        0 6px 18px -6px rgba(34, 211, 238, 0.58) !important;
+}
+.vh-cluster-cta-btn * {
+    color: inherit !important;
+}
+.vh-cluster-cta-btn:not(:disabled):hover {
+    filter: brightness(1.07);
+    transform: translateY(-1px);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.55),
+        0 10px 22px -6px rgba(34, 211, 238, 0.68) !important;
+}
+.vh-cluster-cta-btn.is-idle,
+.vh-cluster-cta-btn:disabled {
+    opacity: 0.42 !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+/* Theme-Abstimmung für „Cluster rufen!“ */
+[data-theme="onyx-oled"] .vh-cluster-cta-btn {
+    background: #ededed !important;
+    border-color: #ffffff !important;
+    color: #0c0c0e !important;
+    box-shadow:
+        inset 0 1px 0 #ffffff,
+        0 6px 16px -6px rgba(255, 255, 255, 0.28) !important;
+}
+[data-theme="academic-light"] .vh-cluster-cta-btn {
+    background: linear-gradient(135deg, #d79c3a 0%, #bf7828 100%) !important;
+    border-color: rgba(164, 102, 28, 0.38) !important;
+    color: #fffdf8 !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.38),
+        0 6px 16px -6px rgba(191, 120, 40, 0.52) !important;
+}
+[data-theme="gargantua-interstellar"] .vh-cluster-cta-btn {
+    background: linear-gradient(135deg, #fcd34d 0%, #ea580c 100%) !important;
+    border-color: rgba(254, 243, 199, 0.42) !important;
+    color: #160b04 !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.36),
+        0 6px 18px -6px rgba(245, 158, 11, 0.55) !important;
+}
+[data-theme="arrakis-dune"] .vh-cluster-cta-btn {
+    background: #0284c7 !important;
+    border-color: rgba(255, 255, 255, 0.25) !important;
+    color: #ffffff !important;
+    box-shadow: 0 6px 16px -6px rgba(2, 132, 199, 0.48) !important;
+}
+[data-theme="kachow-cars"] .vh-cluster-cta-btn {
+    background: #e11d2e !important;
+    border-color: rgba(250, 204, 21, 0.60) !important;
+    color: #ffffff !important;
+    box-shadow: 0 6px 18px -6px rgba(225, 29, 46, 0.58) !important;
+}
+/* ============================================================================
+   1. FIX: START-OVERLAY BÜNDIG OHNE ABGESCHNITTENE OBERKANTE
+   ============================================================================ */
+.g3-puzzle-board-host {
+    position: relative !important;
+    overflow: hidden !important;
+}
+.g3-puzzle-lobby-overlay,
+#game-lobby-overlay {
+    position: absolute !important;
+    inset: -1px !important;
+    margin: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    border-radius: inherit !important;
+    z-index: 25 !important;
+}
+
+/* ============================================================================
+   2. WEBSITE-WEITE VEREINHEITLICHUNG ALLER SWITCH-BUTTONS (G3-SEG-DESIGN)
+   ============================================================================ */
+
+/* A) Alle Switch-Schienen (Rails) im flachen, ruhigen Spielen-Menü-Look */
+#models-mode-tabs,
+#game-mode-tabs,
+#lab-mode-tabs,
+#lesson-mode-tabs,
+#basic-layout-tabs,
+#basic-2d-tabs,
+#adv-struct-tabs,
+#mapping-mode-tabs,
+#game-info-mode-tabs,
+#profile-sheet-tabs,
+.apple-seg-rail,
+.apple-cam-rail {
+    padding: 3px !important;
+    gap: 3px !important;
+    border-radius: 9999px !important;
+    background: rgba(6, 10, 20, 0.50) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: none !important;
+}
+
+/* Schicht-X-Schienen behalten links Platz für das Label „Schicht X:“ */
+div:has(> #basic-layer-tabs),
+div:has(> #adv-layer-tabs) {
+    padding: 3px 3px 3px 12px !important;
+    border-radius: 9999px !important;
+    background: rgba(6, 10, 20, 0.50) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: none !important;
+}
+
+/* B) Gleitende Active-Pills & Nav-Indikator (kein greller Neon-Verlauf mehr) */
+.sliding-pill-bg.sliding-pill-cyan,
+.sliding-pill-bg.sliding-pill-purple,
+body #nav-indicator,
+body[data-page="game"] #nav-indicator {
+    background: rgba(255, 255, 255, 0.14) !important;
+    border: 1px solid rgba(255, 255, 255, 0.24) !important;
+    box-shadow: none !important;
+}
+
+/* C) Alle statischen aktiven Segment- & Switch-Buttons */
+[id^="sdk-diff-"].bg-white,
+[id^="sdk-mode-"].bg-white,
+[id^="eg-switch-"].bg-white,
+[id^="mc-dist-"].bg-white,
+[id^="phase-met-"].bg-white,
+[id^="brain-rule-"].bg-white,
+[id^="cube-r-"].bg-purple-500,
+.apple-cam-btn.is-active,
+.apple-cam-rail.is-purple .apple-cam-btn.is-active,
+.apple-filter-chip.is-active,
+.apple-filter-chip.is-accent,
+.apple-fullspace-btn.is-active,
+.profile-chip.is-selected {
+    background: rgba(255, 255, 255, 0.14) !important;
+    border: 1px solid rgba(255, 255, 255, 0.24) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    box-shadow: none !important;
+}
+
+/* D) Ruhige Textfarben für aktive & inaktive Switch-Labels */
+.pill-btn-active,
+#main-nav-bar .nav-item-clean.font-bold {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+}
+.pill-btn-idle {
+    color: var(--text-secondary) !important;
+    font-weight: 600 !important;
+}
+.pill-btn-idle:hover {
+    color: var(--text-primary) !important;
+}
+
+/* --- THEME: ONYX OLED --- */
+[data-theme="onyx-oled"] #models-mode-tabs,
+[data-theme="onyx-oled"] #game-mode-tabs,
+[data-theme="onyx-oled"] #lab-mode-tabs,
+[data-theme="onyx-oled"] #lesson-mode-tabs,
+[data-theme="onyx-oled"] #basic-layout-tabs,
+[data-theme="onyx-oled"] #basic-2d-tabs,
+[data-theme="onyx-oled"] #adv-struct-tabs,
+[data-theme="onyx-oled"] #mapping-mode-tabs,
+[data-theme="onyx-oled"] #game-info-mode-tabs,
+[data-theme="onyx-oled"] #profile-sheet-tabs,
+[data-theme="onyx-oled"] .apple-seg-rail,
+[data-theme="onyx-oled"] .apple-cam-rail,
+[data-theme="onyx-oled"] div:has(> #basic-layer-tabs),
+[data-theme="onyx-oled"] div:has(> #adv-layer-tabs) {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-color: #27272a !important;
+}
+[data-theme="onyx-oled"] .sliding-pill-bg.sliding-pill-cyan,
+[data-theme="onyx-oled"] .sliding-pill-bg.sliding-pill-purple,
+[data-theme="onyx-oled"] body #nav-indicator,
+[data-theme="onyx-oled"] body[data-page="game"] #nav-indicator,
+[data-theme="onyx-oled"] [id^="sdk-diff-"].bg-white,
+[data-theme="onyx-oled"] [id^="sdk-mode-"].bg-white,
+[data-theme="onyx-oled"] [id^="eg-switch-"].bg-white,
+[data-theme="onyx-oled"] [id^="mc-dist-"].bg-white,
+[data-theme="onyx-oled"] [id^="phase-met-"].bg-white,
+[data-theme="onyx-oled"] [id^="brain-rule-"].bg-white,
+[data-theme="onyx-oled"] [id^="cube-r-"].bg-purple-500,
+[data-theme="onyx-oled"] .apple-cam-btn.is-active,
+[data-theme="onyx-oled"] .apple-cam-rail.is-purple .apple-cam-btn.is-active,
+[data-theme="onyx-oled"] .apple-filter-chip.is-active,
+[data-theme="onyx-oled"] .apple-filter-chip.is-accent,
+[data-theme="onyx-oled"] .apple-fullspace-btn.is-active,
+[data-theme="onyx-oled"] .profile-chip.is-selected {
+    background: rgba(255, 255, 255, 0.14) !important;
+    border-color: rgba(255, 255, 255, 0.24) !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
+}
+
+/* --- THEMES: SUNRISE · PANEM & ARRAKIS · DUNE --- */
+[data-theme="academic-light"] #models-mode-tabs,
+[data-theme="academic-light"] #game-mode-tabs,
+[data-theme="academic-light"] #lab-mode-tabs,
+[data-theme="academic-light"] #lesson-mode-tabs,
+[data-theme="academic-light"] #basic-layout-tabs,
+[data-theme="academic-light"] #basic-2d-tabs,
+[data-theme="academic-light"] #adv-struct-tabs,
+[data-theme="academic-light"] #mapping-mode-tabs,
+[data-theme="academic-light"] #game-info-mode-tabs,
+[data-theme="academic-light"] #profile-sheet-tabs,
+[data-theme="academic-light"] .apple-seg-rail,
+[data-theme="academic-light"] .apple-cam-rail,
+[data-theme="academic-light"] div:has(> #basic-layer-tabs),
+[data-theme="academic-light"] div:has(> #adv-layer-tabs),
+[data-theme="arrakis-dune"] #models-mode-tabs,
+[data-theme="arrakis-dune"] #game-mode-tabs,
+[data-theme="arrakis-dune"] #lab-mode-tabs,
+[data-theme="arrakis-dune"] #lesson-mode-tabs,
+[data-theme="arrakis-dune"] #basic-layout-tabs,
+[data-theme="arrakis-dune"] #basic-2d-tabs,
+[data-theme="arrakis-dune"] #adv-struct-tabs,
+[data-theme="arrakis-dune"] #mapping-mode-tabs,
+[data-theme="arrakis-dune"] #game-info-mode-tabs,
+[data-theme="arrakis-dune"] #profile-sheet-tabs,
+[data-theme="arrakis-dune"] .apple-seg-rail,
+[data-theme="arrakis-dune"] .apple-cam-rail,
+[data-theme="arrakis-dune"] div:has(> #basic-layer-tabs),
+[data-theme="arrakis-dune"] div:has(> #adv-layer-tabs) {
+    background: rgba(44, 30, 56, 0.06) !important;
+    border-color: var(--border-subtle) !important;
+    box-shadow: none !important;
+}
+[data-theme="academic-light"] .sliding-pill-bg.sliding-pill-cyan,
+[data-theme="academic-light"] .sliding-pill-bg.sliding-pill-purple,
+[data-theme="academic-light"] body #nav-indicator,
+[data-theme="academic-light"] body[data-page="game"] #nav-indicator,
+[data-theme="academic-light"] [id^="sdk-diff-"].bg-white,
+[data-theme="academic-light"] [id^="sdk-mode-"].bg-white,
+[data-theme="academic-light"] [id^="eg-switch-"].bg-white,
+[data-theme="academic-light"] [id^="mc-dist-"].bg-white,
+[data-theme="academic-light"] [id^="phase-met-"].bg-white,
+[data-theme="academic-light"] [id^="brain-rule-"].bg-white,
+[data-theme="academic-light"] [id^="cube-r-"].bg-purple-500,
+[data-theme="academic-light"] .apple-cam-btn.is-active,
+[data-theme="academic-light"] .apple-cam-rail.is-purple .apple-cam-btn.is-active,
+[data-theme="academic-light"] .apple-filter-chip.is-active,
+[data-theme="academic-light"] .apple-filter-chip.is-accent,
+[data-theme="academic-light"] .apple-fullspace-btn.is-active,
+[data-theme="academic-light"] .profile-chip.is-selected,
+[data-theme="arrakis-dune"] .sliding-pill-bg.sliding-pill-cyan,
+[data-theme="arrakis-dune"] .sliding-pill-bg.sliding-pill-purple,
+[data-theme="arrakis-dune"] body #nav-indicator,
+[data-theme="arrakis-dune"] body[data-page="game"] #nav-indicator,
+[data-theme="arrakis-dune"] [id^="sdk-diff-"].bg-white,
+[data-theme="arrakis-dune"] [id^="sdk-mode-"].bg-white,
+[data-theme="arrakis-dune"] [id^="eg-switch-"].bg-white,
+[data-theme="arrakis-dune"] [id^="mc-dist-"].bg-white,
+[data-theme="arrakis-dune"] [id^="phase-met-"].bg-white,
+[data-theme="arrakis-dune"] [id^="brain-rule-"].bg-white,
+[data-theme="arrakis-dune"] [id^="cube-r-"].bg-purple-500,
+[data-theme="arrakis-dune"] .apple-cam-btn.is-active,
+[data-theme="arrakis-dune"] .apple-cam-rail.is-purple .apple-cam-btn.is-active,
+[data-theme="arrakis-dune"] .apple-filter-chip.is-active,
+[data-theme="arrakis-dune"] .apple-filter-chip.is-accent,
+[data-theme="arrakis-dune"] .apple-fullspace-btn.is-active,
+[data-theme="arrakis-dune"] .profile-chip.is-selected {
+    background: #ffffff !important;
+    border-color: var(--border-subtle) !important;
+    color: var(--text-primary) !important;
+    box-shadow: 0 2px 8px -3px rgba(44, 30, 56, 0.14) !important;
+}
+[data-theme="academic-light"] .pill-btn-active,
+[data-theme="academic-light"] #main-nav-bar .nav-item-clean.font-bold,
+[data-theme="arrakis-dune"] .pill-btn-active,
+[data-theme="arrakis-dune"] #main-nav-bar .nav-item-clean.font-bold {
+    color: var(--text-primary) !important;
+}
+
+/* --- THEME: GARGANTUA · INTERSTELLAR --- */
+[data-theme="gargantua-interstellar"] .sliding-pill-bg.sliding-pill-cyan,
+[data-theme="gargantua-interstellar"] .sliding-pill-bg.sliding-pill-purple,
+[data-theme="gargantua-interstellar"] body #nav-indicator,
+[data-theme="gargantua-interstellar"] body[data-page="game"] #nav-indicator,
+[data-theme="gargantua-interstellar"] [id^="sdk-diff-"].bg-white,
+[data-theme="gargantua-interstellar"] [id^="sdk-mode-"].bg-white,
+[data-theme="gargantua-interstellar"] [id^="eg-switch-"].bg-white,
+[data-theme="gargantua-interstellar"] [id^="mc-dist-"].bg-white,
+[data-theme="gargantua-interstellar"] [id^="phase-met-"].bg-white,
+[data-theme="gargantua-interstellar"] [id^="brain-rule-"].bg-white,
+[data-theme="gargantua-interstellar"] [id^="cube-r-"].bg-purple-500,
+[data-theme="gargantua-interstellar"] .apple-cam-btn.is-active,
+[data-theme="gargantua-interstellar"] .apple-cam-rail.is-purple .apple-cam-btn.is-active,
+[data-theme="gargantua-interstellar"] .apple-filter-chip.is-active,
+[data-theme="gargantua-interstellar"] .apple-filter-chip.is-accent,
+[data-theme="gargantua-interstellar"] .apple-fullspace-btn.is-active,
+[data-theme="gargantua-interstellar"] .profile-chip.is-selected {
+    background: rgba(245, 158, 11, 0.24) !important;
+    border-color: rgba(251, 191, 36, 0.52) !important;
+    color: #fffbeb !important;
+    box-shadow: none !important;
+}
+[data-theme="gargantua-interstellar"] .pill-btn-active,
+[data-theme="gargantua-interstellar"] #main-nav-bar .nav-item-clean.font-bold {
+    color: #fffbeb !important;
+}
+
+/* --- THEME: KA-CHOW! --- */
+[data-theme="kachow-cars"] .sliding-pill-bg.sliding-pill-cyan,
+[data-theme="kachow-cars"] .sliding-pill-bg.sliding-pill-purple,
+[data-theme="kachow-cars"] body #nav-indicator,
+[data-theme="kachow-cars"] body[data-page="game"] #nav-indicator,
+[data-theme="kachow-cars"] [id^="sdk-diff-"].bg-white,
+[data-theme="kachow-cars"] [id^="sdk-mode-"].bg-white,
+[data-theme="kachow-cars"] [id^="eg-switch-"].bg-white,
+[data-theme="kachow-cars"] [id^="mc-dist-"].bg-white,
+[data-theme="kachow-cars"] [id^="phase-met-"].bg-white,
+[data-theme="kachow-cars"] [id^="brain-rule-"].bg-white,
+[data-theme="kachow-cars"] [id^="cube-r-"].bg-purple-500,
+[data-theme="kachow-cars"] .apple-cam-btn.is-active,
+[data-theme="kachow-cars"] .apple-cam-rail.is-purple .apple-cam-btn.is-active,
+[data-theme="kachow-cars"] .apple-filter-chip.is-active,
+[data-theme="kachow-cars"] .apple-filter-chip.is-accent,
+[data-theme="kachow-cars"] .apple-fullspace-btn.is-active,
+[data-theme="kachow-cars"] .profile-chip.is-selected {
+    background: #e11d2e !important;
+    border-color: rgba(250, 204, 21, 0.55) !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
+}
+[data-theme="kachow-cars"] .pill-btn-active,
+[data-theme="kachow-cars"] #main-nav-bar .nav-item-clean.font-bold {
+    color: #ffffff !important;
+}
+/* ============================================================================
+   EINHEITLICHE 2-SPALTEN-WORKSPACES FÜR MODELLE (VOLLBREITE), LABOR & KURS
+   ============================================================================ */
+.ws-scroll-host {
+    padding: 0 !important;
+}
+
+/* Kurs & Standard-2-Spalten-Shell */
+.ws-shell {
+    width: 100%;
+    max-width: 1640px;
+    margin: 0 auto;
+    padding: 16px 24px 36px;
+    display: grid;
+    grid-template-columns: 204px minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+}
+
+/* Labor: Kombinierte linke Spalte (Modus-Auswahl + Steuerung in EINER Karte) */
+.ws-shell.ws-shell-lab {
+    grid-template-columns: 332px minmax(0, 1fr);
+}
+.ws-lab-unified-card {
+    padding: 14px !important;
+    gap: 0 !important;
+}
+.ws-lab-subdock {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-subtle);
+}
+.ws-lab-ctrl-item {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+}
+.ws-lab-flat-card {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+}
+.ws-lab-flat-card::before,
+.ws-lab-flat-card::after {
+    display: none !important;
+}
+.ws-lab-sub-card {
+    background: rgba(6, 10, 20, 0.42) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 16px !important;
+    padding: 12px 14px !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+}
+.ws-lab-sub-card::before,
+.ws-lab-sub-card::after {
+    display: none !important;
+}
+[data-theme="academic-light"] .ws-lab-sub-card,
+[data-theme="arrakis-dune"] .ws-lab-sub-card {
+    background: rgba(255, 254, 252, 0.78) !important;
+    border-color: var(--border-subtle) !important;
+}
+
+.ws-main {
+    min-width: 0;
+}
+.ws-main > div {
+    max-width: none !important;
+    margin: 0 !important;
+}
+.ws-lesson-main > div {
+    max-width: 1080px !important;
+    margin: 0 !important;
+}
+
+/* MODELLE (GRUNDLEGEND & ERWEITERT): VOLLE BILDSCHIRMBREITE & VOLLE HÖHE */
+#page-basic-model > .ws-model-shell,
+#page-advanced-model > .ws-model-shell {
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 10px 18px 16px !important;
+    display: grid !important;
+    grid-template-columns: 184px minmax(0, 1fr) !important;
+    gap: 14px !important;
+    align-items: stretch;
+    overflow: hidden;
+}
+
+.ws-model-left {
+    position: static !important;
+    align-self: start;
+}
+
+.ws-model-pane {
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 22px;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+}
+
+.ws-model-toolbar {
+    padding: 8px 14px !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+    flex-shrink: 0;
+}
+
+.ws-model-pane #basic-split-workspace,
+.ws-model-pane #adv-split-workspace {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    flex: 1 1 0;
+    min-height: 0;
+}
+
+/* Tablet & Smartphone: Linke Leiste klappt sauber nach oben */
+@media (max-width: 1179px) {
+    .ws-shell,
+    .ws-shell.ws-shell-lab {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 12px 14px 28px;
+        gap: 14px;
+    }
+    .ws-lab-unified-card {
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: visible !important;
+        padding: 14px !important;
+    }
+    .ws-lab-unified-card #ws-lab-nav-slot {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        gap: 6px !important;
+    }
+    #page-basic-model > .ws-model-shell,
+    #page-advanced-model > .ws-model-shell {
+        display: flex !important;
+        flex-direction: column !important;
+        padding: 10px 12px 14px !important;
+        gap: 12px !important;
+    }
+    .ws-model-left {
+        width: 100%;
+        flex-shrink: 0;
+    }
+    .ws-model-pane {
+        flex: 1 1 0;
+        min-height: 0;
+        border-radius: 20px;
+    }
+}

@@ -2899,9 +2899,17 @@
                                 <span class="text-slate-300">Cluster #${idx + 1}</span>
                                 <span class="${sol.strict ? 'text-cyan-300' : 'text-purple-300'}">${sol.strict ? 'Streng · Gerade' : 'Schwach · Nicht-Gerade'}</span>
                             </div>
-                            <div class="flex flex-wrap gap-1 text-[10px] mono text-slate-400">
-                                ${sol.cards.map(c => `<span class="px-1.5 py-0.5 rounded bg-white/[0.05] text-slate-200">(${c.join(',')})</span>`).join('')}
-                            </div>
+                            <div class="grid grid-cols-5 gap-1.5 pt-0.5">
+                        ${[...sol.cards]
+                            .sort((a, b) => PALETTE_X[a[0]].count - PALETTE_X[b[0]].count)
+                            .map(([x, y, z]) => `
+                                <div title="(${x},${y},${z}) · ${PALETTE_X[x].count}× ${PALETTE_Y[y].name} ${PALETTE_Z[z].name}"
+                                     style="background:#ffffff"
+                                     class="w-full card-63-88 rounded-lg bg-white border border-slate-300 p-1 flex flex-col justify-between shadow-sm overflow-hidden">
+                                    ${renderCardSymbolsHTML(x, y, z)}
+                                </div>
+                            `).join('')}
+                    </div>
                         </div>
                     `).join('');
                 }
@@ -3009,23 +3017,42 @@
             syncActiveGameModeMusic();
         }
 
-        function selectSudokuCell(idx) {
-            if (sudokuState.fixed[idx]) return;
-            sudokuState.selectedCell = idx;
-            const current = sudokuState.board[idx];
-            if (current) {
-                sudokuState.picker = { x: current[0], y: current[1], z: current[2] };
-            } else {
-                const note = sudokuState.notes[idx];
-                if (note) {
-                    if (note.x.length === 1) sudokuState.picker.x = note.x[0];
-                    if (note.y.length === 1) sudokuState.picker.y = note.y[0];
-                    if (note.z.length === 1) sudokuState.picker.z = note.z[0];
-                }
-            }
-            playSound('tick');
-            renderSudokuUI();
+        function isCompleteSingleSudokuNote(note) {
+    return Boolean(note && note.x.length === 1 && note.y.length === 1 && note.z.length === 1);
+}
+
+function selectSudokuCell(idx) {
+    if (sudokuState.fixed[idx]) return;
+    const current = sudokuState.board[idx];
+    const note = sudokuState.notes[idx];
+
+    // 3 eindeutige Merkmale (Anzahl + Farbe + Symbol) notiert -> per Klick sofort als Karte aufploppen
+    if (!current && isCompleteSingleSudokuNote(note)) {
+        const card = [note.x[0], note.y[0], note.z[0]];
+        sudokuState.board[idx] = card;
+        sudokuState.notes[idx] = createEmptySudokuNote();
+        sudokuState.picker = { x: card[0], y: card[1], z: card[2] };
+        sudokuState.selectedCell = idx;
+        playSound('play');
+        renderSudokuUI();
+        const cellEl = document.querySelector(`#sudoku-grid > button:nth-child(${idx + 1})`);
+        if (cellEl && window.BlinkHaptics && typeof window.BlinkHaptics.stampPop === 'function') {
+            window.BlinkHaptics.stampPop(cellEl);
         }
+        return;
+    }
+
+    sudokuState.selectedCell = idx;
+    if (current) {
+        sudokuState.picker = { x: current[0], y: current[1], z: current[2] };
+    } else if (note) {
+        if (note.x.length === 1) sudokuState.picker.x = note.x[0];
+        if (note.y.length === 1) sudokuState.picker.y = note.y[0];
+        if (note.z.length === 1) sudokuState.picker.z = note.z[0];
+    }
+    playSound('tick');
+    renderSudokuUI();
+}
 
         function setSudokuPicker(dim, val) {
             if (sudokuState.inputMode === 'note') {
@@ -3274,10 +3301,17 @@
                     if (!card) {
                         const note = sudokuState.notes[idx];
                         if (hasSudokuNote(note)) {
+                            const isReadyCard = isCompleteSingleSudokuNote(note);
                             const singleColor = note.y.length === 1 ? PALETTE_Y[note.y[0]].hex : null;
-                            const tintStyle = (!isSel && singleColor) ? `style="border-color:${singleColor}88"` : '';
+                            const tintStyle = (!isSel && !isReadyCard && singleColor) ? `style="border-color:${singleColor}88"` : '';
+                            const noteCls = isReadyCard
+                                ? 'border-emerald-400 bg-emerald-500/10 shadow-[0_0_16px_rgba(52,211,153,0.28)] hover:scale-[1.03] cursor-pointer'
+                                : (isSel
+                                    ? 'border-cyan-400 bg-cyan-500/15 shadow-[0_0_18px_rgba(34,211,238,0.28)]'
+                                    : 'border-slate-500/45 bg-slate-900/70 hover:border-slate-400');
                             return `
-                                <button onclick="selectSudokuCell(${idx})" ${tintStyle} class="card-63-88 rounded-xl border-2 border-dashed ${isSel ? 'border-cyan-400 bg-cyan-500/15 shadow-[0_0_18px_rgba(34,211,238,0.28)]' : 'border-slate-500/45 bg-slate-900/70 hover:border-slate-400'} relative flex items-center justify-center p-1 transition overflow-hidden">
+                                <button onclick="selectSudokuCell(${idx})" ${tintStyle} title="${isReadyCard ? 'Klicken, um Karte direkt einzusetzen' : ''}" class="card-63-88 rounded-xl border-2 border-dashed ${noteCls} relative flex items-center justify-center p-1 transition overflow-hidden">
+                                    ${isReadyCard ? '<span class="absolute top-1 left-1.5 text-[9px] font-extrabold text-emerald-400">✓</span>' : ''}
                                     <span class="absolute top-1 right-1.5 text-[8px] mono text-slate-500 opacity-75">${r},${c}</span>
                                     ${renderSudokuNoteInnerHTML(note, true)}
                                 </button>
@@ -4526,7 +4560,18 @@ window.onload = function () {
             updatePhysicalCardPreview(0, 0, 0);
             set2DSubView('ring');
             refreshAll();
-            applyRouteFromHash(true);
+    applyRouteFromHash(true);
+    (function updateSettingsLastModifiedNote() {
+        const el = document.getElementById('settings-last-updated');
+        if (!el) return;
+        const raw = document.lastModified;
+        const d = raw ? new Date(raw) : null;
+        if (d && !isNaN(d.getTime())) {
+            const dateStr = d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const timeStr = d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+            el.textContent = `Zuletzt geändert: ${dateStr} · ${timeStr} Uhr`;
+        }
+    })();
 let heroSpinCount = 0;
         let heroLastClickTime = 0;
         let heroTurboLevel = 0;

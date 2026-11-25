@@ -1,8 +1,10 @@
 // ============================================================================
-// BLINK MULTIPLAYER 2.0
-// 1) Auto-Link & QR-Code (Blink-Arena)
-// 2) Das Verhör Online 1v1 (PeerJS, Link & QR-Code)
-// 3) Kursraum / Kahoot-Modus für Daily Challenge & Blink-Sudoku (10–30+ Spieler)
+// BLINK MULTIPLAYER 3.0 — EINHEITLICHER ONLINE-HUB
+// Ein fester Button oben · Ein einheitliches Fenster für alle 4 Online-Modi:
+// 1) Blink-Arena (1v1 Echtzeit)
+// 2) Das Verhör (1v1 Taktik)
+// 3) Daily Challenge (Gruppe / Live)
+// 4) Blink-Sudoku (Gruppe / Live)
 // ============================================================================
 (function initBlinkMultiplayerSuite() {
     if (window.__BLINK_MULTIPLAYER_READY) return;
@@ -11,8 +13,20 @@
     const VH_PREFIX = 'blink-vh-p2p-';
     const CR_PREFIX = 'blink-cr-p2p-';
 
+    const ONLINE_MODES = [
+        { id: 'arena', label: 'Blink-Arena', sub: '1v1 · Echtzeit' },
+        { id: 'verhoer', label: 'Das Verhör', sub: '1v1 · Taktik' },
+        { id: 'daily', label: 'Daily Challenge', sub: 'Gruppe · Live' },
+        { id: 'sudoku', label: 'Blink-Sudoku', sub: 'Gruppe · Live' }
+    ];
+
+    const mpHub = {
+        selectedMode: 'arena',
+        suppressAutoOpen: false
+    };
+
     // ------------------------------------------------------------------------
-    // 0. GEMEINSAME HELFER: LINK-GENERATOR, SVG-QR-CODE, AVATAR & BEAMER-ZOOM
+    // 0. GEMEINSAME HELFER: CODE, LINK, QR-CODE, AVATAR & ZEIT
     // ------------------------------------------------------------------------
     function genRoomCode(len = 4) {
         const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -35,7 +49,7 @@
         return window.location.protocol === 'file:';
     }
 
-    function buildQrSvgHTML(text, sizePx = 152) {
+    function buildQrSvgHTML(text, sizePx = 196) {
         if (typeof qrcode === 'function') {
             try {
                 const qr = qrcode(0, 'M');
@@ -52,18 +66,37 @@
                         }
                     }
                 }
-                return `<svg width="${sizePx}" height="${sizePx}" viewBox="0 0 ${total} ${total}" class="block rounded-lg bg-white" shape-rendering="crispEdges"><rect width="${total}" height="${total}" fill="#ffffff"/><g fill="#0f172a">${rects}</g></svg>`;
-            } catch (e) {}
+                return `<svg width="${sizePx}" height="${sizePx}" viewBox="0 0 ${total} ${total}" class="block rounded-xl bg-white" shape-rendering="crispEdges"><rect width="${total}" height="${total}" fill="#ffffff"/><g fill="#0f172a">${rects}</g></svg>`;
+            } catch (e) { }
         }
         const enc = encodeURIComponent(text);
-        return `<img src="https://api.qrserver.com/v1/create-qr-code/?size=${sizePx}x${sizePx}&margin=8&data=${enc}" width="${sizePx}" height="${sizePx}" alt="QR-Code" class="block rounded-lg bg-white" />`;
+        return `<img src="https://api.qrserver.com/v1/create-qr-code/?size=${sizePx}x${sizePx}&margin=8&data=${enc}" width="${sizePx}" height="${sizePx}" alt="QR-Code" class="block rounded-xl bg-white" />`;
     }
 
-    function copyTextToClipboard(text, toastMsg = 'Link kopiert!') {
+    function fallbackCopy(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) { }
+        ta.remove();
+    }
+
+    function copyTextToClipboard(text, toastMsg = 'Kopiert!', btnEl = null, flashLabel = '✓ Kopiert!') {
         if (!text) return;
         const done = () => {
             if (typeof playSound === 'function') playSound('tick');
             if (typeof showSonnerToast === 'function') showSonnerToast(toastMsg, 'success');
+            if (btnEl) {
+                if (!btnEl.dataset.origHtml) btnEl.dataset.origHtml = btnEl.innerHTML;
+                btnEl.innerHTML = flashLabel;
+                clearTimeout(btnEl._copyResetTimer);
+                btnEl._copyResetTimer = setTimeout(() => {
+                    if (btnEl.dataset.origHtml) btnEl.innerHTML = btnEl.dataset.origHtml;
+                }, 1700);
+            }
         };
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(text).then(done).catch(() => {
@@ -74,17 +107,6 @@
             fallbackCopy(text);
             done();
         }
-    }
-
-    function fallbackCopy(text) {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        ta.select();
-        try { document.execCommand('copy'); } catch (e) {}
-        ta.remove();
     }
 
     function getMyNameSafe() {
@@ -110,100 +132,95 @@
         return `${m}:${rem}.${tenths}`;
     }
 
-    function openQrZoomModal(title, code, url) {
-        const modal = document.getElementById('mp-qr-zoom-modal');
-        if (!modal) return;
-        const tEl = document.getElementById('mp-qr-zoom-title');
-        const cEl = document.getElementById('mp-qr-zoom-code');
-        const qEl = document.getElementById('mp-qr-zoom-svg');
-        const uEl = document.getElementById('mp-qr-zoom-url');
-        const copyBtn = document.getElementById('mp-qr-zoom-copy');
+    function getCurrentTabOnlineDefault() {
+        const tab = (typeof labState !== 'undefined' && labState.activeGameTab) ? labState.activeGameTab : 'arena';
+        if (['arena', 'verhoer', 'daily', 'sudoku'].includes(tab)) return tab;
+        return mpHub.selectedMode || 'arena';
+    }
 
-        if (tEl) tEl.textContent = title || 'Per QR-Code beitreten';
-        if (cEl) cEl.textContent = code || '----';
-        if (qEl) qEl.innerHTML = buildQrSvgHTML(url, 250);
-        if (uEl) uEl.value = url;
-        if (copyBtn) copyBtn.onclick = () => copyTextToClipboard(url, 'Einladungslink kopiert!');
+    function getActiveOnlineSession() {
+        if (typeof p2pState !== 'undefined' && (p2pState.peer || p2pState.connected)) {
+            return {
+                kind: 'arena',
+                label: 'Blink-Arena',
+                code: p2pState.roomCode || '----',
+                connected: Boolean(p2pState.connected),
+                isHost: p2pState.role === 'host',
+                count: p2pState.connected ? 2 : 1,
+                phase: (typeof gameState !== 'undefined' && gameState.isRunning) ? 'playing' : 'lobby'
+            };
+        }
+        if (vhNet.active) {
+            return {
+                kind: 'verhoer',
+                label: 'Das Verhör',
+                code: vhNet.roomCode || '----',
+                connected: Boolean(vhNet.connected),
+                isHost: vhNet.role === 'host',
+                count: vhNet.connected ? 2 : 1,
+                phase: (typeof vhState !== 'undefined' && vhState.isRunning) ? 'playing' : 'lobby'
+            };
+        }
+        if (crState.active) {
+            return {
+                kind: crState.mode,
+                label: crState.mode === 'sudoku' ? 'Blink-Sudoku' : 'Daily Challenge',
+                code: crState.roomCode || '----',
+                connected: true,
+                isHost: crState.role === 'host',
+                count: crState.leaderboard.length,
+                phase: crState.phase
+            };
+        }
+        return null;
+    }
 
-        if (modal.classList.contains('hidden') && typeof toggleModalState === 'function') {
-            toggleModalState('mp-qr-zoom-modal');
+    function closeAllOtherSessionsExcept(keepKind) {
+        if (keepKind !== 'arena' && typeof p2pState !== 'undefined' && (p2pState.peer || p2pState.connected)) {
+            if (typeof p2pDisconnect === 'function') p2pDisconnect(true);
+        }
+        if (keepKind !== 'verhoer' && vhNet.active) {
+            vhNetDisconnect(true);
+        }
+        if (keepKind !== 'daily' && keepKind !== 'sudoku' && crState.active) {
+            crLeaveRoom(true);
         }
     }
 
+    // ------------------------------------------------------------------------
+    // 1. GEMEINSAME DOM-ELEMENTE: EIN MODAL, EIN COUNTDOWN, EIN VERHÖR-POPUP
+    // ------------------------------------------------------------------------
     function injectSharedModals() {
-        if (document.getElementById('mp-qr-zoom-modal')) return;
+        if (document.getElementById('mp-unified-modal')) return;
 
         const wrap = document.createElement('div');
         wrap.innerHTML = `
-            <!-- 1. BEAMER QR-CODE ZOOM MODAL -->
-            <div id="mp-qr-zoom-modal" onclick="if(event.target === this) toggleModalState(this.id)" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[60] hidden items-center justify-center p-4 transition-opacity duration-200 opacity-0">
-                <div class="apple-settings-sheet fu-card rounded-[28px] max-w-md w-full p-6 shadow-2xl space-y-4 text-center transition-transform duration-200 scale-95">
-                    <div class="flex items-center justify-between gap-2 pb-2 apple-set-header">
-                        <div class="text-left min-w-0">
-                            <h3 id="mp-qr-zoom-title" class="text-base font-extrabold text-white heading-font truncate">Per QR-Code beitreten</h3>
-                            <p class="text-[11px] text-slate-400">Mit Kamera am Smartphone oder iPad scannen</p>
-                        </div>
-                        <button type="button" onclick="toggleModalState('mp-qr-zoom-modal')" class="modal-pill-cta px-3.5 py-1.5 rounded-full font-bold text-xs shrink-0">Fertig</button>
-                    </div>
-                    <div class="flex flex-col items-center gap-3 py-1">
-                        <div id="mp-qr-zoom-svg" class="mp-qr-frame p-3"></div>
-                        <div class="space-y-0.5">
-                            <div class="text-[10px] uppercase tracking-widest text-slate-400 mono">Raum-Code</div>
-                            <div id="mp-qr-zoom-code" class="text-3xl font-extrabold tracking-[0.25em] text-cyan-300 mono">----</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <input id="mp-qr-zoom-url" type="text" readonly onclick="this.select()" class="flex-1 min-w-0 bg-slate-950/80 border border-white/10 rounded-full px-3.5 py-2 text-[11px] mono text-slate-300 focus:outline-none">
-                        <button type="button" id="mp-qr-zoom-copy" class="px-4 py-2 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-xs shrink-0 transition">Link kopieren</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 2. DAS VERHÖR ONLINE 1v1 MODAL -->
-            <div id="vh-online-modal" onclick="if(event.target === this) toggleModalState(this.id)" class="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-50 hidden items-center justify-center p-3 sm:p-5 transition-opacity duration-200 opacity-0">
-                <div class="apple-settings-sheet fu-card rounded-[28px] max-w-[660px] w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92dvh] overflow-y-auto transition-transform duration-200 scale-95">
-                    <div class="apple-set-header flex items-center justify-between gap-3 pb-3.5">
-                        <div class="flex items-center gap-3 min-w-0">
-                            <span class="apple-set-title-badge" aria-hidden="true">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                            </span>
-                            <div class="min-w-0">
-                                <h2 class="text-base sm:text-[17px] font-extrabold text-white heading-font leading-tight">Das Verhör · Online 1v1</h2>
-                                <p class="text-[11px] text-slate-400 leading-tight mt-0.5">Direktes Duell über Link, QR-Code oder Raum-Code</p>
-                            </div>
-                        </div>
-                        <button type="button" onclick="toggleModalState('vh-online-modal')" class="modal-pill-cta px-4 py-1.5 rounded-full font-bold text-xs shrink-0">Fertig</button>
-                    </div>
-                    <div id="vh-online-modal-body" class="space-y-4"></div>
-                </div>
-            </div>
-
-            <!-- 3. KURSRAUM / KAHOOT-MODUS MODAL (DAILY CHALLENGE & BLINK-SUDOKU) -->
-            <div id="cr-modal" onclick="if(event.target === this && !window.__CR_LOCK_CLOSE) toggleModalState(this.id)" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden items-center justify-center p-3 sm:p-5 transition-opacity duration-200 opacity-0">
-                <div class="apple-settings-sheet fu-card rounded-[28px] max-w-[840px] w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92dvh] overflow-y-auto transition-transform duration-200 scale-95">
+            <!-- 1. EINHEITLICHES ONLINE-FENSTER (FÜR ALLE 4 ONLINE-MODI) -->
+            <div id="mp-unified-modal" onclick="if(event.target === this && !window.__CR_LOCK_CLOSE) window.BlinkMultiplayer.closeHub()" class="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-50 hidden items-center justify-center p-3 sm:p-5 transition-opacity duration-200 opacity-0">
+                <div class="apple-settings-sheet fu-card rounded-[28px] max-w-[740px] w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92dvh] overflow-y-auto transition-transform duration-200 scale-95">
                     <div class="apple-set-header flex items-center justify-between gap-3 pb-3.5">
                         <div class="flex items-center gap-3 min-w-0">
                             <span class="apple-set-title-badge" aria-hidden="true">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                             </span>
                             <div class="min-w-0">
-                                <h2 id="cr-modal-title" class="text-base sm:text-[17px] font-extrabold text-white heading-font leading-tight">Kursraum · Live-Wettkampf</h2>
-                                <p id="cr-modal-subtitle" class="text-[11px] text-slate-400 leading-tight mt-0.5">Alle lösen gleichzeitig dasselbe Puzzle mit Live-Bestenliste</p>
+                                <h2 id="mp-hub-title" class="text-base sm:text-[17px] font-extrabold text-white heading-font leading-tight">Online spielen</h2>
+                                <p id="mp-hub-subtitle" class="text-[11px] text-slate-400 leading-tight mt-0.5 truncate">Raum öffnen oder mit Code beitreten</p>
                             </div>
                         </div>
-                        <button type="button" onclick="toggleModalState('cr-modal')" class="modal-pill-cta px-4 py-1.5 rounded-full font-bold text-xs shrink-0">Schließen</button>
+                        <button type="button" onclick="window.BlinkMultiplayer.closeHub()" class="modal-pill-cta px-4 py-1.5 rounded-full font-bold text-xs shrink-0">Fertig</button>
                     </div>
-                    <div id="cr-modal-body" class="space-y-4"></div>
+                    <div id="mp-hub-body" class="space-y-4"></div>
                 </div>
             </div>
 
-            <!-- 4. SYNCHRONER 3-2-1 COUNTDOWN OVERLAY -->
+            <!-- 2. SYNCHRONER 3-2-1 COUNTDOWN OVERLAY (GRUPPEN-MODI) -->
             <div id="cr-countdown-overlay" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[70] flex flex-col items-center justify-center p-6 text-center pointer-events-auto">
-                <div class="text-xs font-bold uppercase tracking-[0.25em] text-cyan-400 mono mb-3" id="cr-countdown-label">Kursraum startet gleich</div>
+                <div class="text-xs font-bold uppercase tracking-[0.25em] text-cyan-400 mono mb-3" id="cr-countdown-label">Runde startet gleich</div>
                 <div id="cr-countdown-digit" class="text-7xl sm:text-8xl font-extrabold text-white heading-font">3</div>
             </div>
 
-            <!-- 5. VERHÖR ZUG-POPUP („DU BIST DRAN!“ MIT SOUND) -->
+            <!-- 3. VERHÖR ZUG-POPUP („DU BIST DRAN!“ MIT INTERSTELLAR-SOUND) -->
             <div id="vh-turn-toast" class="vh-turn-toast pointer-events-none" aria-live="polite">
                 <span id="vh-turn-toast-dot" class="w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0 animate-pulse"></span>
                 <div class="min-w-0 text-left">
@@ -217,72 +234,261 @@
         }
     }
 
-    // ------------------------------------------------------------------------
-    // 1. BLINK-ARENA: AUTO-LINK & QR-CODE IM BESTEHENDEN P2P-PANEL
-    // ------------------------------------------------------------------------
-    function enhanceArenaP2PPanel() {
-        const activeControls = document.getElementById('p2p-active-controls');
-        if (!activeControls || document.getElementById('p2p-arena-share-box')) return;
+    function openUnifiedOnlineModal(preferredMode = null) {
+        if (window.BlinkGameHub && typeof window.BlinkGameHub.openOnlineOverlay === 'function') {
+            const session = getActiveOnlineSession();
+            const target = session ? session.kind : (preferredMode || getCurrentTabOnlineDefault());
+            window.BlinkGameHub.openOnlineOverlay(target);
+            return;
+        }
+        const session = getActiveOnlineSession();
+        if (!session) {
+            mpHub.selectedMode = preferredMode || getCurrentTabOnlineDefault();
+        }
+        renderUnifiedModal();
+        const modal = document.getElementById('mp-unified-modal');
+        if (modal && modal.classList.contains('hidden')) {
+            if (typeof playSound === 'function') playSound('tick');
+            if (typeof toggleModalState === 'function') toggleModalState('mp-unified-modal');
+        }
+    }
 
-        const shareBox = document.createElement('div');
-        shareBox.id = 'p2p-arena-share-box';
-        shareBox.className = 'hidden mp-share-card space-y-2.5';
-        shareBox.innerHTML = `
-            <div class="flex flex-col items-center gap-2">
-                <div id="p2p-arena-qr-slot" class="mp-qr-frame" title="Klicken für Beamer-Ansicht"></div>
-                <div class="text-[10px] text-slate-400 mono text-center">QR-Code scannen oder Link teilen</div>
-            </div>
-            <div class="flex items-center gap-1.5">
-                <input id="p2p-arena-link-input" type="text" readonly onclick="this.select()" class="flex-1 min-w-0 bg-slate-950/90 border border-white/10 rounded-full px-3 py-1.5 text-[10.5px] mono text-slate-300 focus:outline-none">
-                <button type="button" id="p2p-arena-copy-link" class="px-2.5 py-1.5 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-[10.5px] shrink-0 transition">Link</button>
-                <button type="button" id="p2p-arena-zoom-qr" class="px-2.5 py-1.5 rounded-full bg-white/[0.08] hover:bg-white/[0.16] text-slate-200 font-semibold text-[10.5px] shrink-0 transition" title="QR-Code groß anzeigen">Groß</button>
-            </div>
-            <div id="p2p-arena-file-note" class="hidden text-[10px] text-amber-300/90 leading-snug text-center">Hinweis: Auf GitHub Pages öffnet der Link direkt deine Online-Seite.</div>
+    function closeUnifiedOnlineModal() {
+        if (window.BlinkGameHub && typeof window.BlinkGameHub.closeOverlay === 'function') {
+            window.BlinkGameHub.closeOverlay(true);
+        }
+        const modal = document.getElementById('mp-unified-modal');
+        if (modal && !modal.classList.contains('hidden') && typeof toggleModalState === 'function') {
+            toggleModalState('mp-unified-modal');
+        }
+    }
+
+    function isUnifiedModalOpen() {
+        const modal = document.getElementById('mp-unified-modal');
+        return Boolean(modal && !modal.classList.contains('hidden'));
+    }
+
+    // ------------------------------------------------------------------------
+    // 2. EIN FESTER BUTTON OBEN IN DER SPIEL-LEISTE + CLEANES ARENA-SIDEBAR-UPDATE
+    // ------------------------------------------------------------------------
+    function injectGlobalOnlineButton() {
+        if (document.getElementById('mp-global-online-btn')) return;
+        const topBar = document.getElementById('game-top-tabs-bar') || document.getElementById('game-mode-tabs')?.parentElement;
+        if (!topBar) return;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'mp-global-online-btn';
+        btn.onclick = () => openUnifiedOnlineModal();
+        btn.className = 'mp-live-pill-btn mp-global-online-btn px-3.5 py-2 rounded-full text-xs font-bold transition inline-flex items-center gap-2 shrink-0';
+        btn.innerHTML = `
+            <span id="mp-global-dot" class="w-2 h-2 rounded-full bg-cyan-400 shrink-0"></span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 opacity-85" aria-hidden="true">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <span id="mp-global-lbl">Online spielen</span>
         `;
+        topBar.appendChild(btn);
+        updateGlobalOnlineButton();
+    }
 
-        const disconnectBtn = activeControls.querySelector('button[onclick*="p2pDisconnect"]');
-        if (disconnectBtn) activeControls.insertBefore(shareBox, disconnectBtn);
-        else activeControls.appendChild(shareBox);
+    function updateGlobalOnlineButton() {
+        const btn = document.getElementById('mp-global-online-btn');
+        const dot = document.getElementById('mp-global-dot');
+        const lbl = document.getElementById('mp-global-lbl');
+        if (!btn || !dot || !lbl) return;
 
-        if (typeof window.p2pUpdateUI === 'function' && !window.p2pUpdateUI.__qrWrapped) {
+        const session = getActiveOnlineSession();
+        if (!session) {
+            btn.classList.remove('is-connected', 'is-waiting');
+            dot.className = 'w-2 h-2 rounded-full bg-cyan-400 shrink-0';
+            lbl.textContent = 'Online spielen';
+            return;
+        }
+
+        if (session.connected) {
+            btn.classList.add('is-connected');
+            btn.classList.remove('is-waiting');
+            dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0';
+            lbl.textContent = (session.kind === 'daily' || session.kind === 'sudoku')
+                ? `Live · ${session.code} (${session.count})`
+                : `Online · ${session.code}`;
+        } else {
+            btn.classList.remove('is-connected');
+            btn.classList.add('is-waiting');
+            dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0';
+            lbl.textContent = `Warte · ${session.code}`;
+        }
+        if (window.BlinkGameHub && typeof window.BlinkGameHub.syncOnlineInline === 'function') {
+            window.BlinkGameHub.syncOnlineInline();
+        }
+    }
+
+    function enhanceArenaP2PHooks() {
+        const panel = document.getElementById('online-p2p-panel');
+        if (panel && !document.getElementById('mp-arena-clean-card')) {
+            // Versteckt das alte kleinteilige Sidebar-Formular (Elemente bleiben für games.js im DOM)
+            const idleBox = document.getElementById('p2p-idle-controls');
+            const activeBox = document.getElementById('p2p-active-controls');
+            if (idleBox) idleBox.classList.add('mp-legacy-hidden');
+            if (activeBox) activeBox.classList.add('mp-legacy-hidden');
+
+            const card = document.createElement('div');
+            card.id = 'mp-arena-clean-card';
+            card.className = 'space-y-2.5';
+            panel.appendChild(card);
+        }
+
+        const modeSel = document.getElementById('select-game-mode');
+        if (modeSel && !modeSel.__mpCleanBound) {
+            modeSel.__mpCleanBound = true;
+            modeSel.addEventListener('change', () => {
+                if (modeSel.value === 'online' && !mpHub.suppressAutoOpen && typeof p2pState !== 'undefined' && !p2pState.connected && !p2pState.peer) {
+                    openUnifiedOnlineModal('arena');
+                }
+                syncArenaSidebarCard();
+            });
+        }
+
+        if (typeof window.p2pUpdateUI === 'function' && !window.p2pUpdateUI.__mpHubWrapped) {
             const origUpdate = window.p2pUpdateUI;
             const wrapped = function (statusText = null, tone = 'idle') {
                 origUpdate(statusText, tone);
-                syncArenaQrShareBox();
+                syncArenaSidebarCard();
+                updateGlobalOnlineButton();
+                if (isUnifiedModalOpen()) renderUnifiedModal();
             };
-            wrapped.__qrWrapped = true;
+            wrapped.__mpHubWrapped = true;
             window.p2pUpdateUI = wrapped;
         }
-        syncArenaQrShareBox();
+
+        if (typeof window.p2pHandleMessage === 'function' && !window.p2pHandleMessage.__mpHubWrapped) {
+            const origMsg = window.p2pHandleMessage;
+            const wrappedMsg = function (msg) {
+                origMsg(msg);
+                if (msg && msg.type === 'STATE_SYNC' && msg.isRunning) {
+                    closeUnifiedOnlineModal();
+                    if (window.BlinkGameHub && typeof window.BlinkGameHub.openGame === 'function') {
+                        window.BlinkGameHub.openGame('arena');
+                    }
+                }
+                syncArenaSidebarCard();
+                updateGlobalOnlineButton();
+                if (isUnifiedModalOpen()) renderUnifiedModal();
+            };
+            wrappedMsg.__mpHubWrapped = true;
+            window.p2pHandleMessage = wrappedMsg;
+        }
+
+        if (typeof window.setGameSubTab === 'function' && !window.setGameSubTab.__mpHubWrapped) {
+            const origTab = window.setGameSubTab;
+            const wrappedTab = function (tab) {
+                const res = origTab.apply(this, arguments);
+                if (!getActiveOnlineSession() && ['arena', 'verhoer', 'daily', 'sudoku'].includes(tab)) {
+                    mpHub.selectedMode = tab;
+                }
+                updateGlobalOnlineButton();
+                return res;
+            };
+            wrappedTab.__mpHubWrapped = true;
+            window.setGameSubTab = wrappedTab;
+        }
+
+        syncArenaSidebarCard();
     }
 
-    function syncArenaQrShareBox() {
-        const box = document.getElementById('p2p-arena-share-box');
-        if (!box || typeof p2pState === 'undefined') return;
-        const showQr = Boolean(p2pState.role === 'host' && p2pState.roomCode && !p2pState.connected);
-        box.classList.toggle('hidden', !showQr);
-        if (!showQr) return;
+    function syncArenaSidebarCard() {
+        const card = document.getElementById('mp-arena-clean-card');
+        if (!card || typeof p2pState === 'undefined') return;
 
-        const url = buildShareUrl('arena', 'join', p2pState.roomCode);
-        const qrSlot = document.getElementById('p2p-arena-qr-slot');
-        const linkInp = document.getElementById('p2p-arena-link-input');
-        const copyBtn = document.getElementById('p2p-arena-copy-link');
-        const zoomBtn = document.getElementById('p2p-arena-zoom-qr');
-        const fileNote = document.getElementById('p2p-arena-file-note');
-
-        if (qrSlot && qrSlot.dataset.lastUrl !== url) {
-            qrSlot.dataset.lastUrl = url;
-            qrSlot.innerHTML = buildQrSvgHTML(url, 138);
-            qrSlot.onclick = () => openQrZoomModal('Blink-Arena · 1v1 beitreten', p2pState.roomCode, url);
+        if (p2pState.connected) {
+            const opp = escHtml(p2pState.oppName || 'Online-Gegner');
+            card.innerHTML = `
+                <div class="text-xs text-slate-300 leading-snug">
+                    Verbunden mit <strong class="text-white">${opp}</strong> · Code <span class="mono font-bold text-cyan-300">${escHtml(p2pState.roomCode)}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="window.BlinkMultiplayer.openHub('arena')" class="flex-1 py-2 rounded-full bg-white/[0.08] hover:bg-white/[0.15] text-white font-bold text-xs transition">Online-Raum</button>
+                    <button type="button" onclick="window.BlinkMultiplayer.disconnectArena()" class="px-3 py-2 rounded-full border border-rose-500/35 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-semibold text-xs transition">Trennen</button>
+                </div>
+            `;
+        } else if (p2pState.peer && p2pState.roomCode) {
+            card.innerHTML = `
+                <div class="text-xs text-amber-200 leading-snug">
+                    Raum <strong class="mono">${escHtml(p2pState.roomCode)}</strong> ist offen — warte auf Gegner.
+                </div>
+                <button type="button" onclick="window.BlinkMultiplayer.openHub('arena')" class="w-full py-2 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-xs transition">QR-Code &amp; Link zeigen</button>
+            `;
+        } else {
+            card.innerHTML = `
+                <button type="button" onclick="window.BlinkMultiplayer.openHub('arena')" class="w-full py-2.5 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-xs transition">Online-Raum öffnen</button>
+            `;
         }
-        if (linkInp) linkInp.value = url;
-        if (copyBtn) copyBtn.onclick = () => copyTextToClipboard(url, 'Einladungslink kopiert!');
-        if (zoomBtn) zoomBtn.onclick = () => openQrZoomModal('Blink-Arena · 1v1 beitreten', p2pState.roomCode, url);
-        if (fileNote) fileNote.classList.toggle('hidden', !isLocalFileProtocol());
+    }
+
+   // Arena-Aktionen (mit stayInHub bleibt der Nutzer sauber in der Inline-Lobby)
+    function hubCreateArenaRoom(stayInHub = false) {
+        closeAllOtherSessionsExcept('arena');
+        if (!stayInHub && typeof setGameSubTab === 'function' && typeof labState !== 'undefined' && labState.activeGameTab !== 'arena') {
+            setGameSubTab('arena');
+        }
+        if (typeof p2pCreateRoom === 'function') p2pCreateRoom();
+        if (typeof syncGameConfigUI === 'function') syncGameConfigUI();
+        syncArenaSidebarCard();
+        if (isUnifiedModalOpen()) renderUnifiedModal();
+        updateGlobalOnlineButton();
+    }
+
+    function hubJoinArenaRoom(code, stayInHub = false) {
+        const clean = String(code || '').trim().toUpperCase();
+        if (clean.length < 4) {
+            if (typeof showSonnerToast === 'function') showSonnerToast('Bitte gib den 4-stelligen Raum-Code ein.', 'warn');
+            return;
+        }
+        closeAllOtherSessionsExcept('arena');
+        if (!stayInHub && typeof setGameSubTab === 'function' && typeof labState !== 'undefined' && labState.activeGameTab !== 'arena') {
+            setGameSubTab('arena');
+        }
+        const inp = document.getElementById('p2p-join-input');
+        if (inp) inp.value = clean;
+        if (typeof p2pJoinRoom === 'function') p2pJoinRoom();
+        if (typeof syncGameConfigUI === 'function') syncGameConfigUI();
+        syncArenaSidebarCard();
+        if (isUnifiedModalOpen()) renderUnifiedModal();
+        updateGlobalOnlineButton();
+    }
+
+    function hubStartArenaMatch() {
+        closeUnifiedOnlineModal();
+        if (typeof setGameSubTab === 'function' && typeof labState !== 'undefined' && labState.activeGameTab !== 'arena') {
+            setGameSubTab('arena');
+        }
+        if (typeof startNewBlinkGame === 'function') startNewBlinkGame();
+    }
+
+    function hubDisconnectArena() {
+        if (typeof p2pDisconnect === 'function') p2pDisconnect(false);
+        if (typeof initBlinkGameLobby === 'function') initBlinkGameLobby();
+        syncArenaSidebarCard();
+        updateGlobalOnlineButton();
+        renderUnifiedModal();
+    }
+
+    function hubSetArenaRule(rule) {
+        const ruleSel = document.getElementById('select-rule-mode');
+        if (ruleSel) {
+            ruleSel.value = rule === 'cluster' ? 'cluster' : 'normal';
+            if (typeof onGameConfigChange === 'function') onGameConfigChange();
+        }
+        if (typeof playSound === 'function') playSound('tick');
+        renderUnifiedModal();
     }
 
     // ------------------------------------------------------------------------
-    // 2. DAS VERHÖR ONLINE 1v1 (HOST-AUTORITATIV VIA PEERJS + LINK & QR)
+    // 3. DAS VERHÖR ONLINE 1v1 (HOST-AUTORITATIV + INTERSTELLAR-SOUND + H2H)
     // ------------------------------------------------------------------------
     const vhNet = {
         active: false,
@@ -301,7 +507,8 @@
             intDemand: null,
             intMatchIndices: [],
             oppSlotIndices: [],
-            intAttackerIsMe: false
+            intAttackerIsMe: false,
+            pendingIdx: null
         }
     };
 
@@ -312,8 +519,8 @@
     }
 
     function vhNetDisconnect(silent = false) {
-        if (vhNet.conn) { try { vhNet.conn.close(); } catch (e) {} }
-        if (vhNet.peer) { try { vhNet.peer.destroy(); } catch (e) {} }
+        if (vhNet.conn) { try { vhNet.conn.close(); } catch (e) { } }
+        if (vhNet.peer) { try { vhNet.peer.destroy(); } catch (e) { } }
         const wasActive = vhNet.active;
         vhNet.conn = null;
         vhNet.peer = null;
@@ -326,10 +533,10 @@
         vhNet.oppProfile = null;
         vhNet.seriesScore = { host: 0, guest: 0 };
         vhNet.hostGame = null;
-        vhNet.viewMeta = { intStep: null, intDemand: null, intMatchIndices: [], oppSlotIndices: [], intAttackerIsMe: false };
+        vhNet.viewMeta = { intStep: null, intDemand: null, intMatchIndices: [], oppSlotIndices: [], intAttackerIsMe: false, pendingIdx: null };
 
-        updateVerhoerOnlineButton();
-        renderVerhoerOnlineModal();
+        updateGlobalOnlineButton();
+        if (isUnifiedModalOpen()) renderUnifiedModal();
         if (wasActive && typeof vhInitLobby === 'function') {
             vhInitLobby();
         }
@@ -338,27 +545,32 @@
         }
     }
 
-    function vhNetCreateRoom() {
+   function vhNetCreateRoom(stayInHub = false) {
         if (typeof Peer === 'undefined') {
-            showSonnerToast('PeerJS nicht verfügbar (Internetverbindung nötig).', 'warn');
+            showSonnerToast('Online-Transport nicht verfügbar (Internetverbindung nötig).', 'warn');
             return;
         }
+        closeAllOtherSessionsExcept('verhoer');
         vhNetDisconnect(true);
+        if (!stayInHub && typeof setGameSubTab === 'function' && typeof labState !== 'undefined' && labState.activeGameTab !== 'verhoer') {
+            setGameSubTab('verhoer');
+        }
+
         const code = genRoomCode(4);
         vhNet.active = true;
         vhNet.role = 'host';
         vhNet.roomCode = code;
         vhNet.statusText = 'Erstelle Raum...';
-        renderVerhoerOnlineModal();
-        updateVerhoerOnlineButton();
+        updateGlobalOnlineButton();
+        if (isUnifiedModalOpen()) renderUnifiedModal();
 
         const peer = new Peer(VH_PREFIX + code);
         vhNet.peer = peer;
 
         peer.on('open', () => {
             vhNet.statusText = 'Warte auf Gegner';
-            renderVerhoerOnlineModal();
-            updateVerhoerOnlineButton();
+            updateGlobalOnlineButton();
+            if (isUnifiedModalOpen()) renderUnifiedModal();
             showSonnerToast(`Verhör-Raum ${code} geöffnet!`, 'success');
         });
 
@@ -376,24 +588,29 @@
         });
     }
 
-    function vhNetJoinRoom(forcedCode = null) {
+    function vhNetJoinRoom(forcedCode = null, stayInHub = false) {
         if (typeof Peer === 'undefined') {
-            showSonnerToast('PeerJS nicht verfügbar (Internetverbindung nötig).', 'warn');
+            showSonnerToast('Online-Transport nicht verfügbar (Internetverbindung nötig).', 'warn');
             return;
         }
-        const inp = document.getElementById('vh-net-join-input');
+        const inp = document.getElementById('mp-hub-join-input');
         const code = (forcedCode || (inp ? inp.value : '')).trim().toUpperCase();
         if (code.length < 4) {
-            showSonnerToast('Bitte gib den 4-stelligen Verhör-Code ein.', 'warn');
+            showSonnerToast('Bitte gib den 4-stelligen Raum-Code ein.', 'warn');
             return;
         }
+        closeAllOtherSessionsExcept('verhoer');
         vhNetDisconnect(true);
+        if (!stayInHub && typeof setGameSubTab === 'function' && typeof labState !== 'undefined' && labState.activeGameTab !== 'verhoer') {
+            setGameSubTab('verhoer');
+        }
+
         vhNet.active = true;
         vhNet.role = 'guest';
         vhNet.roomCode = code;
         vhNet.statusText = 'Verbinde...';
-        renderVerhoerOnlineModal();
-        updateVerhoerOnlineButton();
+        updateGlobalOnlineButton();
+        renderUnifiedModal();
 
         const peer = new Peer();
         vhNet.peer = peer;
@@ -425,11 +642,11 @@
             vhNet.statusText = 'Verbunden';
             if (typeof playSound === 'function') playSound('win');
             vhNetSend({ type: 'VH_HELLO', name: getMyNameSafe(), profile: getMyProfileSafe() });
-            updateVerhoerOnlineButton();
-            renderVerhoerOnlineModal();
+            updateGlobalOnlineButton();
+            if (isUnifiedModalOpen()) renderUnifiedModal();
             if (typeof renderVerhoerStandaloneUI === 'function') renderVerhoerStandaloneUI();
             const msg = vhNet.role === 'host'
-                ? 'Gegner im Verhör verbunden! Klicke auf „Spielen“.'
+                ? 'Gegner im Verhör verbunden! Klicke auf „Spiel starten“.'
                 : 'Verbunden! Warte auf den Start durch den Host...';
             showSonnerToast(msg, 'success');
         });
@@ -457,7 +674,7 @@
     function vhHostStartOnlineMatch() {
         if (!vhNet.active || vhNet.role !== 'host' || !vhNet.connected) {
             showSonnerToast('Verbinde dich zuerst mit einem Gegner im Online-Menü.', 'warn');
-            openVerhoerOnlineModal();
+            openUnifiedOnlineModal('verhoer');
             return;
         }
         const deck125 = shuffleArray(CARDS_125);
@@ -472,7 +689,7 @@
             deck: deck125,
             discardHistory: [firstDiscard],
             hands: { host: hostStart, guest: guestStart },
-            lastCleared: { host: 5, guest: 5 },
+            lastCleared: { host: null, guest: null },
             trios: { host: [], guest: [] },
             turn: starter,
             phase: 'draw',
@@ -491,9 +708,10 @@
             winInfo: null
         };
 
-        const modal = document.getElementById('vh-online-modal');
-        if (modal && !modal.classList.contains('hidden')) toggleModalState('vh-online-modal');
-
+        closeUnifiedOnlineModal();
+        if (typeof setGameSubTab === 'function' && typeof labState !== 'undefined' && labState.activeGameTab !== 'verhoer') {
+            setGameSubTab('verhoer');
+        }
         if (typeof playSound === 'function') playSound('flip');
         vhHostBroadcastState('Online-Verhör gestartet!', 'success');
     }
@@ -607,8 +825,10 @@
         };
 
         if (!wasRunning && view.isRunning) {
-            const modal = document.getElementById('vh-online-modal');
-            if (modal && !modal.classList.contains('hidden')) toggleModalState('vh-online-modal');
+            closeUnifiedOnlineModal();
+            if (window.BlinkGameHub && typeof window.BlinkGameHub.openGame === 'function') {
+                window.BlinkGameHub.openGame('verhoer');
+            }
             if (typeof syncActiveGameModeMusic === 'function') syncActiveGameModeMusic();
         } else if (wasRunning && !view.isRunning) {
             if (typeof stopGameMusic === 'function') stopGameMusic();
@@ -643,7 +863,6 @@
         }
         if (!g.isRunning) return;
 
-        // 1. Cluster rufen (jederzeit im eigenen Zug oder sofort nach Fertigstellung)
         if (action.kind === 'CALL_CLUSTER') {
             const winClu = findValidCluster5FromPool(g.hands[role].filter(Boolean), g.trios[role]);
             if (!winClu) return;
@@ -657,7 +876,6 @@
             return;
         }
 
-        // 2. Verteidiger wählt bei mehreren passenden Karten im Standard-Verhör eine Karte aus
         if (action.kind === 'DEFENDER_SHOW_CARD' && g.phase === 'interrogation' && g.intStep === 'defender_pick' && g.intAttacker === oppRole) {
             const idx = action.idx;
             if (!g.intMatchIndices.includes(idx) || !g.hands[role][idx]) return;
@@ -669,7 +887,6 @@
             return;
         }
 
-        // Alle folgenden Aktionen sind nur am eigenen Zug erlaubt
         if (g.turn !== role) return;
 
         if (action.kind === 'DRAW_DECK' && g.phase === 'draw') {
@@ -858,7 +1075,10 @@
         if (msg.type === 'VH_HELLO') {
             if (typeof msg.name === 'string' && msg.name.trim()) vhNet.oppName = msg.name.trim().slice(0, 18);
             if (msg.profile && typeof msg.profile === 'object') vhNet.oppProfile = msg.profile;
-            renderVerhoerOnlineModal();
+            if (isUnifiedModalOpen()) renderUnifiedModal();
+            if (window.BlinkGameHub && typeof window.BlinkGameHub.syncOnlineInline === 'function') {
+                window.BlinkGameHub.syncOnlineInline();
+            }
             if (typeof renderVerhoerStandaloneUI === 'function') renderVerhoerStandaloneUI();
             return;
         }
@@ -866,6 +1086,7 @@
         if (msg.type === 'VH_H2H_RESET') {
             vhNet.seriesScore = { host: 0, guest: 0 };
             if (typeof renderVerhoerStandaloneUI === 'function') renderVerhoerStandaloneUI();
+            if (isUnifiedModalOpen()) renderUnifiedModal();
             showSonnerToast('Verhör Head-to-Head auf 0 : 0 zurückgesetzt.', 'neutral');
             return;
         }
@@ -888,165 +1109,7 @@
         }
     }
 
-    function openVerhoerOnlineModal() {
-        renderVerhoerOnlineModal();
-        const modal = document.getElementById('vh-online-modal');
-        if (modal && modal.classList.contains('hidden')) {
-            if (typeof playSound === 'function') playSound('tick');
-            toggleModalState('vh-online-modal');
-        }
-    }
-
-    function updateVerhoerOnlineButton() {
-        const btn = document.getElementById('vh-btn-online-room');
-        if (!btn) return;
-        btn.classList.toggle('is-connected', vhNet.connected);
-        const dot = btn.querySelector('.vh-net-dot');
-        const lbl = btn.querySelector('.vh-net-lbl');
-        if (dot) dot.className = `vh-net-dot w-2 h-2 rounded-full ${vhNet.connected ? 'bg-emerald-400 animate-pulse' : (vhNet.active ? 'bg-amber-400 animate-pulse' : 'bg-cyan-400')}`;
-        if (lbl) lbl.textContent = vhNet.connected ? `Online (${vhNet.roomCode})` : (vhNet.active ? `Raum ${vhNet.roomCode}` : 'Online 1v1');
-    }
-
-    function renderVerhoerOnlineModal() {
-        const body = document.getElementById('vh-online-modal-body');
-        if (!body) return;
-
-        if (!vhNet.active) {
-            body.innerHTML = `
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div class="mp-share-card space-y-3 flex flex-col justify-between">
-                        <div class="space-y-1">
-                            <div class="text-[10.5px] font-bold uppercase tracking-widest text-cyan-400 mono">Neues Duell erstellen</div>
-                            <h3 class="text-sm font-extrabold text-white">Host werden (Link &amp; QR)</h3>
-                            <p class="text-[11.5px] text-slate-400 leading-relaxed">Erzeugt sofort einen Einladungslink und QR-Code für dein 1v1-Verhör im $\\mathbb{F}_5^3$.</p>
-                        </div>
-                        <button type="button" onclick="window.BlinkMultiplayer.vhCreateRoom()" class="w-full py-2.5 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-xs transition shadow-lg shadow-cyan-500/15">
-                            Raum erstellen (Link &amp; QR)
-                        </button>
-                    </div>
-
-                    <div class="mp-share-card space-y-3 flex flex-col justify-between">
-                        <div class="space-y-1">
-                            <div class="text-[10.5px] font-bold uppercase tracking-widest text-purple-400 mono">Raum beitreten</div>
-                            <h3 class="text-sm font-extrabold text-white">Mit Code verbinden</h3>
-                            <p class="text-[11.5px] text-slate-400 leading-relaxed">Gib den 4-stelligen Code deines Gegners ein oder scanne einfach dessen QR-Code.</p>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input id="vh-net-join-input" type="text" maxlength="6" placeholder="z. B. K7M4"
-                                onkeydown="if(event.key==='Enter') window.BlinkMultiplayer.vhJoinRoom()"
-                                class="flex-1 min-w-0 bg-slate-950/90 border border-white/10 focus:border-cyan-400 rounded-full px-3.5 py-2 text-xs mono uppercase tracking-widest text-white placeholder-slate-500 focus:outline-none">
-                            <button type="button" onclick="window.BlinkMultiplayer.vhJoinRoom()" class="px-4 py-2 rounded-full bg-white text-slate-950 hover:bg-cyan-300 font-extrabold text-xs shrink-0 transition">Beitreten</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            if (typeof safeRenderMathJax === 'function') safeRenderMathJax();
-            return;
-        }
-
-        const url = buildShareUrl('verhoer', 'join', vhNet.roomCode);
-        const oppDisplay = vhNet.connected ? escHtml(vhNet.oppName || 'Gegner') : 'Warte auf Gegner...';
-        const isHost = vhNet.role === 'host';
-
-        body.innerHTML = `
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                <div class="md:col-span-5 flex flex-col items-center gap-2.5 mp-share-card">
-                    <div id="vh-net-qr-box" class="mp-qr-frame" title="Klicken für Beamer-Ansicht">${buildQrSvgHTML(url, 154)}</div>
-                    <div class="text-center">
-                        <div class="text-[9.5px] uppercase tracking-widest text-slate-400 mono">Verhör Raum-Code</div>
-                        <div class="text-2xl font-extrabold tracking-[0.22em] text-cyan-300 mono">${escHtml(vhNet.roomCode)}</div>
-                    </div>
-                    <button type="button" id="vh-net-zoom-btn" class="px-3 py-1 rounded-full bg-white/[0.06] hover:bg-white/[0.14] text-[11px] font-semibold text-slate-200 transition">QR-Code groß zeigen</button>
-                </div>
-
-                <div class="md:col-span-7 space-y-3">
-                    <div class="mp-share-card space-y-2.5">
-                        <div class="flex items-center justify-between gap-2">
-                            <span class="text-[10.5px] font-bold uppercase tracking-widest text-slate-400 mono">Status</span>
-                            <span class="px-2.5 py-0.5 rounded-full text-[10px] mono font-bold ${vhNet.connected ? 'bg-emerald-500/20 border border-emerald-400/40 text-emerald-300' : 'bg-amber-500/15 border border-amber-400/40 text-amber-300'}">${escHtml(vhNet.statusText)}</span>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-2">
-                            <div class="cr-player-tile">
-                                <span class="shrink-0">${renderAvatarSafe(getMyProfileSafe(), 28)}</span>
-                                <div class="min-w-0">
-                                    <div class="text-xs font-bold text-white truncate">${escHtml(getMyNameSafe())}</div>
-                                    <div class="text-[9.5px] mono text-cyan-300">${isHost ? 'Host (Du)' : 'Gast (Du)'}</div>
-                                </div>
-                            </div>
-                            <div class="cr-player-tile">
-                                <span class="shrink-0">${vhNet.connected ? renderAvatarSafe(vhNet.oppProfile, 28) : '<span class="w-7 h-7 rounded-full border border-dashed border-white/20 inline-flex items-center justify-center text-[11px] text-slate-500">?</span>'}</span>
-                                <div class="min-w-0">
-                                    <div class="text-xs font-bold text-white truncate">${oppDisplay}</div>
-                                    <div class="text-[9.5px] mono text-slate-400">${vhNet.connected ? 'Bereit' : 'Offener Platz'}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-1.5 pt-1">
-                            <input type="text" readonly value="${escHtml(url)}" onclick="this.select()" class="flex-1 min-w-0 bg-slate-950/85 border border-white/10 rounded-full px-3 py-1.5 text-[10.5px] mono text-slate-300 focus:outline-none">
-                            <button type="button" id="vh-net-copy-url" class="px-3.5 py-1.5 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-[11px] shrink-0 transition">Link kopieren</button>
-                        </div>
-                        ${isLocalFileProtocol() ? '<div class="text-[10px] text-amber-300/90">Hinweis: Auf GitHub Pages öffnet der Link direkt deine Online-Seite.</div>' : ''}
-                    </div>
-
-                    <div class="flex flex-wrap items-center gap-2">
-                        ${isHost ? `
-                            <button type="button" onclick="window.BlinkMultiplayer.vhStartOnline()" ${vhNet.connected ? '' : 'disabled'} class="flex-1 py-2.5 px-4 rounded-full bg-emerald-400 hover:bg-emerald-300 disabled:opacity-40 text-slate-950 font-extrabold text-xs transition">
-                                ▶ Online-Verhör starten
-                            </button>
-                        ` : `
-                            <div class="flex-1 py-2.5 px-4 rounded-full bg-white/[0.04] border border-white/10 text-center text-xs text-slate-300 mono">
-                                ${vhNet.connected ? 'Warte auf Start durch Host...' : 'Verbinde...'}
-                            </div>
-                        `}
-                        <button type="button" onclick="window.BlinkMultiplayer.vhDisconnect()" class="px-4 py-2.5 rounded-full border border-rose-500/35 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-semibold text-xs transition">
-                            Trennen
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        const copyBtn = document.getElementById('vh-net-copy-url');
-        const qrBox = document.getElementById('vh-net-qr-box');
-        const zoomBtn = document.getElementById('vh-net-zoom-btn');
-        if (copyBtn) copyBtn.onclick = () => copyTextToClipboard(url, 'Verhör-Link kopiert!');
-        if (qrBox) qrBox.onclick = () => openQrZoomModal('Das Verhör · 1v1 beitreten', vhNet.roomCode, url);
-        if (zoomBtn) zoomBtn.onclick = () => openQrZoomModal('Das Verhör · 1v1 beitreten', vhNet.roomCode, url);
-    }
-
-    function enhanceVerhoerUIAndHooks() {
-        // Online-1v1-Button in die Verhör-Kopfzeile einfügen
-        const vhStartBtn = document.getElementById('vh-btn-start');
-        if (vhStartBtn && !document.getElementById('vh-btn-online-room')) {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.id = 'vh-btn-online-room';
-            btn.onclick = openVerhoerOnlineModal;
-            btn.className = 'mp-live-pill-btn px-3 py-1.5 rounded-full text-[11px] font-bold transition inline-flex items-center gap-1.5 shrink-0';
-            btn.innerHTML = `<span class="vh-net-dot w-2 h-2 rounded-full bg-cyan-400"></span><span class="vh-net-lbl">Online 1v1</span>`;
-            vhStartBtn.parentElement.insertBefore(btn, vhStartBtn);
-        }
-
-        // Zweiter Button direkt in der Verhör-Lobby
-        const vhLobby = document.getElementById('vh-lobby-overlay');
-        if (vhLobby && !document.getElementById('vh-lobby-online-btn')) {
-            const playBtn = vhLobby.querySelector('button[onclick*="vhStartNewGame"]');
-            if (playBtn && playBtn.parentElement) {
-                playBtn.parentElement.classList.add('flex', 'flex-wrap', 'items-center', 'justify-center', 'gap-2.5');
-                const ob = document.createElement('button');
-                ob.type = 'button';
-                ob.id = 'vh-lobby-online-btn';
-                ob.onclick = openVerhoerOnlineModal;
-                ob.className = 'mp-live-pill-btn px-5 py-3.5 rounded-full font-bold text-sm transition inline-flex items-center gap-2';
-                ob.innerHTML = `<span>Online 1v1 (Link &amp; QR)</span>`;
-                playBtn.parentElement.appendChild(ob);
-            }
-        }
-
-        // Stellt lab.js beim Ziehen/Rückruf/Übernehmen kurz den freien 6. Slot bereit,
-        // während die Hand visuell lückenlos kompakt bleibt
+    function enhanceVerhoerHooks() {
         const ensureOfflineDrawSlot = () => {
             if (typeof vhState === 'undefined' || !Array.isArray(vhState.playerHand)) return;
             const liveCount = vhState.playerHand.filter(Boolean).length;
@@ -1055,7 +1118,6 @@
             }
         };
 
-        // Bestehende Verhör-Funktionen sauber für Online 1v1 & kompakte Offline-Hand ummanteln
         const wrapFn = (name, onlineHandler, offlinePrep = null) => {
             if (typeof window[name] !== 'function' || window[name].__vhNetWrapped) return;
             const orig = window[name];
@@ -1076,7 +1138,7 @@
                 vhNetSend({ type: 'VH_REMATCH_REQ' });
                 showSonnerToast('Rematch-Anfrage an den Host gesendet...', 'neutral');
             } else {
-                openVerhoerOnlineModal();
+                openUnifiedOnlineModal('verhoer');
             }
         });
 
@@ -1195,7 +1257,6 @@
             vhNetDispatchAction({ kind: 'CALL_CLUSTER' });
         });
 
-        // Pre- & Post-Render-Hook für Verhör-UI (Karten zusammenrücken, Cluster-Button ohne Spoiler & Online-Verhör)
         if (typeof window.renderVerhoerStandaloneUI === 'function' && !window.renderVerhoerStandaloneUI.__vhNetPost) {
             const origRender = window.renderVerhoerStandaloneUI;
             const wrappedRender = function () {
@@ -1208,7 +1269,7 @@
         }
     }
 
-   const vhTurnAlert = {
+    const vhTurnAlert = {
         wasMyTurn: false,
         wasDefenderPick: false,
         hideTimer: null,
@@ -1236,7 +1297,6 @@
             master.gain.setValueAtTime(0.85 * vol, now);
             master.connect(ctx.destination);
 
-            // 1. Warmes Kirchenorgel-Fundament (Interstellar a-Moll / F-Dur-Quinte)
             const padFilter = ctx.createBiquadFilter();
             padFilter.type = 'lowpass';
             padFilter.frequency.setValueAtTime(520, now);
@@ -1258,7 +1318,6 @@
                 osc.stop(now + 1.42);
             });
 
-            // 2. Gläsernes Cornfield-Chase Piano-Arpeggio (A4–E5–B4–E5–C5) mit Raum-Echo
             const arpNotes = kind === 'interrogation'
                 ? [493.88, 659.25, 523.25, 659.25, 587.33, 659.25]
                 : [440.0, 659.25, 493.88, 659.25, 523.25];
@@ -1298,7 +1357,6 @@
                 const t = now + i * stepSec;
                 const isLast = i === arpNotes.length - 1;
                 triggerPianoNote(freq, t, isLast ? 0.20 : 0.16, isLast ? 0.92 : 0.56);
-                // Sanftes kosmisches Raum-Echo
                 triggerPianoNote(freq, t + 0.24, 0.038, 0.50);
             });
         } catch (e) {
@@ -1463,12 +1521,8 @@
         const botBarLbl = document.getElementById('vh-bar-bot-lbl');
         const botBar = document.getElementById('vh-bar-bot');
 
-        if (oppIconWrap && !oppIconWrap.dataset.botSvg) {
-            oppIconWrap.dataset.botSvg = oppIconWrap.innerHTML;
-        }
-        if (lobbyDesc && !lobbyDesc.dataset.botHtml) {
-            lobbyDesc.dataset.botHtml = lobbyDesc.innerHTML;
-        }
+        if (oppIconWrap && !oppIconWrap.dataset.botSvg) oppIconWrap.dataset.botSvg = oppIconWrap.innerHTML;
+        if (lobbyDesc && !lobbyDesc.dataset.botHtml) lobbyDesc.dataset.botHtml = lobbyDesc.innerHTML;
 
         if (!vhNet.active) {
             if (oppLabelEl) oppLabelEl.textContent = 'Taktik-Bot';
@@ -1476,9 +1530,7 @@
             if (botBarName) botBarName.textContent = 'Bot';
             if (botSktOwner) botSktOwner.textContent = 'Bot';
             if (step3El) step3El.textContent = '3. Verhör / Bot';
-            if (lobbyDesc && lobbyDesc.dataset.botHtml) {
-                lobbyDesc.innerHTML = lobbyDesc.dataset.botHtml;
-            }
+            if (lobbyDesc && lobbyDesc.dataset.botHtml) lobbyDesc.innerHTML = lobbyDesc.dataset.botHtml;
             if (xrayBtn) xrayBtn.classList.remove('hidden');
             renderVerhoerH2HUI('');
             updateVerhoerTurnFeedback('Taktik-Bot');
@@ -1505,7 +1557,6 @@
         if (xrayBtn) xrayBtn.classList.add('hidden');
         if (xrayBody) xrayBody.classList.add('hidden');
 
-        // Geheime Gegner-Hand nicht durch Fortschrittsbalken verraten
         if (botBarLbl) botBarLbl.textContent = `${vhState.aiTrios.length} SKT`;
         if (botBar) botBar.style.width = `${Math.min(100, vhState.aiTrios.length * 45)}%`;
 
@@ -1538,7 +1589,6 @@
             replaceBotTextInTree(bannerTxt, oppName);
         }
 
-        // Online-spezifische Verhör-Overlays rendern
         const intPanel = document.getElementById('vh-interrogation-panel');
         const intTitle = document.getElementById('vh-int-title');
         const intBadge = document.getElementById('vh-int-badge');
@@ -1619,14 +1669,11 @@
                     </div>
                 `;
             }
-            // Ersetzt verbleibende „Bot“-Texte aus lab.js (z. B. bei choose_prop, decide, no_match)
             replaceBotTextInTree(intPanel, oppName);
         }
 
-        // Auch eventuelle „Bot“-Hinweise bei den gegnerischen SKTs bereinigen
         replaceBotTextInTree(document.getElementById('vh-bot-trios'), oppName);
 
-        // End-Overlay-Text mit echtem Gegnernamen
         if (vhState.phase === 'ended' && vhState.winInfo) {
             const et = document.getElementById('vh-end-title');
             const ed = document.getElementById('vh-end-desc');
@@ -1665,10 +1712,8 @@
             `;
         }
 
-        if (endBanner && vhState.phase === 'ended') {
-            if (typeof buildH2HBannerHTML === 'function') {
-                endBanner.innerHTML = buildH2HBannerHTML(getMyNameSafe(), oppName || 'Gegner', myWins, oppWins, 'window.BlinkMultiplayer.vhResetH2H()');
-            }
+        if (endBanner && vhState.phase === 'ended' && typeof buildH2HBannerHTML === 'function') {
+            endBanner.innerHTML = buildH2HBannerHTML(getMyNameSafe(), oppName || 'Gegner', myWins, oppWins, 'window.BlinkMultiplayer.vhResetH2H()');
         }
     }
 
@@ -1677,11 +1722,12 @@
         if (vhNet.connected) vhNetSend({ type: 'VH_H2H_RESET' });
         if (typeof playSound === 'function') playSound('tick');
         if (typeof renderVerhoerStandaloneUI === 'function') renderVerhoerStandaloneUI();
+        if (isUnifiedModalOpen()) renderUnifiedModal();
         if (typeof showSonnerToast === 'function') showSonnerToast('Verhör Head-to-Head auf 0 : 0 zurückgesetzt.', 'neutral');
     }
 
     // ------------------------------------------------------------------------
-    // 3. KURSRAUM / KAHOOT-MODUS (DAILY CHALLENGE & BLINK-SUDOKU · 10–30+ SPIELER)
+    // 4. GRUPPEN-MODUS (DAILY CHALLENGE & BLINK-SUDOKU · 2–30+ SPIELER)
     // ------------------------------------------------------------------------
     const crState = {
         active: false,
@@ -1689,15 +1735,15 @@
         role: null,    // 'host' | 'guest'
         roomCode: '',
         peer: null,
-        hostConn: null,        // Guest -> Host
-        guestConns: new Map(), // Host -> Map<peerId, DataConnection>
-        players: new Map(),    // Host -> Map<playerId, playerObj>
+        hostConn: null,
+        guestConns: new Map(),
+        players: new Map(),
         leaderboard: [],
         phase: 'idle', // 'idle' | 'lobby' | 'playing' | 'results'
         roundNum: 0,
         hostPlays: true,
         timeLimitSec: 180,
-        dailyVariant: 'random', // 'today' | 'random'
+        dailyVariant: 'random',
         sudokuEmptyCount: 10,
         sudokuDiffName: 'Leicht',
         roundStartAt: 0,
@@ -1707,7 +1753,7 @@
         myFinished: false,
         myFinishSec: null,
         lastSentSig: '',
-        selectedSetupMode: 'daily'
+        resultsReason: ''
     };
 
     function computeKahootScore(p, mode) {
@@ -1750,7 +1796,7 @@
     function crHostBroadcast(payload) {
         crState.guestConns.forEach(conn => {
             if (conn && conn.open) {
-                try { conn.send(payload); } catch (e) {}
+                try { conn.send(payload); } catch (e) { }
             }
         });
     }
@@ -1768,10 +1814,9 @@
                 remainingSec
             });
             updateClassroomLiveBars();
-            const modal = document.getElementById('cr-modal');
-            if (modal && !modal.classList.contains('hidden')) renderClassroomModal();
+            updateGlobalOnlineButton();
+            if (isUnifiedModalOpen()) renderUnifiedModal();
 
-            // Automatisch beenden, wenn alle aktiven Spieler fertig sind
             if (crState.phase === 'playing' && crState.leaderboard.length > 0) {
                 const activePlayers = crState.leaderboard.filter(p => p.online);
                 if (activePlayers.length > 0 && activePlayers.every(p => p.finished)) {
@@ -1815,11 +1860,11 @@
         if (crState.broadcastTimer) { clearTimeout(crState.broadcastTimer); crState.broadcastTimer = null; }
         if (crState.role === 'host') {
             crHostBroadcast({ type: 'CR_CLOSED' });
-            crState.guestConns.forEach(c => { try { c.close(); } catch (e) {} });
+            crState.guestConns.forEach(c => { try { c.close(); } catch (e) { } });
         } else if (crState.hostConn) {
-            try { crState.hostConn.close(); } catch (e) {}
+            try { crState.hostConn.close(); } catch (e) { }
         }
-        if (crState.peer) { try { crState.peer.destroy(); } catch (e) {} }
+        if (crState.peer) { try { crState.peer.destroy(); } catch (e) { } }
 
         crState.active = false;
         crState.role = null;
@@ -1837,22 +1882,28 @@
         crState.lastSentSig = '';
 
         updateClassroomLiveBars();
-        renderClassroomModal();
+        updateGlobalOnlineButton();
+        if (isUnifiedModalOpen()) renderUnifiedModal();
         if (!silent && typeof showSonnerToast === 'function') {
-            showSonnerToast('Kursraum verlassen.', 'neutral');
+            showSonnerToast('Raum verlassen.', 'neutral');
         }
     }
 
-    function crCreateRoom(mode) {
+    function crCreateRoom(mode, stayInHub = false) {
         if (typeof Peer === 'undefined') {
-            showSonnerToast('PeerJS nicht verfügbar (Internetverbindung nötig).', 'warn');
+            showSonnerToast('Online-Transport nicht verfügbar (Internetverbindung nötig).', 'warn');
             return;
         }
+        const targetMode = mode === 'sudoku' ? 'sudoku' : 'daily';
+        closeAllOtherSessionsExcept(targetMode);
         crLeaveRoom(true);
+        if (!stayInHub && typeof setGameSubTab === 'function' && typeof labState !== 'undefined' && labState.activeGameTab !== targetMode) {
+            setGameSubTab(targetMode);
+        }
+
         const code = genRoomCode(4);
         crState.active = true;
-        crState.mode = mode === 'sudoku' ? 'sudoku' : 'daily';
-        crState.selectedSetupMode = crState.mode;
+        crState.mode = targetMode;
         crState.role = 'host';
         crState.roomCode = code;
         crState.phase = 'lobby';
@@ -1876,9 +1927,10 @@
         crState.peer = peer;
 
         peer.on('open', () => {
-            showSonnerToast(`Kursraum ${code} erstellt! QR-Code jetzt scanbar.`, 'success');
+            showSonnerToast(`Raum ${code} geöffnet! QR-Code jetzt scanbar.`, 'success');
             updateClassroomLiveBars();
-            renderClassroomModal();
+            updateGlobalOnlineButton();
+            renderUnifiedModal();
         });
 
         peer.on('connection', (conn) => {
@@ -1898,40 +1950,44 @@
         });
 
         peer.on('error', (err) => {
-            showSonnerToast(`Kursraum-Fehler: ${err.type || 'Verbindung fehlgeschlagen'}`, 'warn');
+            showSonnerToast(`Online-Fehler: ${err.type || 'Verbindung fehlgeschlagen'}`, 'warn');
             crLeaveRoom(true);
         });
 
-        renderClassroomModal();
         updateClassroomLiveBars();
+        updateGlobalOnlineButton();
+        renderUnifiedModal();
     }
 
     function crJoinRoom(mode, forcedCode = null) {
         if (typeof Peer === 'undefined') {
-            showSonnerToast('PeerJS nicht verfügbar (Internetverbindung nötig).', 'warn');
+            showSonnerToast('Online-Transport nicht verfügbar (Internetverbindung nötig).', 'warn');
             return;
         }
-        const inp = document.getElementById('cr-join-input');
+        const inp = document.getElementById('mp-hub-join-input');
         const code = (forcedCode || (inp ? inp.value : '')).trim().toUpperCase();
         if (code.length < 4) {
-            showSonnerToast('Bitte gib den 4-stelligen Kursraum-Code ein.', 'warn');
+            showSonnerToast('Bitte gib den 4-stelligen Raum-Code ein.', 'warn');
             return;
         }
+        const targetMode = mode === 'sudoku' ? 'sudoku' : 'daily';
+        closeAllOtherSessionsExcept(targetMode);
         crLeaveRoom(true);
+
         crState.active = true;
-        crState.mode = mode === 'sudoku' ? 'sudoku' : 'daily';
-        crState.selectedSetupMode = crState.mode;
+        crState.mode = targetMode;
         crState.role = 'guest';
         crState.roomCode = code;
         crState.phase = 'lobby';
-        renderClassroomModal();
+        updateGlobalOnlineButton();
+        renderUnifiedModal();
 
         const peer = new Peer();
         crState.peer = peer;
 
         const timeout = setTimeout(() => {
             if (crState.active && crState.role === 'guest' && (!crState.hostConn || !crState.hostConn.open)) {
-                showSonnerToast(`Kursraum ${code} nicht erreichbar.`, 'warn');
+                showSonnerToast(`Raum ${code} nicht erreichbar.`, 'warn');
                 crLeaveRoom(true);
             }
         }, 10000);
@@ -1943,20 +1999,21 @@
                 clearTimeout(timeout);
                 if (typeof playSound === 'function') playSound('win');
                 conn.send({ type: 'CR_JOIN', name: getMyNameSafe(), profile: getMyProfileSafe() });
-                showSonnerToast(`Kursraum ${code} beigetreten!`, 'success');
+                showSonnerToast(`Raum ${code} beigetreten!`, 'success');
                 updateClassroomLiveBars();
-                renderClassroomModal();
+                updateGlobalOnlineButton();
+                renderUnifiedModal();
             });
             conn.on('data', (msg) => crGuestHandleHostMsg(msg));
             conn.on('close', () => {
-                showSonnerToast('Kursraum wurde vom Host beendet.', 'warn');
+                showSonnerToast('Raum wurde vom Host beendet.', 'warn');
                 crLeaveRoom(true);
             });
         });
 
         peer.on('error', () => {
             clearTimeout(timeout);
-            showSonnerToast(`Kursraum ${code} nicht gefunden.`, 'warn');
+            showSonnerToast(`Raum ${code} nicht gefunden.`, 'warn');
             crLeaveRoom(true);
         });
     }
@@ -2033,10 +2090,8 @@
             crState.timeLimitSec = msg.timeLimitSec || 0;
             crState.roundNum = msg.roundNum || 0;
             crState.leaderboard = msg.leaderboard || [];
-            if (typeof setGameSubTab === 'function' && labState.activeGameTab !== crState.mode) {
-                setGameSubTab(crState.mode);
-            }
             if (msg.phase === 'playing' && msg.activePuzzle) {
+                if (typeof setGameSubTab === 'function') setGameSubTab(crState.mode);
                 crApplyPuzzlePayload(msg.activePuzzle, false);
                 if (msg.remainingSec) {
                     crState.roundStartAt = performance.now() - ((crState.timeLimitSec - msg.remainingSec) * 1000);
@@ -2044,7 +2099,8 @@
                 crStartClockTicker();
             }
             updateClassroomLiveBars();
-            renderClassroomModal();
+            updateGlobalOnlineButton();
+            if (isUnifiedModalOpen()) renderUnifiedModal();
             return;
         }
 
@@ -2057,7 +2113,7 @@
             crState.myFinished = false;
             crState.myFinishSec = null;
             crState.lastSentSig = '';
-            if (typeof setGameSubTab === 'function' && labState.activeGameTab !== crState.mode) {
+            if (typeof setGameSubTab === 'function' && typeof labState !== 'undefined' && labState.activeGameTab !== crState.mode) {
                 setGameSubTab(crState.mode);
             }
             crApplyPuzzlePayload(msg.puzzle, true);
@@ -2068,8 +2124,8 @@
             crState.leaderboard = msg.leaderboard || [];
             if (msg.phase) crState.phase = msg.phase;
             updateClassroomLiveBars();
-            const modal = document.getElementById('cr-modal');
-            if (modal && !modal.classList.contains('hidden')) renderClassroomModal();
+            updateGlobalOnlineButton();
+            if (isUnifiedModalOpen()) renderUnifiedModal();
             return;
         }
 
@@ -2083,7 +2139,7 @@
         }
 
         if (msg.type === 'CR_CLOSED') {
-            showSonnerToast('Der Kursraum wurde vom Host geschlossen.', 'warn');
+            showSonnerToast('Der Raum wurde vom Host geschlossen.', 'warn');
             crLeaveRoom(true);
         }
     }
@@ -2110,26 +2166,26 @@
     function crHostSetTimeLimit(sec) {
         crState.timeLimitSec = parseInt(sec, 10) || 0;
         if (typeof playSound === 'function') playSound('tick');
-        renderClassroomModal();
+        renderUnifiedModal();
     }
 
     function crHostSetSudokuDiff(emptyCount, diffName) {
         crState.sudokuEmptyCount = emptyCount;
         crState.sudokuDiffName = diffName;
         if (typeof playSound === 'function') playSound('tick');
-        renderClassroomModal();
+        renderUnifiedModal();
     }
 
     function crHostSetDailyVariant(variant) {
         crState.dailyVariant = variant;
         if (typeof playSound === 'function') playSound('tick');
-        renderClassroomModal();
+        renderUnifiedModal();
     }
 
     function crHostStartRound() {
         if (!crState.active || crState.role !== 'host') return;
         if (crState.players.size === 0) {
-            showSonnerToast('Mindestens 1 Teilnehmender (oder „Host spielt mit“) wird benötigt.', 'warn');
+            showSonnerToast('Mindestens 1 Teilnehmender (oder „Selbst mitspielen“) wird benötigt.', 'warn');
             return;
         }
 
@@ -2151,7 +2207,7 @@
                 mode: 'daily',
                 cards: board,
                 total: sols.length,
-                label: `Kursraum #${crState.roomCode} · Runde ${crState.roundNum}`
+                label: `Live-Raum #${crState.roomCode} · Runde ${crState.roundNum}`
             };
         } else {
             const solution = generateMagicSquare25();
@@ -2171,7 +2227,7 @@
                 emptyCount: crState.sudokuEmptyCount,
                 diffName: crState.sudokuDiffName,
                 total: crState.sudokuEmptyCount,
-                label: `Kursraum #${crState.roomCode} · Runde ${crState.roundNum}`
+                label: `Live-Raum #${crState.roomCode} · Runde ${crState.roundNum}`
             };
         }
 
@@ -2197,7 +2253,6 @@
         if (crState.hostPlays) {
             crApplyPuzzlePayload(puzzlePayload, true);
         } else {
-            // Moderator-Modus am Beamer: Countdown + Live-Ranking offen lassen!
             crRunCountdown(() => {
                 crState.roundStartAt = performance.now();
                 crStartClockTicker();
@@ -2206,7 +2261,7 @@
         }
     }
 
-    function crHostEndRound(reason = 'Runde vom Host ausgewertet!') {
+    function crHostEndRound(reason = 'Runde ausgewertet!') {
         if (!crState.active || crState.role !== 'host') return;
         crState.phase = 'results';
         if (crState.timerHandle) { clearInterval(crState.timerHandle); crState.timerHandle = null; }
@@ -2255,8 +2310,7 @@
     }
 
     function crApplyPuzzlePayload(puzzle, withCountdown = true) {
-        const modal = document.getElementById('cr-modal');
-        if (modal && !modal.classList.contains('hidden')) toggleModalState('cr-modal');
+        closeUnifiedOnlineModal();
 
         if (puzzle.mode === 'daily' && typeof dailyState !== 'undefined') {
             dailyState.isPractice = true;
@@ -2270,13 +2324,13 @@
             dailyState.hintIndices = [];
 
             const lbl = document.getElementById('daily-date-label');
-            if (lbl) lbl.textContent = puzzle.label || 'Kursraum · Daily Challenge';
+            if (lbl) lbl.textContent = puzzle.label || 'Live · Daily Challenge';
             const fb = document.getElementById('daily-feedback-text');
-            if (fb) fb.textContent = `Kursraum aktiv! Finde alle ${dailyState.solutions.length} Cluster so schnell wie möglich.`;
+            if (fb) fb.textContent = `Live-Runde aktiv! Finde alle ${dailyState.solutions.length} Cluster so schnell wie möglich.`;
             renderDailyUI();
         } else if (puzzle.mode === 'sudoku' && typeof sudokuState !== 'undefined') {
             sudokuState.emptyCount = puzzle.emptyCount;
-            sudokuState.diffName = puzzle.diffName || 'Kursraum';
+            sudokuState.diffName = puzzle.diffName || 'Live';
             sudokuState.solved = false;
             sudokuState.solution = puzzle.solution.map(c => [...c]);
             sudokuState.fixed = [...puzzle.fixed];
@@ -2361,45 +2415,19 @@
 
     function crOpenResultsPodium(reasonText = '') {
         crState.resultsReason = reasonText;
-        renderClassroomModal();
         updateClassroomLiveBars();
-        const modal = document.getElementById('cr-modal');
-        if (modal && modal.classList.contains('hidden')) {
-            toggleModalState('cr-modal');
-        }
+        updateGlobalOnlineButton();
+        openUnifiedOnlineModal(crState.mode);
         if (typeof playSound === 'function') playSound('win');
         if (window.BlinkHaptics) {
-            setTimeout(() => window.BlinkHaptics.burst(document.getElementById('cr-modal'), 'amber', 32), 180);
-        }
-    }
-
-    function openClassroomModal(mode) {
-        if (!crState.active) {
-            crState.selectedSetupMode = mode === 'sudoku' ? 'sudoku' : 'daily';
-        }
-        renderClassroomModal();
-        const modal = document.getElementById('cr-modal');
-        if (modal && modal.classList.contains('hidden')) {
-            if (typeof playSound === 'function') playSound('tick');
-            toggleModalState('cr-modal');
+            setTimeout(() => window.BlinkHaptics.burst(document.getElementById('mp-unified-modal'), 'amber', 32), 180);
         }
     }
 
     function updateClassroomLiveBars() {
         ['daily', 'sudoku'].forEach(m => {
-            const btn = document.getElementById(`btn-cr-${m}`);
             const bar = document.getElementById(`cr-${m}-live-bar`);
             const isActiveHere = crState.active && crState.mode === m;
-
-            if (btn) {
-                btn.classList.toggle('is-connected', isActiveHere);
-                const lbl = btn.querySelector('.cr-btn-lbl');
-                if (lbl) {
-                    lbl.textContent = isActiveHere
-                        ? `Kursraum ${crState.roomCode} (${crState.leaderboard.length})`
-                        : 'Kursraum (Live)';
-                }
-            }
             if (!bar) return;
             bar.classList.toggle('hidden', !isActiveHere);
             if (!isActiveHere) return;
@@ -2426,7 +2454,7 @@
                         <span class="font-bold ${remSec !== null && remSec <= 15 ? 'text-rose-400' : 'text-amber-300'}">${timerTxt}</span>
                     </div>
                     <div class="flex items-center gap-1.5">
-                        <button type="button" onclick="window.BlinkMultiplayer.openClassroom('${m}')" class="px-3 py-1 rounded-full bg-white/[0.08] hover:bg-white/[0.16] text-[11px] font-bold text-white transition">
+                        <button type="button" onclick="window.BlinkMultiplayer.openHub('${m}')" class="px-3 py-1 rounded-full bg-white/[0.08] hover:bg-white/[0.16] text-[11px] font-bold text-white transition">
                             ${crState.phase === 'results' ? 'Podium' : 'Live-Ranking'}
                         </button>
                         ${crState.role === 'host' && crState.phase === 'playing' ? `
@@ -2438,6 +2466,78 @@
         });
     }
 
+    function enhanceClassroomHooks() {
+        const dailyGrid = document.getElementById('daily-cards-grid');
+        if (dailyGrid && !document.getElementById('cr-daily-live-bar')) {
+            const bar = document.createElement('div');
+            bar.id = 'cr-daily-live-bar';
+            bar.className = 'hidden cr-live-bar';
+            dailyGrid.parentElement.insertBefore(bar, dailyGrid);
+        }
+
+        const sdkGrid = document.getElementById('sudoku-grid');
+        if (sdkGrid && !document.getElementById('cr-sudoku-live-bar')) {
+            const bar = document.createElement('div');
+            bar.id = 'cr-sudoku-live-bar';
+            bar.className = 'hidden cr-live-bar';
+            sdkGrid.parentElement.insertBefore(bar, sdkGrid);
+        }
+
+        if (typeof window.evaluateDailySelection === 'function' && !window.evaluateDailySelection.__crWrapped) {
+            const origEval = window.evaluateDailySelection;
+            const wrapped = function () {
+                const res = origEval.apply(this, arguments);
+                if (crState.active && crState.mode === 'daily' && crState.phase === 'playing') {
+                    setTimeout(() => crReportMyProgress(false), 40);
+                }
+                return res;
+            };
+            wrapped.__crWrapped = true;
+            window.evaluateDailySelection = wrapped;
+        }
+
+        if (typeof window.giveDailyHint === 'function' && !window.giveDailyHint.__crWrapped) {
+            const origHint = window.giveDailyHint;
+            const wrapped = function () {
+                if (crState.active && crState.mode === 'daily' && crState.phase === 'playing') {
+                    crState.myHintsUsed++;
+                    setTimeout(() => crReportMyProgress(false), 40);
+                }
+                return origHint.apply(this, arguments);
+            };
+            wrapped.__crWrapped = true;
+            window.giveDailyHint = wrapped;
+        }
+
+        if (typeof window.renderSudokuUI === 'function' && !window.renderSudokuUI.__crWrapped) {
+            const origRender = window.renderSudokuUI;
+            const wrapped = function () {
+                const res = origRender.apply(this, arguments);
+                if (crState.active && crState.mode === 'sudoku' && crState.phase === 'playing') {
+                    crReportMyProgress(false);
+                }
+                return res;
+            };
+            wrapped.__crWrapped = true;
+            window.renderSudokuUI = wrapped;
+        }
+
+        if (typeof window.giveSudokuHint === 'function' && !window.giveSudokuHint.__crWrapped) {
+            const origHint = window.giveSudokuHint;
+            const wrapped = function () {
+                if (crState.active && crState.mode === 'sudoku' && crState.phase === 'playing') {
+                    crState.myHintsUsed++;
+                }
+                return origHint.apply(this, arguments);
+            };
+            wrapped.__crWrapped = true;
+            window.giveSudokuHint = wrapped;
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // 5. EINHEITLICHER MODAL-RENDERER (SETUP · LOBBY · LIVE-RANKING · PODIUM)
+    // ------------------------------------------------------------------------
     function renderLeaderboardRowsHTML(list, highlightMyId) {
         if (!list || list.length === 0) {
             return `<div class="text-xs text-slate-400 text-center py-6 rounded-2xl border border-dashed border-white/10">Noch keine Teilnehmenden im Raum.</div>`;
@@ -2475,57 +2575,144 @@
         }).join('');
     }
 
-    function renderClassroomModal() {
-        const body = document.getElementById('cr-modal-body');
-        const titleEl = document.getElementById('cr-modal-title');
-        const subEl = document.getElementById('cr-modal-subtitle');
+    function renderInviteColumnHTML(code, url) {
+        return `
+            <div class="md:col-span-5 mp-share-card flex flex-col items-center text-center gap-3">
+                <div class="mp-qr-frame p-2.5">${buildQrSvgHTML(url, 196)}</div>
+                <button type="button" id="mp-hub-copy-code" title="Klicken zum Kopieren"
+                    class="mp-code-display-btn group px-4 py-1.5 rounded-2xl transition">
+                    <div class="text-[9.5px] uppercase tracking-widest text-slate-400 mono">Raum-Code (Klick zum Kopieren)</div>
+                    <div class="text-3xl font-extrabold tracking-[0.26em] text-cyan-300 mono mt-0.5 pl-1">${escHtml(code)}</div>
+                </button>
+                <button type="button" id="mp-hub-copy-link"
+                    class="w-full py-2.5 px-4 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-xs transition inline-flex items-center justify-center gap-2">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                    <span>Einladungslink kopieren</span>
+                </button>
+                ${isLocalFileProtocol() ? '<div class="text-[10px] text-amber-300/90 leading-snug">Hinweis: Direktlinks funktionieren ab GitHub Pages.</div>' : ''}
+            </div>
+        `;
+    }
+
+    function wireInviteColumnButtons(code, url) {
+        const codeBtn = document.getElementById('mp-hub-copy-code');
+        const linkBtn = document.getElementById('mp-hub-copy-link');
+        if (codeBtn) {
+            codeBtn.onclick = () => copyTextToClipboard(code, `Raum-Code ${code} kopiert!`, codeBtn, '<div class="text-[9.5px] uppercase tracking-widest text-emerald-300 mono">Kopiert!</div><div class="text-3xl font-extrabold tracking-[0.26em] text-emerald-300 mono mt-0.5 pl-1">✓ ' + escHtml(code) + '</div>');
+        }
+        if (linkBtn) {
+            linkBtn.onclick = () => copyTextToClipboard(url, 'Einladungslink kopiert!', linkBtn, '✓ Link kopiert!');
+        }
+    }
+
+    function renderUnifiedModal() {
+        const body = document.getElementById('mp-hub-body');
+        const titleEl = document.getElementById('mp-hub-title');
+        const subEl = document.getElementById('mp-hub-subtitle');
         if (!body) return;
 
-        const activeMode = crState.active ? crState.mode : crState.selectedSetupMode;
-        const modeLabel = activeMode === 'sudoku' ? 'Blink-Sudoku' : 'Daily Challenge';
-        if (titleEl) titleEl.textContent = `Kursraum · ${modeLabel}`;
+        const session = getActiveOnlineSession();
 
-        // 1. EINSTIEG (NOCH IN KEINEM RAUM)
-        if (!crState.active) {
-            if (subEl) subEl.textContent = 'Lade 10, 15 oder 20+ Personen per QR-Code oder Link ins gleiche Puzzle ein';
+        // --------------------------------------------------------------------
+        // ANSICHT 1: KEIN RAUM AKTIV -> EINHEITLICHES START-MENÜ (ALLE 4 MODI)
+        // --------------------------------------------------------------------
+        if (!session) {
+            const m = mpHub.selectedMode || getCurrentTabOnlineDefault();
+            const modeObj = ONLINE_MODES.find(x => x.id === m) || ONLINE_MODES[0];
+            if (titleEl) titleEl.textContent = `${modeObj.label} · Online gegen Freunde`;
+            if (subEl) subEl.textContent = 'Raum eröffnen (QR & Link) oder mit 4-stelligem Code beitreten';
+
+            const curArenaRule = (typeof gameState !== 'undefined' && gameState.ruleMode === 'cluster') ? 'cluster' : 'normal';
+            let modeOptionsHtml = '';
+            if (m === 'arena') {
+                modeOptionsHtml = `
+                    <div class="space-y-1.5">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mono">Regelvariante</div>
+                        <div class="grid grid-cols-2 gap-1.5">
+                            <button type="button" onclick="window.BlinkMultiplayer.setArenaRule('normal')" class="profile-chip ${curArenaRule === 'normal' ? 'is-selected' : ''}">Standard (2 Stapel)</button>
+                            <button type="button" onclick="window.BlinkMultiplayer.setArenaRule('cluster')" class="profile-chip ${curArenaRule === 'cluster' ? 'is-selected' : ''}">Cluster (3 Stapel)</button>
+                        </div>
+                    </div>
+                `;
+            } else if (m === 'daily') {
+                modeOptionsHtml = `
+                    <div class="space-y-1.5">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mono">Zeitlimit</div>
+                        <div class="grid grid-cols-4 gap-1.5">
+                            ${[0, 120, 180, 300].map(sec => `
+                                <button type="button" onclick="window.BlinkMultiplayer.crSetTime(${sec})" class="profile-chip ${crState.timeLimitSec === sec ? 'is-selected' : ''}">${sec === 0 ? 'Ohne' : `${sec / 60} Min`}</button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } else if (m === 'sudoku') {
+                modeOptionsHtml = `
+                    <div class="space-y-2">
+                        <div class="space-y-1">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mono">Schwierigkeit</div>
+                            <div class="grid grid-cols-3 gap-1.5">
+                                <button type="button" onclick="window.BlinkMultiplayer.crSetSudokuDiff(10,'Leicht')" class="profile-chip ${crState.sudokuEmptyCount === 10 ? 'is-selected' : ''}">Leicht</button>
+                                <button type="button" onclick="window.BlinkMultiplayer.crSetSudokuDiff(14,'Mittel')" class="profile-chip ${crState.sudokuEmptyCount === 14 ? 'is-selected' : ''}">Mittel</button>
+                                <button type="button" onclick="window.BlinkMultiplayer.crSetSudokuDiff(17,'Profi')" class="profile-chip ${crState.sudokuEmptyCount === 17 ? 'is-selected' : ''}">Profi</button>
+                            </div>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mono">Zeitlimit</div>
+                            <div class="grid grid-cols-4 gap-1.5">
+                                ${[0, 120, 180, 300].map(sec => `
+                                    <button type="button" onclick="window.BlinkMultiplayer.crSetTime(${sec})" class="profile-chip ${crState.timeLimitSec === sec ? 'is-selected' : ''}">${sec === 0 ? 'Ohne' : `${sec / 60} Min`}</button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const descMap = {
+                arena: 'Spiele direkt 1v1 in Echtzeit gegeneinander — inkl. Live-Elo und Head-to-Head.',
+                verhoer: 'Spiele das taktische 1v1-Verhör im 125er-Deck mit verdeckten Handkarten.',
+                daily: 'Alle lösen gleichzeitig dasselbe Cluster-Brett gegeneinander mit Live-Ranking.',
+                sudoku: 'Alle lösen gleichzeitig dasselbe 5×5-Blink-Sudoku mit Live-Ranking und Podium.'
+            };
+
             body.innerHTML = `
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="mp-share-card space-y-3.5 flex flex-col justify-between">
-                        <div class="space-y-2">
-                            <div class="text-[10.5px] font-bold uppercase tracking-widest text-cyan-400 mono">Für Kursleitung / Host</div>
-                            <h3 class="text-sm font-extrabold text-white">Neuen Kursraum eröffnen</h3>
-                            <p class="text-[11.5px] text-slate-400 leading-relaxed">Erzeugt sofort einen QR-Code &amp; Link für den Beamer. Alle Teilnehmenden lösen exakt dasselbe ${modeLabel}-Rätsel gegen die Uhr.</p>
-                            <div class="pt-1 space-y-2">
-                                <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mono">Zeitlimit</div>
-                                <div class="grid grid-cols-4 gap-1.5">
-                                    ${[0, 120, 180, 300].map(sec => `
-                                        <button type="button" onclick="window.BlinkMultiplayer.crSetTime(${sec})" class="profile-chip ${crState.timeLimitSec === sec ? 'is-selected' : ''}">${sec === 0 ? 'Ohne' : `${sec / 60} Min`}</button>
-                                    `).join('')}
-                                </div>
-                            </div>
+                        <div class="space-y-2.5">
+                            <div class="text-[10px] font-bold uppercase tracking-widest text-cyan-400 mono">Neuer Raum</div>
+                            <h3 class="text-sm font-extrabold text-white">${modeObj.label} eröffnen</h3>
+                            <p class="text-[11.5px] text-slate-400 leading-relaxed">${descMap[m]}</p>
+                            ${modeOptionsHtml}
                         </div>
-                        <button type="button" onclick="window.BlinkMultiplayer.crCreate('${activeMode}')" class="w-full py-3 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-xs transition shadow-lg shadow-cyan-500/15">
-                            Kursraum starten (Link &amp; QR)
+                        <button type="button" onclick="window.BlinkMultiplayer.createActive()"
+                            class="w-full py-3 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-xs tracking-wide transition shadow-lg shadow-cyan-500/15">
+                            Raum erstellen
                         </button>
                     </div>
 
                     <div class="mp-share-card space-y-3.5 flex flex-col justify-between">
-                        <div class="space-y-2">
-                            <div class="text-[10.5px] font-bold uppercase tracking-widest text-purple-400 mono">Für Teilnehmende</div>
-                            <h3 class="text-sm font-extrabold text-white">Kursraum beitreten</h3>
-                            <p class="text-[11.5px] text-slate-400 leading-relaxed">Scanne den QR-Code vom Beamer mit deiner Kamera oder gib hier den 4-stelligen Raum-Code ein:</p>
-                            <div class="apple-inset-group mt-2">
+                        <div class="space-y-2.5">
+                            <div class="text-[10px] font-bold uppercase tracking-widest text-purple-400 mono">Mitspielen</div>
+                            <h3 class="text-sm font-extrabold text-white">Mit Raum-Code beitreten</h3>
+                            <div class="apple-inset-group">
                                 <div class="apple-set-row">
                                     <span class="text-xs text-slate-300 shrink-0">Dein Name</span>
-                                    <input type="text" maxlength="18" value="${escHtml(getMyNameSafe())}" onchange="setPlayerName(this.value)" class="apple-inset-name-input flex-1 min-w-0 bg-transparent text-right text-xs font-bold text-white focus:outline-none">
+                                    <input type="text" maxlength="18" value="${escHtml(getMyNameSafe())}" onchange="setPlayerName(this.value)"
+                                        class="apple-inset-name-input flex-1 min-w-0 bg-transparent text-right text-xs font-bold text-white focus:outline-none">
                                 </div>
                             </div>
+                            <p class="text-[11px] text-slate-400 leading-relaxed">
+                                Gib den 4-stelligen Code ein oder scanne einfach den QR-Code vom anderen Gerät mit der Kamera.
+                            </p>
                         </div>
                         <div class="flex items-center gap-2">
-                            <input id="cr-join-input" type="text" maxlength="6" placeholder="Code (z. B. M8Q3)"
-                                onkeydown="if(event.key==='Enter') window.BlinkMultiplayer.crJoin('${activeMode}')"
-                                class="flex-1 min-w-0 bg-slate-950/90 border border-white/10 focus:border-cyan-400 rounded-full px-3.5 py-2.5 text-xs mono uppercase tracking-widest text-white placeholder-slate-500 focus:outline-none">
-                            <button type="button" onclick="window.BlinkMultiplayer.crJoin('${activeMode}')" class="px-5 py-2.5 rounded-full bg-white text-slate-950 hover:bg-cyan-300 font-extrabold text-xs shrink-0 transition">Beitreten</button>
+                            <input id="mp-hub-join-input" type="text" maxlength="6" placeholder="K 7 M 4"
+                                onkeydown="if(event.key==='Enter') window.BlinkMultiplayer.joinActive()"
+                                class="flex-1 min-w-0 bg-slate-950/90 border border-white/10 focus:border-cyan-400 rounded-full px-4 py-2.5 text-center text-sm font-extrabold mono uppercase tracking-[0.22em] text-white placeholder-slate-500 focus:outline-none">
+                            <button type="button" onclick="window.BlinkMultiplayer.joinActive()"
+                                class="px-5 py-2.5 rounded-full bg-white text-slate-950 hover:bg-cyan-300 font-extrabold text-xs shrink-0 transition">
+                                Beitreten
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -2533,20 +2720,125 @@
             return;
         }
 
+        // --------------------------------------------------------------------
+        // ANSICHT 2: 1v1-SESSION AKTIV (BLINK-ARENA ODER DAS VERHÖR)
+        // --------------------------------------------------------------------
+        if (session.kind === 'arena' || session.kind === 'verhoer') {
+            const isArena = session.kind === 'arena';
+            const isHost = session.isHost;
+            const connected = session.connected;
+            const url = buildShareUrl(session.kind, 'join', session.code);
+            const oppName = connected
+                ? escHtml(isArena ? (p2pState.oppName || 'Online-Gegner') : (vhNet.oppName || 'Online-Gegner'))
+                : 'Warte auf Gegner...';
+            const oppProf = connected ? (isArena ? p2pState.oppProfile : vhNet.oppProfile) : null;
+            const statusText = connected ? 'Verbunden' : (isHost ? 'Warte auf Gegner' : 'Verbinde...');
+
+            if (titleEl) titleEl.textContent = `${session.label} · Online`;
+            if (subEl) subEl.textContent = connected
+                ? `Verbunden mit ${oppName} · Raum ${session.code}`
+                : `Raum ${session.code} offen — QR-Code scannen oder Link teilen`;
+
+            const curArenaRule = (typeof gameState !== 'undefined' && gameState.ruleMode === 'cluster') ? 'cluster' : 'normal';
+            const arenaRuleBlock = (isArena && isHost) ? `
+                <div class="space-y-1.5 pt-1">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mono">Regelvariante</div>
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <button type="button" onclick="window.BlinkMultiplayer.setArenaRule('normal')" class="profile-chip ${curArenaRule === 'normal' ? 'is-selected' : ''}">Standard (2 Stapel)</button>
+                        <button type="button" onclick="window.BlinkMultiplayer.setArenaRule('cluster')" class="profile-chip ${curArenaRule === 'cluster' ? 'is-selected' : ''}">Cluster (3 Stapel)</button>
+                    </div>
+                </div>
+            ` : '';
+
+            const sc = isArena
+                ? (typeof getArenaH2HNumbers === 'function' ? getArenaH2HNumbers() : { myWins: 0, oppWins: 0 })
+                : (() => {
+                    const s = vhNet.seriesScore || { host: 0, guest: 0 };
+                    const isG = vhNet.role === 'guest';
+                    return { myWins: isG ? (s.guest || 0) : (s.host || 0), oppWins: isG ? (s.host || 0) : (s.guest || 0) };
+                })();
+            const h2hLine = (connected && (sc.myWins > 0 || sc.oppWins > 0))
+                ? `<div class="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.08] text-xs mono">
+                        <span class="text-slate-400">Head-to-Head</span>
+                        <span class="font-extrabold"><span class="text-cyan-300">${sc.myWins}</span> : <span class="text-rose-400">${sc.oppWins}</span></span>
+                   </div>`
+                : '';
+
+            const startCall = isArena ? 'window.BlinkMultiplayer.startArenaOnline()' : 'window.BlinkMultiplayer.vhStartOnline()';
+            const disconnectCall = isArena ? 'window.BlinkMultiplayer.disconnectArena()' : 'window.BlinkMultiplayer.vhDisconnect()';
+
+            body.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+                    ${renderInviteColumnHTML(session.code, url)}
+
+                    <div class="md:col-span-7 flex flex-col justify-between gap-3">
+                        <div class="mp-share-card space-y-3 flex-1">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mono">Spieler im Raum</span>
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] mono font-bold ${connected ? 'bg-emerald-500/20 border border-emerald-400/40 text-emerald-300' : 'bg-amber-500/15 border border-amber-400/40 text-amber-300'}">${statusText}</span>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2">
+                                <div class="cr-player-tile">
+                                    <span class="shrink-0">${renderAvatarSafe(getMyProfileSafe(), 30)}</span>
+                                    <div class="min-w-0">
+                                        <div class="text-xs font-bold text-white truncate">${escHtml(getMyNameSafe())}</div>
+                                        <div class="text-[9.5px] mono text-cyan-300">${isHost ? 'Host (Du)' : 'Gast (Du)'}</div>
+                                    </div>
+                                </div>
+                                <div class="cr-player-tile">
+                                    <span class="shrink-0">${connected ? renderAvatarSafe(oppProf, 30) : '<span class="w-7 h-7 rounded-full border border-dashed border-white/25 inline-flex items-center justify-center text-[11px] text-slate-500">?</span>'}</span>
+                                    <div class="min-w-0">
+                                        <div class="text-xs font-bold text-white truncate">${oppName}</div>
+                                        <div class="text-[9.5px] mono text-slate-400">${connected ? 'Bereit' : 'Offener Platz'}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            ${arenaRuleBlock}
+                            ${h2hLine}
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-2">
+                            ${isHost ? `
+                                <button type="button" onclick="${startCall}" ${connected ? '' : 'disabled'}
+                                    class="flex-1 py-3 px-5 rounded-full bg-emerald-400 hover:bg-emerald-300 disabled:opacity-40 text-slate-950 font-extrabold text-xs tracking-wide transition shadow-lg shadow-emerald-500/15">
+                                    ▶ Spiel starten
+                                </button>
+                            ` : `
+                                <div class="flex-1 py-3 px-4 rounded-full bg-white/[0.04] border border-white/10 text-center text-xs text-slate-300 mono">
+                                    ${connected ? 'Verbunden · Warte auf Start...' : 'Verbinde mit Raum...'}
+                                </div>
+                            `}
+                            <button type="button" onclick="${disconnectCall}"
+                                class="px-4 py-3 rounded-full border border-rose-500/35 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-semibold text-xs transition">
+                                Trennen
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            wireInviteColumnButtons(session.code, url);
+            return;
+        }
+
+        // --------------------------------------------------------------------
+        // ANSICHT 3: GRUPPEN-SESSION AKTIV (DAILY CHALLENGE / BLINK-SUDOKU)
+        // --------------------------------------------------------------------
         const myId = crState.role === 'host' ? '__host__' : crState.myId;
         const url = buildShareUrl(crState.mode, 'room', crState.roomCode);
+        if (titleEl) titleEl.textContent = `${session.label} · Live`;
 
-        // 2. KAHOOT-SIEGERPODIUM & BESTENLISTE (NACH RUNDENENDE)
+        // 3A. PODIUM & ENDERGEBNIS
         if (crState.phase === 'results') {
-            if (subEl) subEl.textContent = crState.resultsReason || `Runde ${crState.roundNum} abgeschlossen · Offizielle Bestenliste`;
+            if (subEl) subEl.textContent = crState.resultsReason || `Runde ${crState.roundNum} abgeschlossen`;
             const top3 = crState.leaderboard.slice(0, 3);
             const podiumOrder = [
                 { rank: 2, p: top3[1], medal: '🥈' },
                 { rank: 1, p: top3[0], medal: '🥇' },
                 { rank: 3, p: top3[2], medal: '🥉' }
             ];
-
-            const podiumHtml = `
+            body.innerHTML = `
                 <div class="cr-podium-stage max-w-xl mx-auto">
                     ${podiumOrder.map(({ rank, p, medal }) => {
                         if (!p) return `<div class="cr-podium-col opacity-25"><div class="cr-podium-block rank-${rank}"><span class="text-lg font-extrabold mono">${rank}.</span></div></div>`;
@@ -2565,12 +2857,8 @@
                         `;
                     }).join('')}
                 </div>
-            `;
-
-            body.innerHTML = `
-                ${podiumHtml}
                 <div class="space-y-1.5 pt-2">
-                    <div class="apple-set-section-label">Gesamtrangliste (${crState.leaderboard.length} Teilnehmende)</div>
+                    <div class="apple-set-section-label">Gesamtrangliste (${crState.leaderboard.length})</div>
                     <div class="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
                         ${renderLeaderboardRowsHTML(crState.leaderboard, myId)}
                     </div>
@@ -2578,30 +2866,32 @@
                 <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/[0.08]">
                     ${crState.role === 'host' ? `
                         <button type="button" onclick="window.BlinkMultiplayer.crStartRound()" class="px-5 py-2.5 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-xs transition shadow-lg shadow-cyan-500/20">
-                            ↻ Nächste Runde (Neues Puzzle)
+                            ↻ Nächste Runde starten
                         </button>
                     ` : `
-                        <span class="text-xs mono text-slate-400">Warte auf die nächste Runde des Hosts...</span>
+                        <span class="text-xs mono text-slate-400">Warte auf die nächste Runde...</span>
                     `}
                     <button type="button" onclick="window.BlinkMultiplayer.crLeave()" class="px-4 py-2 rounded-full border border-rose-500/35 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-semibold text-xs transition">
-                        ${crState.role === 'host' ? 'Raum schließen' : 'Raum verlassen'}
+                        ${crState.role === 'host' ? 'Raum schließen' : 'Verlassen'}
                     </button>
                 </div>
             `;
             return;
         }
 
-        // 3. LIVE-RANKING WÄHREND DER RUNDE
+        // 3B. LIVE-RANKING WÄHREND DER RUNDE
         if (crState.phase === 'playing') {
-            if (subEl) subEl.textContent = `Runde ${crState.roundNum} läuft · Live-Fortschritt aller Teilnehmenden`;
+            if (subEl) subEl.textContent = `Runde ${crState.roundNum} läuft · Raum ${crState.roomCode}`;
             body.innerHTML = `
                 <div class="space-y-3">
                     <div class="flex flex-wrap items-center justify-between gap-2 mp-share-card">
-                        <div class="text-xs mono text-slate-300">Raum <strong class="text-cyan-300">${escHtml(crState.roomCode)}</strong> · ${crState.leaderboard.filter(p => p.finished).length} von ${crState.leaderboard.length} fertig</div>
+                        <div class="text-xs mono text-slate-300">
+                            Code <strong class="text-cyan-300">${escHtml(crState.roomCode)}</strong> · ${crState.leaderboard.filter(p => p.finished).length} von ${crState.leaderboard.length} fertig
+                        </div>
                         <div class="flex items-center gap-2">
-                            <button type="button" id="cr-live-qr-btn" class="px-3 py-1 rounded-full bg-white/[0.07] hover:bg-white/[0.15] text-[11px] font-semibold text-slate-200 transition">QR-Code</button>
+                            <button type="button" id="mp-live-copy-link" class="px-3 py-1.5 rounded-full bg-white/[0.07] hover:bg-white/[0.15] text-[11px] font-semibold text-slate-200 transition">Link kopieren</button>
                             ${crState.role === 'host' ? `
-                                <button type="button" onclick="window.BlinkMultiplayer.crEndRound()" class="px-4 py-1.5 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs transition">Runde auswerten &amp; Podium</button>
+                                <button type="button" onclick="window.BlinkMultiplayer.crEndRound()" class="px-4 py-1.5 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs transition">Auswerten &amp; Podium</button>
                             ` : ''}
                         </div>
                     </div>
@@ -2610,20 +2900,17 @@
                     </div>
                 </div>
             `;
-            const qBtn = document.getElementById('cr-live-qr-btn');
-            if (qBtn) qBtn.onclick = () => openQrZoomModal(`Kursraum · ${modeLabel}`, crState.roomCode, url);
+            const liveCopy = document.getElementById('mp-live-copy-link');
+            if (liveCopy) liveCopy.onclick = () => copyTextToClipboard(url, 'Einladungslink kopiert!', liveCopy, '✓ Kopiert!');
             return;
         }
 
-        // 4. WARTE-LOBBY (VOR START: QR-CODE + EINLADUNGSLINK + LIVE-TEILNEHMERLISTE)
-        if (subEl) subEl.textContent = crState.role === 'host'
-            ? `Raum ${crState.roomCode} offen — Teilnehmende können per QR-Code oder Link beitreten`
-            : `Verbunden mit Kursraum ${crState.roomCode} — warte auf den Start`;
-
+        // 3C. GRUPPEN-LOBBY (EXAKT SELBES 2-SPALTEN-LAYOUT WIE 1v1!)
+        if (subEl) subEl.textContent = `Raum ${crState.roomCode} · ${crState.leaderboard.length} bereit`;
         const tilesHtml = crState.leaderboard.length > 0
             ? crState.leaderboard.map(p => `
                 <div class="cr-player-tile">
-                    <span class="shrink-0">${renderAvatarSafe(p.profile, 28)}</span>
+                    <span class="shrink-0">${renderAvatarSafe(p.profile, 26)}</span>
                     <span class="text-xs font-bold text-white truncate">${escHtml(p.name)}</span>
                     ${p.id === myId ? '<span class="ml-auto text-[9px] mono text-cyan-300 font-bold">Du</span>' : ''}
                 </div>
@@ -2631,85 +2918,54 @@
             : `<div class="col-span-full text-xs text-slate-400 text-center py-6 rounded-xl border border-dashed border-white/10">Warte auf Teilnehmende...</div>`;
 
         body.innerHTML = `
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
-                <!-- Links: QR-Code, Raum-Code & Einstellungen -->
-                <div class="md:col-span-5 space-y-3">
-                    <div class="mp-share-card flex flex-col items-center gap-2.5 text-center">
-                        <div id="cr-lobby-qr-box" class="mp-qr-frame" title="Klicken für Beamer-Vollbild">${buildQrSvgHTML(url, 160)}</div>
-                        <div>
-                            <div class="text-[9.5px] uppercase tracking-widest text-slate-400 mono">Raum-Code</div>
-                            <div class="text-2xl font-extrabold tracking-[0.22em] text-cyan-300 mono">${escHtml(crState.roomCode)}</div>
-                        </div>
-                        <div class="flex items-center gap-1.5 w-full">
-                            <input type="text" readonly value="${escHtml(url)}" onclick="this.select()" class="flex-1 min-w-0 bg-slate-950/85 border border-white/10 rounded-full px-3 py-1.5 text-[10px] mono text-slate-300 focus:outline-none">
-                            <button type="button" id="cr-lobby-copy-btn" class="px-3 py-1.5 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-[10.5px] shrink-0 transition">Link</button>
-                            <button type="button" id="cr-lobby-zoom-btn" class="px-2.5 py-1.5 rounded-full bg-white/[0.08] hover:bg-white/[0.16] text-slate-200 font-semibold text-[10.5px] shrink-0 transition">Groß</button>
-                        </div>
-                    </div>
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+                ${renderInviteColumnHTML(crState.roomCode, url)}
 
-                    ${crState.role === 'host' ? `
-                        <div class="mp-share-card space-y-2.5">
-                            ${crState.mode === 'sudoku' ? `
-                                <div class="space-y-1">
-                                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mono">Schwierigkeit</div>
-                                    <div class="grid grid-cols-3 gap-1.5">
-                                        <button type="button" onclick="window.BlinkMultiplayer.crSetSudokuDiff(10,'Leicht')" class="profile-chip ${crState.sudokuEmptyCount === 10 ? 'is-selected' : ''}">Leicht (10)</button>
-                                        <button type="button" onclick="window.BlinkMultiplayer.crSetSudokuDiff(14,'Mittel')" class="profile-chip ${crState.sudokuEmptyCount === 14 ? 'is-selected' : ''}">Mittel (14)</button>
-                                        <button type="button" onclick="window.BlinkMultiplayer.crSetSudokuDiff(17,'Profi')" class="profile-chip ${crState.sudokuEmptyCount === 17 ? 'is-selected' : ''}">Profi (17)</button>
-                                    </div>
-                                </div>
-                            ` : `
-                                <div class="space-y-1">
-                                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mono">Rätsel-Typ</div>
-                                    <div class="grid grid-cols-2 gap-1.5">
-                                        <button type="button" onclick="window.BlinkMultiplayer.crSetDailyVar('random')" class="profile-chip ${crState.dailyVariant === 'random' ? 'is-selected' : ''}">Neues Zufalls-Brett</button>
-                                        <button type="button" onclick="window.BlinkMultiplayer.crSetDailyVar('today')" class="profile-chip ${crState.dailyVariant === 'today' ? 'is-selected' : ''}">Heutige Challenge</button>
-                                    </div>
-                                </div>
-                            `}
-                            <div class="space-y-1">
-                                <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mono">Zeitlimit</div>
-                                <div class="grid grid-cols-4 gap-1.5">
-                                    ${[0, 120, 180, 300].map(sec => `
-                                        <button type="button" onclick="window.BlinkMultiplayer.crSetTime(${sec})" class="profile-chip ${crState.timeLimitSec === sec ? 'is-selected' : ''}">${sec === 0 ? 'Ohne' : `${sec / 60} Min`}</button>
-                                    `).join('')}
-                                </div>
-                            </div>
-                            <label class="flex items-center justify-between gap-2 pt-1 text-xs text-slate-200 cursor-pointer">
-                                <span>Selbst mitspielen <span class="text-[10px] text-slate-400">(aus = Beamer-Host)</span></span>
-                                <input type="checkbox" ${crState.hostPlays ? 'checked' : ''} onchange="window.BlinkMultiplayer.crToggleHostPlays(this.checked)">
-                            </label>
-                        </div>
-                    ` : `
-                        <div class="apple-inset-group">
-                            <div class="apple-set-row">
-                                <span class="text-xs text-slate-300 shrink-0">Dein Name</span>
-                                <input type="text" maxlength="18" value="${escHtml(getMyNameSafe())}" onchange="setPlayerName(this.value)" class="apple-inset-name-input flex-1 min-w-0 bg-transparent text-right text-xs font-bold text-white focus:outline-none">
-                            </div>
-                        </div>
-                    `}
-                </div>
-
-                <!-- Rechts: Live-Teilnehmerliste & Start-Button -->
-                <div class="md:col-span-7 flex flex-col justify-between gap-3 h-full">
+                <div class="md:col-span-7 flex flex-col justify-between gap-3">
                     <div class="mp-share-card space-y-2.5 flex-1">
                         <div class="flex items-center justify-between gap-2">
-                            <span class="text-[10.5px] font-bold uppercase tracking-widest text-slate-400 mono">Teilnehmende im Raum</span>
-                            <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-400/35 text-[11px] mono font-extrabold text-emerald-300">${crState.leaderboard.length} bereit</span>
+                            <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mono">Teilnehmende</span>
+                            <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-400/35 text-[10.5px] mono font-extrabold text-emerald-300">${crState.leaderboard.length} bereit</span>
                         </div>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[250px] overflow-y-auto pr-1">
+                        <div class="grid grid-cols-2 gap-2 max-h-[175px] overflow-y-auto pr-1">
                             ${tilesHtml}
                         </div>
+
+                        ${crState.role === 'host' ? `
+                            <div class="pt-2 border-t border-white/[0.08] space-y-2">
+                                ${crState.mode === 'sudoku' ? `
+                                    <div class="grid grid-cols-3 gap-1.5">
+                                        <button type="button" onclick="window.BlinkMultiplayer.crSetSudokuDiff(10,'Leicht')" class="profile-chip ${crState.sudokuEmptyCount === 10 ? 'is-selected' : ''}">Leicht</button>
+                                        <button type="button" onclick="window.BlinkMultiplayer.crSetSudokuDiff(14,'Mittel')" class="profile-chip ${crState.sudokuEmptyCount === 14 ? 'is-selected' : ''}">Mittel</button>
+                                        <button type="button" onclick="window.BlinkMultiplayer.crSetSudokuDiff(17,'Profi')" class="profile-chip ${crState.sudokuEmptyCount === 17 ? 'is-selected' : ''}">Profi</button>
+                                    </div>
+                                ` : `
+                                    <div class="grid grid-cols-2 gap-1.5">
+                                        <button type="button" onclick="window.BlinkMultiplayer.crSetDailyVar('random')" class="profile-chip ${crState.dailyVariant === 'random' ? 'is-selected' : ''}">Neues Brett</button>
+                                        <button type="button" onclick="window.BlinkMultiplayer.crSetDailyVar('today')" class="profile-chip ${crState.dailyVariant === 'today' ? 'is-selected' : ''}">Heutige Challenge</button>
+                                    </div>
+                                `}
+                                <div class="grid grid-cols-4 gap-1.5">
+                                    ${[0, 120, 180, 300].map(sec => `
+                                        <button type="button" onclick="window.BlinkMultiplayer.crSetTime(${sec})" class="profile-chip ${crState.timeLimitSec === sec ? 'is-selected' : ''}">${sec === 0 ? 'Ohne Zeit' : `${sec / 60} Min`}</button>
+                                    `).join('')}
+                                </div>
+                                <label class="flex items-center justify-between gap-2 text-xs text-slate-200 cursor-pointer pt-0.5">
+                                    <span>Selbst mitspielen <span class="text-[10px] text-slate-400">(aus = nur Beamer)</span></span>
+                                    <input type="checkbox" ${crState.hostPlays ? 'checked' : ''} onchange="window.BlinkMultiplayer.crToggleHostPlays(this.checked)">
+                                </label>
+                            </div>
+                        ` : ''}
                     </div>
 
                     <div class="flex flex-wrap items-center gap-2">
                         ${crState.role === 'host' ? `
-                            <button type="button" onclick="window.BlinkMultiplayer.crStartRound()" class="flex-1 py-3 px-5 rounded-full bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-extrabold text-xs tracking-wide transition shadow-lg shadow-emerald-500/20">
-                                ▶ Runde für alle starten (${crState.leaderboard.length})
+                            <button type="button" onclick="window.BlinkMultiplayer.crStartRound()" class="flex-1 py-3 px-5 rounded-full bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-extrabold text-xs tracking-wide transition shadow-lg shadow-emerald-500/15">
+                                ▶ Runde starten (${crState.leaderboard.length})
                             </button>
                         ` : `
                             <div class="flex-1 py-3 px-4 rounded-full bg-white/[0.04] border border-white/10 text-center text-xs text-slate-300 mono">
-                                Warte auf den Start durch den Host...
+                                Verbunden · Warte auf Start...
                             </div>
                         `}
                         <button type="button" onclick="window.BlinkMultiplayer.crLeave()" class="px-4 py-3 rounded-full border border-rose-500/35 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-semibold text-xs transition">
@@ -2719,113 +2975,11 @@
                 </div>
             </div>
         `;
-
-        const copyBtn = document.getElementById('cr-lobby-copy-btn');
-        const qrBox = document.getElementById('cr-lobby-qr-box');
-        const zoomBtn = document.getElementById('cr-lobby-zoom-btn');
-        if (copyBtn) copyBtn.onclick = () => copyTextToClipboard(url, 'Kursraum-Link kopiert!');
-        if (qrBox) qrBox.onclick = () => openQrZoomModal(`Kursraum · ${modeLabel}`, crState.roomCode, url);
-        if (zoomBtn) zoomBtn.onclick = () => openQrZoomModal(`Kursraum · ${modeLabel}`, crState.roomCode, url);
-    }
-
-    function enhanceClassroomUIAndHooks() {
-        // 1. Daily Challenge Button & Live-Bar einfügen
-        const dailySelPill = document.getElementById('daily-selection-pill');
-        if (dailySelPill && !document.getElementById('btn-cr-daily')) {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.id = 'btn-cr-daily';
-            btn.onclick = () => openClassroomModal('daily');
-            btn.className = 'mp-live-pill-btn px-3 py-1.5 rounded-full text-xs font-bold transition inline-flex items-center gap-1.5 shrink-0';
-            btn.innerHTML = `<span class="w-2 h-2 rounded-full bg-cyan-400"></span><span class="cr-btn-lbl">Kursraum (Live)</span>`;
-            dailySelPill.parentElement.appendChild(btn);
-        }
-        const dailyGrid = document.getElementById('daily-cards-grid');
-        if (dailyGrid && !document.getElementById('cr-daily-live-bar')) {
-            const bar = document.createElement('div');
-            bar.id = 'cr-daily-live-bar';
-            bar.className = 'hidden cr-live-bar';
-            dailyGrid.parentElement.insertBefore(bar, dailyGrid);
-        }
-
-        // 2. Blink-Sudoku Button & Live-Bar einfügen
-        const sdkDiff17 = document.getElementById('sdk-diff-17');
-        if (sdkDiff17 && !document.getElementById('btn-cr-sudoku')) {
-            const headerRow = sdkDiff17.closest('.flex.flex-wrap');
-            if (headerRow) {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.id = 'btn-cr-sudoku';
-                btn.onclick = () => openClassroomModal('sudoku');
-                btn.className = 'mp-live-pill-btn px-3 py-1.5 rounded-full text-xs font-bold transition inline-flex items-center gap-1.5 shrink-0';
-                btn.innerHTML = `<span class="w-2 h-2 rounded-full bg-purple-400"></span><span class="cr-btn-lbl">Kursraum (Live)</span>`;
-                headerRow.appendChild(btn);
-            }
-        }
-        const sdkGrid = document.getElementById('sudoku-grid');
-        if (sdkGrid && !document.getElementById('cr-sudoku-live-bar')) {
-            const bar = document.createElement('div');
-            bar.id = 'cr-sudoku-live-bar';
-            bar.className = 'hidden cr-live-bar';
-            sdkGrid.parentElement.insertBefore(bar, sdkGrid);
-        }
-
-        // 3. Fortschritts-Hooks für Daily Challenge
-        if (typeof window.evaluateDailySelection === 'function' && !window.evaluateDailySelection.__crWrapped) {
-            const origEval = window.evaluateDailySelection;
-            const wrapped = function () {
-                const res = origEval.apply(this, arguments);
-                if (crState.active && crState.mode === 'daily' && crState.phase === 'playing') {
-                    setTimeout(() => crReportMyProgress(false), 40);
-                }
-                return res;
-            };
-            wrapped.__crWrapped = true;
-            window.evaluateDailySelection = wrapped;
-        }
-
-        if (typeof window.giveDailyHint === 'function' && !window.giveDailyHint.__crWrapped) {
-            const origHint = window.giveDailyHint;
-            const wrapped = function () {
-                if (crState.active && crState.mode === 'daily' && crState.phase === 'playing') {
-                    crState.myHintsUsed++;
-                    setTimeout(() => crReportMyProgress(false), 40);
-                }
-                return origHint.apply(this, arguments);
-            };
-            wrapped.__crWrapped = true;
-            window.giveDailyHint = wrapped;
-        }
-
-        // 4. Fortschritts-Hooks für Blink-Sudoku (deckt Klick, Drag-&-Drop & Rausziehen ab!)
-        if (typeof window.renderSudokuUI === 'function' && !window.renderSudokuUI.__crWrapped) {
-            const origRender = window.renderSudokuUI;
-            const wrapped = function () {
-                const res = origRender.apply(this, arguments);
-                if (crState.active && crState.mode === 'sudoku' && crState.phase === 'playing') {
-                    crReportMyProgress(false);
-                }
-                return res;
-            };
-            wrapped.__crWrapped = true;
-            window.renderSudokuUI = wrapped;
-        }
-
-        if (typeof window.giveSudokuHint === 'function' && !window.giveSudokuHint.__crWrapped) {
-            const origHint = window.giveSudokuHint;
-            const wrapped = function () {
-                if (crState.active && crState.mode === 'sudoku' && crState.phase === 'playing') {
-                    crState.myHintsUsed++;
-                }
-                return origHint.apply(this, arguments);
-            };
-            wrapped.__crWrapped = true;
-            window.giveSudokuHint = wrapped;
-        }
+        wireInviteColumnButtons(crState.roomCode, url);
     }
 
     // ------------------------------------------------------------------------
-    // 4. PROFIL- & NAMENS-SYNC + DEEP-LINK AUTO-JOIN + ESC-SCHLIESSEN
+    // 6. PROFIL-SYNC, DEEP-LINK AUTO-JOIN & ESC
     // ------------------------------------------------------------------------
     function syncMyIdentityToActiveRooms() {
         const name = getMyNameSafe();
@@ -2833,7 +2987,7 @@
 
         if (vhNet.active && vhNet.connected) {
             vhNetSend({ type: 'VH_HELLO', name, profile });
-            renderVerhoerOnlineModal();
+            if (isUnifiedModalOpen()) renderUnifiedModal();
         }
 
         if (crState.active) {
@@ -2869,69 +3023,158 @@
         if (!params) return;
         const joinCode = (params.get('join') || '').trim().toUpperCase();
         const roomCode = (params.get('room') || '').trim().toUpperCase();
+        const useInline = Boolean(window.BlinkGameHub && typeof window.BlinkGameHub.handleOnlineDeepLink === 'function');
 
         if (joinCode) {
-            if (gameTab === 'verhoer') {
-                if (typeof setGameSubTab === 'function') setGameSubTab('verhoer');
-                openVerhoerOnlineModal();
-                setTimeout(() => vhNetJoinRoom(joinCode), 120);
+            const target = gameTab === 'verhoer' ? 'verhoer' : 'arena';
+            if (useInline) {
+                window.BlinkGameHub.handleOnlineDeepLink(target, joinCode);
             } else {
-                if (typeof setGameSubTab === 'function') setGameSubTab('arena');
-                const modeSel = document.getElementById('select-game-mode');
-                if (modeSel) {
-                    modeSel.value = 'online';
-                    if (typeof onGameConfigChange === 'function') onGameConfigChange();
-                }
-                const inp = document.getElementById('p2p-join-input');
-                if (inp) inp.value = joinCode;
-                setTimeout(() => {
-                    if (typeof p2pJoinRoom === 'function') p2pJoinRoom();
-                }, 150);
+                openUnifiedOnlineModal(target);
+                setTimeout(() => target === 'verhoer' ? vhNetJoinRoom(joinCode) : hubJoinArenaRoom(joinCode), 150);
             }
             return;
         }
 
         if (roomCode) {
-            const targetMode = gameTab === 'sudoku' ? 'sudoku' : 'daily';
-            if (typeof setGameSubTab === 'function') setGameSubTab(targetMode);
-            openClassroomModal(targetMode);
-            setTimeout(() => crJoinRoom(targetMode, roomCode), 150);
+            const target = gameTab === 'sudoku' ? 'sudoku' : 'daily';
+            if (useInline) {
+                window.BlinkGameHub.handleOnlineDeepLink(target, roomCode);
+            } else {
+                openUnifiedOnlineModal(target);
+                setTimeout(() => crJoinRoom(target, roomCode), 150);
+            }
         }
     }
 
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape' || window.__CR_LOCK_CLOSE) return;
-        ['mp-qr-zoom-modal', 'vh-online-modal', 'cr-modal'].forEach(id => {
-            const m = document.getElementById(id);
-            if (m && !m.classList.contains('hidden') && !m.classList.contains('opacity-0')) {
-                if (typeof toggleModalState === 'function') toggleModalState(id);
-            }
-        });
+        if (isUnifiedModalOpen()) closeUnifiedOnlineModal();
     });
 
     function bootMultiplayerSuite() {
         injectSharedModals();
-        enhanceArenaP2PPanel();
-        enhanceVerhoerUIAndHooks();
-        enhanceClassroomUIAndHooks();
+        injectGlobalOnlineButton();
+        enhanceArenaP2PHooks();
+        enhanceVerhoerHooks();
+        enhanceClassroomHooks();
         wireIdentityHooks();
+    }
+
+    function getFullOnlineSession() {
+        const s = getActiveOnlineSession();
+        if (!s) return null;
+        const paramKey = (s.kind === 'daily' || s.kind === 'sudoku') ? 'room' : 'join';
+        const url = buildShareUrl(s.kind, paramKey, s.code);
+        const base = {
+            ...s,
+            url,
+            qrHtml: buildQrSvgHTML(url, 146)
+        };
+        if (s.kind === 'arena') {
+            return {
+                ...base,
+                oppName: p2pState.oppName || '',
+                oppProfile: p2pState.oppProfile || null
+            };
+        }
+        if (s.kind === 'verhoer') {
+            return {
+                ...base,
+                oppName: vhNet.oppName || '',
+                oppProfile: vhNet.oppProfile || null
+            };
+        }
+        return {
+            ...base,
+            leaderboard: crState.leaderboard || [],
+            myId: crState.role === 'host' ? '__host__' : crState.myId,
+            timeLimitSec: crState.timeLimitSec,
+            dailyVariant: crState.dailyVariant,
+            sudokuEmptyCount: crState.sudokuEmptyCount,
+            hostPlays: crState.hostPlays
+        };
     }
 
     window.BlinkMultiplayer = {
         handleDeepLink,
-        openQrZoom: openQrZoomModal,
-        vhOpenModal: openVerhoerOnlineModal,
+        openHub: openUnifiedOnlineModal,
+        closeHub: closeUnifiedOnlineModal,
+        getSession: getActiveOnlineSession,
+        getFullSession: getFullOnlineSession,
+        getOnlineSettings: () => ({
+            timeLimitSec: crState.timeLimitSec,
+            dailyVariant: crState.dailyVariant,
+            sudokuEmptyCount: crState.sudokuEmptyCount,
+            hostPlays: crState.hostPlays
+        }),
+        copyCode: (code, btnEl) => copyTextToClipboard(code, `Raum-Code ${code} kopiert!`, btnEl, '✓ ' + escHtml(code)),
+        copyLink: (url, btnEl) => copyTextToClipboard(url, 'Einladungslink kopiert!', btnEl, '✓ Kopiert!'),
+        createInline: (modeId) => {
+            if (!ONLINE_MODES.some(m => m.id === modeId)) return;
+            mpHub.selectedMode = modeId;
+            if (modeId === 'arena') hubCreateArenaRoom(true);
+            else if (modeId === 'verhoer') vhNetCreateRoom(true);
+            else crCreateRoom(modeId, true);
+        },
+        joinInline: (modeId, code) => {
+            if (!ONLINE_MODES.some(m => m.id === modeId)) return;
+            const clean = String(code || '').trim().toUpperCase();
+            if (clean.length < 4) {
+                if (typeof showSonnerToast === 'function') showSonnerToast('Bitte gib den 4-stelligen Raum-Code ein.', 'warn');
+                return;
+            }
+            mpHub.selectedMode = modeId;
+            if (modeId === 'arena') hubJoinArenaRoom(clean, true);
+            else if (modeId === 'verhoer') vhNetJoinRoom(clean, true);
+            else crJoinRoom(modeId, clean);
+        },
+        startSession: (modeId) => {
+            if (modeId === 'arena') hubStartArenaMatch();
+            else if (modeId === 'verhoer') vhHostStartOnlineMatch();
+            else crHostStartRound();
+        },
+        leaveSession: (modeId) => {
+            if (modeId === 'arena') hubDisconnectArena();
+            else if (modeId === 'verhoer') vhNetDisconnect(false);
+            else crLeaveRoom(false);
+        },
+        selectMode: (modeId) => {
+            if (!ONLINE_MODES.some(m => m.id === modeId)) return;
+            mpHub.selectedMode = modeId;
+            if (typeof playSound === 'function') playSound('tick');
+            renderUnifiedModal();
+        },
+        createActive: () => {
+            const m = mpHub.selectedMode || 'arena';
+            if (m === 'arena') hubCreateArenaRoom();
+            else if (m === 'verhoer') vhNetCreateRoom();
+            else crCreateRoom(m);
+        },
+        joinActive: () => {
+            const inp = document.getElementById('mp-hub-join-input');
+            const code = inp ? inp.value : '';
+            const m = mpHub.selectedMode || 'arena';
+            if (m === 'arena') hubJoinArenaRoom(code);
+            else if (m === 'verhoer') vhNetJoinRoom(code);
+            else crJoinRoom(m, code);
+        },
+        setArenaRule: hubSetArenaRule,
+        startArenaOnline: hubStartArenaMatch,
+        disconnectArena: hubDisconnectArena,
+        // Rückwärtskompatibilität für bestehende Aufrufe
+        vhOpenModal: () => openUnifiedOnlineModal('verhoer'),
         vhCreateRoom: vhNetCreateRoom,
         vhJoinRoom: vhNetJoinRoom,
         vhStartOnline: vhHostStartOnlineMatch,
         vhDisconnect: () => vhNetDisconnect(false),
         vhResetH2H: resetVerhoerSeriesScore,
         vhDefenderPick: (slotIdx) => vhNetDispatchAction({ kind: 'DEFENDER_SHOW_CARD', idx: slotIdx }),
-        openClassroom: openClassroomModal,
+        openClassroom: (m) => openUnifiedOnlineModal(m || 'daily'),
         crCreate: crCreateRoom,
         crJoin: crJoinRoom,
         crStartRound: crHostStartRound,
-        crEndRound: () => crHostEndRound('Runde vom Host ausgewertet!'),
+        crEndRound: () => crHostEndRound('Runde ausgewertet!'),
         crLeave: () => crLeaveRoom(false),
         crSetTime: crHostSetTimeLimit,
         crSetSudokuDiff: crHostSetSudokuDiff,

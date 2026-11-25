@@ -1072,7 +1072,7 @@ function syncGameConfigUI() {
     if (ruleSel) gameState.ruleMode = ruleSel.value;
 
     let isVerhoer = gameState.ruleMode === 'verhoer';
-    const isOnline = rawMode === 'online';
+    const isOnline = typeof p2pState !== 'undefined' && Boolean(p2pState.peer || p2pState.connected);
     const isTrainedAI = rawMode === 'trained-ai';
 
     gameState.mode = isOnline ? 'online' : 'ai';
@@ -1121,7 +1121,7 @@ function syncGameConfigUI() {
     const ruleWrap = ruleSel ? (ruleSel.closest('.fu-cselect') || ruleSel) : null;
     if (ruleWrap) ruleWrap.classList.toggle('hidden', isSparring);
 
-    if (modeWrap) modeWrap.classList.toggle('hidden', isVerhoer || isSparring);
+    if (modeWrap) modeWrap.classList.toggle('hidden', isVerhoer || isSparring || isOnline);
     if (speedCtrl) speedCtrl.classList.toggle('hidden', isOnline || isTrainedAI || isVerhoer || isSparring);
     if (trainedPicker) {
         const showPicker = isTrainedAI && !isVerhoer && !isSparring;
@@ -2927,6 +2927,7 @@ function p2pCreateRoom() {
 
     const peer = new Peer(P2P_PREFIX + code);
     p2pState.peer = peer;
+    syncGameConfigUI();
 
     peer.on('open', () => {
         p2pUpdateUI('Warte auf Gegner', 'wait');
@@ -2964,8 +2965,9 @@ function p2pJoinRoom() {
     p2pState.roomCode = code;
     p2pUpdateUI('Verbinde...', 'wait');
 
-   const peer = new Peer();
+    const peer = new Peer();
     p2pState.peer = peer;
+    syncGameConfigUI();
 
     const connectTimer = setTimeout(() => {
         if (p2pState.role === 'guest' && !p2pState.connected) {
@@ -3040,6 +3042,7 @@ function p2pDisconnect(silent = false) {
     p2pState.seriesScore = { host: 0, guest: 0 };
     syncOpponentAvatarUI();
     renderArenaH2HUI();
+    syncGameConfigUI();
     p2pUpdateUI('Getrennt', 'idle');
     renderEloBadgesInArena();
     if (!silent) showSonnerToast('Verbindung getrennt.', 'neutral');
