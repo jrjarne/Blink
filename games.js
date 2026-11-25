@@ -2964,16 +2964,30 @@ function p2pJoinRoom() {
     p2pState.roomCode = code;
     p2pUpdateUI('Verbinde...', 'wait');
 
-    const peer = new Peer();
+   const peer = new Peer();
     p2pState.peer = peer;
+
+    const connectTimer = setTimeout(() => {
+        if (p2pState.role === 'guest' && !p2pState.connected) {
+            showSonnerToast(`Verbindung zu Raum ${code} zeitüberschritten (evtl. blockiert WLAN/Firewall P2P).`, 'warn');
+            p2pDisconnect(true);
+        }
+    }, 10000);
 
     peer.on('open', () => {
         const conn = peer.connect(P2P_PREFIX + code, { reliable: true });
+        conn.on('open', () => clearTimeout(connectTimer));
+        conn.on('error', (err) => {
+            clearTimeout(connectTimer);
+            showSonnerToast(`Verbindungsfehler: ${err?.type || 'Datenkanal blockiert'}`, 'warn');
+            p2pDisconnect(true);
+        });
         p2pAttachConnection(conn);
     });
 
-    peer.on('error', () => {
-        showSonnerToast(`Raum ${code} nicht gefunden oder nicht erreichbar.`, 'warn');
+    peer.on('error', (err) => {
+        clearTimeout(connectTimer);
+        showSonnerToast(`Raum ${code}: ${err?.type || 'nicht gefunden oder nicht erreichbar'}.`, 'warn');
         p2pDisconnect(true);
     });
 }
@@ -3141,6 +3155,8 @@ function p2pHandleMessage(msg) {
                 gameState.mode = 'online';
                 gameState.ruleMode = msg.ruleMode;
                 gameState.initialCardTotal = msg.initialCardTotal || (msg.ruleMode === 'cluster' ? 28 : 29);
+                const modeSel = document.getElementById('select-game-mode');
+                if (modeSel && modeSel.value !== 'online') modeSel.value = 'online';
                 const ruleSel = document.getElementById('select-rule-mode');
                 if (ruleSel && ruleSel.value !== msg.ruleMode) ruleSel.value = msg.ruleMode;
                 syncGameConfigUI();
