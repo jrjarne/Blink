@@ -693,6 +693,7 @@
             trios: { host: [], guest: [] },
             turn: starter,
             phase: 'draw',
+            sktMeldedThisTurn: false,
             recalledKey: null,
             intType: null,
             intStep: null,
@@ -726,14 +727,23 @@
         let viewPendingCard = null;
         let viewPendingIdx = null;
         let viewMatchIndices = [];
+        let viewStrictMatches = [];
 
         if (g.phase === 'interrogation') {
             if (isAttacker) {
                 viewIntStep = g.intStep === 'defender_pick' ? 'wait_defender' : g.intStep;
                 if (g.intStep === 'decide') viewPendingCard = g.pendingCard;
+                if (g.intStep === 'strict_pick') {
+                    viewStrictMatches = (g.intMatchIndices || [])
+                        .filter(i => Boolean(g.hands[oppRole][i]))
+                        .map(i => ({ idx: i, card: g.hands[oppRole][i] }));
+                }
             } else {
                 if (g.intStep === 'defender_pick') {
                     viewIntStep = 'defender_pick';
+                    viewMatchIndices = g.intMatchIndices;
+                } else if (g.intStep === 'strict_pick') {
+                    viewIntStep = 'wait_strict_pick';
                     viewMatchIndices = g.intMatchIndices;
                 } else if (g.intStep === 'decide') {
                     viewIntStep = 'wait_decision';
@@ -751,6 +761,7 @@
             isRunning: g.isRunning,
             isMyTurn: g.turn === targetRole,
             phase: g.phase,
+            sktMeldedThisTurn: g.turn === targetRole ? Boolean(g.sktMeldedThisTurn) : false,
             deckCount: g.deck.length,
             discardHistory: g.discardHistory.slice(-2),
             myHand: g.hands[targetRole].filter(Boolean),
@@ -764,6 +775,7 @@
             intAttackerIsMe: isAttacker,
             intDemand: g.intDemand,
             intMatchIndices: viewMatchIndices,
+            strictMatches: viewStrictMatches,
             pendingCard: viewPendingCard,
             pendingIdx: viewPendingIdx,
             intNote: g.intNote,
@@ -798,8 +810,11 @@
         vhState.playerTrios = view.myTrios || [];
         vhState.aiTrios = view.oppTrios || [];
         vhState.recalledKey = view.recalledKey || null;
+        vhState.sktMeldedThisTurn = Boolean(view.sktMeldedThisTurn);
         vhState.intType = view.intType || null;
         vhState.intStep = view.intStep || null;
+        vhState.strictMatches = Array.isArray(view.strictMatches) ? view.strictMatches : [];
+        vhState.intDemandLabel = view.intDemand?.label || '';
         vhState.pendingCard = view.pendingCard || null;
         vhState.intNote = view.intNote || '';
         vhState.logs = view.logs || [];
@@ -911,6 +926,7 @@
         }
 
         if (action.kind === 'MELD_SKT' && g.phase !== 'interrogation' && g.phase !== 'ended') {
+            if (g.sktMeldedThisTurn) return;
             const indices = Array.isArray(action.indices) ? [...new Set(action.indices)] : [];
             if (indices.length !== 3) return;
             const cards = indices.map(i => g.hands[role][i]).filter(Boolean);
@@ -924,6 +940,7 @@
                 if (g.deck.length === 0) g.deck = shuffleArray(CARDS_125);
                 g.hands[role][i] = g.deck.shift();
             });
+            g.sktMeldedThisTurn = true;
             vhHostPushLog(g, `<span class="text-purple-300 font-bold">${actorName}:</span> SKT ausgelegt (+3)`);
             vhHostBroadcastState(`${actorName} legt ein 3er-SKT aus!`, 'success');
             return;
@@ -945,6 +962,7 @@
                 vhHostPushLog(g, `<span class="${actorColor} font-bold">${actorName}:</span> Tausch-Abwurf (${card.join(',')}) → M₁`);
                 g.turn = oppRole;
                 g.phase = 'draw';
+                g.sktMeldedThisTurn = false;
                 g.intType = null;
                 g.intStep = null;
                 g.intAttacker = null;
@@ -958,22 +976,19 @@
             if (dH === 3) {
                 g.turn = oppRole;
                 g.phase = 'draw';
+                g.sktMeldedThisTurn = false;
                 vhHostBroadcastState();
-            } else if (dH === 2) {
+            } else {
                 g.phase = 'interrogation';
-                g.intType = 'standard';
+                g.intType = dH === 2 ? 'standard' : 'strict';
                 g.intStep = 'choose_prop';
                 g.intAttacker = role;
                 g.intDemand = null;
                 g.intMatchIndices = [];
-                vhHostBroadcastState(`Standard-Verhör von ${actorName}!`, 'neutral');
-            } else {
-                g.phase = 'interrogation';
-                g.intType = 'strict';
-                g.intStep = 'blind_pick';
-                g.intAttacker = role;
-                g.intDemand = null;
-                vhHostBroadcastState(`⚡ Verschärftes Verhör von ${actorName}!`, 'warn');
+                vhHostBroadcastState(
+                    dH === 2 ? `Standard-Verhör von ${actorName}!` : `⚡ Verschärftes Verhör von ${actorName}!`,
+                    dH === 2 ? 'neutral' : 'warn'
+                );
             }
             return;
         }
@@ -1000,6 +1015,11 @@
                 g.intStep = 'decide';
                 vhHostPushLog(g, `<span class="text-amber-300">Verhör:</span> ${oppName} zeigt (${g.pendingCard.join(',')})`);
                 vhHostBroadcastState();
+            } else if (g.intType === 'strict') {
+                g.intMatchIndices = matches;
+                g.intStep = 'strict_pick';
+                vhHostPushLog(g, `<span class="text-amber-300">⚡ Verschärftes Verhör:</span> ${oppName} zeigt alle ${matches.length} Karten (${valName})`);
+                vhHostBroadcastState();
             } else {
                 g.intMatchIndices = matches;
                 g.intStep = 'defender_pick';
@@ -1009,12 +1029,13 @@
             return;
         }
 
-        if (action.kind === 'BLIND_PICK' && g.phase === 'interrogation' && g.intStep === 'blind_pick') {
+        if ((action.kind === 'STRICT_PICK' || action.kind === 'BLIND_PICK') && g.phase === 'interrogation' && g.intStep === 'strict_pick') {
             const idx = action.idx;
-            if (!g.hands[oppRole][idx]) return;
+            if (!g.intMatchIndices.includes(idx) || !g.hands[oppRole][idx]) return;
             g.pendingIdx = idx;
             g.pendingCard = g.hands[oppRole][idx];
             g.intStep = 'decide';
+            vhHostPushLog(g, `<span class="text-amber-300">⚡ Auswahl:</span> ${actorName} wählt (${g.pendingCard.join(',')})`);
             vhHostBroadcastState();
             return;
         }
@@ -1041,6 +1062,7 @@
                 g.discardHistory.push(card);
                 g.turn = oppRole;
                 g.phase = 'draw';
+                g.sktMeldedThisTurn = false;
                 g.intType = null;
                 g.intAttacker = null;
                 vhHostPushLog(g, `<span class="text-rose-400 font-bold">Strafabwurf:</span> ${oppName} muss (${card.join(',')}) abwerfen`);
@@ -1052,6 +1074,7 @@
         if (action.kind === 'END_NO_MATCH' && g.phase === 'interrogation' && g.intStep === 'no_match') {
             g.turn = oppRole;
             g.phase = 'draw';
+            g.sktMeldedThisTurn = false;
             g.intType = null;
             g.intStep = null;
             g.intAttacker = null;
@@ -1205,9 +1228,9 @@
             vhNetDispatchAction({ kind: 'DEMAND_PROP', dim, val });
         });
 
-        wrapFn('vhBlindPick', (slotIdx) => {
+        wrapFn('vhStrictPick', (slotIdx) => {
             if (typeof playSound === 'function') playSound('flip');
-            vhNetDispatchAction({ kind: 'BLIND_PICK', idx: slotIdx });
+            vhNetDispatchAction({ kind: 'STRICT_PICK', idx: slotIdx });
         });
 
         wrapFn('vhResolveDecision', (takeCard) => {
@@ -1222,6 +1245,12 @@
         });
 
         wrapFn('vhValidateSktDraft', () => {
+            if (vhState.sktMeldedThisTurn) {
+                vhState.sktDraftIndices = [];
+                showSonnerToast('Pro Runde darf maximal 1 SKT ausgelegt werden.', 'warn');
+                renderVerhoerStandaloneUI();
+                return;
+            }
             const indices = [...vhState.sktDraftIndices];
             const cards = indices.map(i => vhState.playerHand[i]).filter(Boolean);
             if (cards.length !== 3) {
@@ -1595,80 +1624,77 @@
         const intBody = document.getElementById('vh-int-body');
         if (intPanel && intBody && vhState.phase === 'interrogation' && vhState.isRunning) {
             const step = vhNet.viewMeta.intStep;
+            const isStrict = vhState.intType === 'strict';
+            const modeLabel = isStrict ? 'Verschärftes Verhör' : 'Standard-Verhör';
+            intPanel.classList.toggle('is-strict', isStrict);
+
             if (step === 'wait_attacker') {
-                if (intTitle) intTitle.textContent = vhState.intType === 'strict' ? '⚡ Verschärftes Verhör läuft' : 'Standard-Verhör läuft';
+                if (intTitle) intTitle.textContent = modeLabel;
                 if (intBadge) intBadge.textContent = escHtml(oppName);
-                intBody.innerHTML = `<div class="py-3 text-center space-y-1"><div class="text-sm font-bold text-white">${escHtml(oppName)} führt ein Verhör aus...</div><p class="text-xs text-slate-400">Bitte warte kurz auf die Auswahl von ${escHtml(oppName)}.</p></div>`;
+                intBody.innerHTML = `<div class="vh-int-wait"><span class="vh-int-dot animate-pulse"></span><span><strong class="text-white">${escHtml(oppName)}</strong> wählt eine Ausprägung…</span></div>`;
             } else if (step === 'wait_decision') {
                 const c = vhState.pendingCard;
-                const isStrict = vhState.intType === 'strict';
-                if (intTitle) intTitle.textContent = isStrict ? '⚡ Verschärftes Verhör · Deine Karte wird geprüft' : 'Standard-Verhör · Deine Karte wird geprüft';
+                if (intTitle) intTitle.textContent = modeLabel;
                 if (intBadge) intBadge.textContent = `${oppName} entscheidet`;
                 if (c) {
                     const [x, y, z] = c;
                     intBody.innerHTML = `
-                        <div class="flex flex-col sm:flex-row items-center gap-3.5 p-2.5 rounded-xl bg-slate-950/80 border border-amber-400/40">
-                            <div class="w-20 card-63-88 rounded-xl bg-white border-3 border-amber-400 p-1 flex flex-col justify-between shadow-xl shrink-0 overflow-hidden">
-                                ${renderLargePlayingCardInner(c, true)}
-                            </div>
-                            <div class="space-y-1 text-center sm:text-left min-w-0">
-                                <div class="text-xs sm:text-sm font-extrabold text-white">
-                                    ${escHtml(oppName)} prüft deine Karte <span class="mono text-amber-300">(${x},${y},${z})</span>
+                        <div class="vh-int-decide">
+                            <div class="vh-int-decide-meta">
+                                <div class="vh-int-preview-card card-63-88">
+                                    ${renderLargePlayingCardInner(c, true)}
                                 </div>
-                                <div class="text-[11px] font-semibold text-slate-300">
-                                    ${PALETTE_X[x].count}× ${PALETTE_Y[y].name} ${PALETTE_Z[z].name}
+                                <div class="min-w-0 space-y-0.5">
+                                    <div class="text-xs sm:text-sm font-bold text-white truncate">${PALETTE_X[x].count}× ${PALETTE_Y[y].name} ${PALETTE_Z[z].name}</div>
+                                    <div class="text-[11px] mono text-slate-400">(${x}, ${y}, ${z})</div>
+                                    <p class="vh-int-lead pt-0.5"><strong>${escHtml(oppName)}</strong> entscheidet über Aufnahme oder Abwurf auf M₁…</p>
                                 </div>
-                                <p class="text-[11px] text-slate-400 leading-relaxed">
-                                    ${escHtml(oppName)} entscheidet gerade, ob diese Karte auf die eigene Hand wandert oder auf <strong class="text-white">M₁</strong> abgeworfen wird.
-                                </p>
                             </div>
                         </div>
                     `;
                 } else {
-                    intBody.innerHTML = `<div class="py-3 text-center space-y-1"><div class="text-sm font-bold text-white">${escHtml(oppName)} entscheidet über deine Karte...</div></div>`;
+                    intBody.innerHTML = `<div class="vh-int-wait"><span class="vh-int-dot animate-pulse"></span><span><strong class="text-white">${escHtml(oppName)}</strong> entscheidet über deine Karte…</span></div>`;
                 }
                 if (typeof vhNet.viewMeta.pendingIdx === 'number') {
                     const reviewedEl = document.getElementById(`vh-card-${vhNet.viewMeta.pendingIdx}`);
                     if (reviewedEl) reviewedEl.classList.add('vh-card-under-review');
                 }
             } else if (step === 'wait_no_match') {
-                if (intTitle) intTitle.textContent = 'Standard-Verhör · Kein Treffer';
-                if (intBadge) intBadge.textContent = escHtml(oppName);
-                intBody.innerHTML = `<div class="py-3 text-center space-y-1"><div class="text-sm font-bold text-white">Keine passende Karte gefunden</div><p class="text-xs text-slate-400">Du hast keine Karte mit <strong class="text-amber-300">${escHtml(vhNet.viewMeta.intDemand?.label || '')}</strong>. Warte kurz auf den Zugwechsel...</p></div>`;
+                if (intTitle) intTitle.textContent = modeLabel;
+                if (intBadge) intBadge.textContent = 'Kein Treffer';
+                intBody.innerHTML = `<div class="vh-int-wait"><span>Keine passende Karte für <strong class="text-white">${escHtml(vhNet.viewMeta.intDemand?.label || '')}</strong> — Zug wechselt…</span></div>`;
             } else if (step === 'wait_defender') {
                 if (intTitle) intTitle.textContent = 'Standard-Verhör';
                 if (intBadge) intBadge.textContent = `Warte auf ${oppName}`;
-                intBody.innerHTML = `<div class="py-3 text-center space-y-1"><div class="text-sm font-bold text-white">${escHtml(oppName)} hat mehrere passende Karten</div><p class="text-xs text-slate-400">${escHtml(oppName)} wählt gerade aus, welche Karte gezeigt wird...</p></div>`;
+                intBody.innerHTML = `<div class="vh-int-wait"><span class="vh-int-dot animate-pulse"></span><span><strong class="text-white">${escHtml(oppName)}</strong> wählt eine passende Karte zum Vorzeigen…</span></div>`;
             } else if (step === 'defender_pick') {
-                if (intTitle) intTitle.textContent = `Verhör: ${vhNet.viewMeta.intDemand?.label || ''}`;
-                if (intBadge) intBadge.textContent = 'Karte vorzeigen';
+                if (intTitle) intTitle.textContent = 'Standard-Verhör';
+                if (intBadge) intBadge.textContent = 'Karte zeigen';
                 const choices = (vhNet.viewMeta.intMatchIndices || []).map(slotIdx => {
                     const card = vhState.playerHand[slotIdx];
                     if (!card) return '';
                     return `
-                        <button type="button" onclick="window.BlinkMultiplayer.vhDefenderPick(${slotIdx})" class="w-20 card-63-88 rounded-xl bg-white border-3 border-amber-400 hover:scale-105 p-1 flex flex-col justify-between shadow-lg transition overflow-hidden">
+                        <button type="button" onclick="window.BlinkMultiplayer.vhDefenderPick(${slotIdx})" class="vh-int-card-choice card-63-88">
                             ${renderLargePlayingCardInner(card, true)}
                         </button>
                     `;
                 }).join('');
                 intBody.innerHTML = `
-                    <p class="text-slate-300"><strong class="text-white">${escHtml(oppName)}</strong> fordert <strong class="text-amber-300">${escHtml(vhNet.viewMeta.intDemand?.label || '')}</strong>. Wähle, welche passende Karte du vorzeigst:</p>
-                    <div class="flex flex-wrap items-center justify-center gap-3 pt-1">${choices}</div>
+                    <p class="vh-int-lead"><strong>${escHtml(oppName)}</strong> fordert <strong>${escHtml(vhNet.viewMeta.intDemand?.label || '')}</strong> — wähle eine Karte:</p>
+                    <div class="vh-int-card-row">${choices}</div>
                 `;
-            } else if (step === 'blind_pick') {
-                const slots = vhNet.viewMeta.oppSlotIndices || [];
-                intBody.innerHTML = `
-                    <p class="text-slate-300">Wähle blind eine verdeckte Karte aus der Hand von <strong class="text-white">${escHtml(oppName)}</strong>:</p>
-                    <div class="flex flex-wrap gap-2.5">
-                        ${slots.map((slotIdx, n) => `
-                            <button type="button" onclick="vhBlindPick(${slotIdx})" class="w-16 card-63-88 rounded-xl bg-gradient-to-br from-rose-800 to-indigo-950 hover:from-amber-400 hover:to-amber-500 border-2 border-rose-400/60 hover:border-white flex flex-col items-center justify-center gap-1 shadow-lg transition group">
-                                <span class="text-xs font-extrabold text-white group-hover:text-slate-950 mono">#${n + 1}</span>
-                                <span class="text-[9px] text-rose-200 group-hover:text-slate-950 font-bold uppercase">Ziehen</span>
-                            </button>
-                        `).join('')}
-                    </div>
-                `;
+            } else if (step === 'wait_strict_pick') {
+                const matchList = vhNet.viewMeta.intMatchIndices || [];
+                if (intTitle) intTitle.textContent = 'Verschärftes Verhör';
+                if (intBadge) intBadge.textContent = `${matchList.length} gezeigt`;
+                intBody.innerHTML = `<div class="vh-int-wait"><span class="vh-int-dot animate-pulse"></span><span><strong class="text-white">${escHtml(oppName)}</strong> sieht deine ${matchList.length} passenden Karten und wählt aus…</span></div>`;
+                matchList.forEach(slotIdx => {
+                    const el = document.getElementById(`vh-card-${slotIdx}`);
+                    if (el) el.classList.add('vh-card-under-review');
+                });
             }
+            replaceBotTextInTree(intPanel, oppName);
+        }
             replaceBotTextInTree(intPanel, oppName);
         }
 

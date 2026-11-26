@@ -6,6 +6,74 @@
             activeGameTab: 'arena'
         };
 
+        const LAB_THEME_PALETTES = {
+            'onyx-oled': {
+                c1: '#6ba8d8', c2: '#9d86d9', c3: '#5fb39b', c4: '#d9778b', c5: '#d4a862', c6: '#87a4c4',
+                radarFill: 'rgba(107, 168, 216, 0.20)', radarStroke: '#6ba8d8',
+                axisLabel: '#a1a1aa', axisSub: '#71717a', axisActive: '#ffffff',
+                gridLine: 'rgba(255, 255, 255, 0.08)', threshold: '#5fb39b', dotCenter: '#0c0c0e'
+            },
+            'foerde-midnight': {
+                c1: '#22d3ee', c2: '#a855f7', c3: '#34d399', c4: '#fb7185', c5: '#fbbf24', c6: '#38bdf8',
+                radarFill: 'rgba(34, 211, 238, 0.22)', radarStroke: '#22d3ee',
+                axisLabel: '#94a3b8', axisSub: '#64748b', axisActive: '#ffffff',
+                gridLine: 'rgba(148, 163, 184, 0.14)', threshold: '#34d399', dotCenter: '#0f172a'
+            },
+            'academic-light': {
+                c1: '#2665b8', c2: '#8252a6', c3: '#1f9d8b', c4: '#d45582', c5: '#d4922a', c6: '#c96d38',
+                radarFill: 'rgba(212, 146, 42, 0.22)', radarStroke: '#d4922a',
+                axisLabel: '#41344d', axisSub: '#665874', axisActive: '#2b1d38',
+                gridLine: 'rgba(118, 96, 138, 0.16)', threshold: '#1f9d8b', dotCenter: '#fffdf8'
+            },
+            'gargantua-interstellar': {
+                c1: '#fbbf24', c2: '#ea580c', c3: '#fde68a', c4: '#f97316', c5: '#d97706', c6: '#fef3c7',
+                radarFill: 'rgba(245, 158, 11, 0.22)', radarStroke: '#fbbf24',
+                axisLabel: '#bfa78a', axisSub: '#8c745a', axisActive: '#fef6e4',
+                gridLine: 'rgba(245, 158, 11, 0.15)', threshold: '#fde68a', dotCenter: '#160b04'
+            },
+            'arrakis-dune': {
+                c1: '#0284c7', c2: '#b87a3d', c3: '#0f766e', c4: '#b84233', c5: '#d97706', c6: '#38bdf8',
+                radarFill: 'rgba(2, 132, 199, 0.18)', radarStroke: '#0284c7',
+                axisLabel: '#4a3728', axisSub: '#755f4b', axisActive: '#241911',
+                gridLine: 'rgba(154, 118, 82, 0.18)', threshold: '#0f766e', dotCenter: '#fffcf7'
+            },
+            'kachow-cars': {
+                c1: '#e11d2e', c2: '#facc15', c3: '#f4f4f5', c4: '#f97316', c5: '#fb7185', c6: '#a1a1aa',
+                radarFill: 'rgba(225, 29, 46, 0.24)', radarStroke: '#e11d2e',
+                axisLabel: '#a1a1aa', axisSub: '#71717a', axisActive: '#ffffff',
+                gridLine: 'rgba(255, 255, 255, 0.09)', threshold: '#facc15', dotCenter: '#0d0d10'
+            }
+        };
+
+        function getLabThemePalette() {
+            const theme = document.documentElement.getAttribute('data-theme') || 'onyx-oled';
+            return LAB_THEME_PALETTES[theme] || LAB_THEME_PALETTES['onyx-oled'];
+        }
+
+        function refreshLabThemeCharts() {
+            if (window._mcConvSnapshot) {
+                const s = window._mcConvSnapshot;
+                renderMcConvergenceSVG(s.series, s.done, s.totalN, s.isFinished);
+            }
+            if (window._mcLastDisplay) {
+                const d = window._mcLastDisplay;
+                renderMcResults(d.display, d.N, d.elapsedMs, d.isFinished);
+            }
+            if (typeof renderPhaseCurveUI === 'function' && labState.stochastikInitialized) {
+                renderPhaseCurveUI();
+            }
+            if (typeof renderBrainLabUI === 'function' && brainState.initialized) {
+                renderBrainLabUI();
+            }
+        }
+
+        if (typeof MutationObserver !== 'undefined') {
+            new MutationObserver(() => refreshLabThemeCharts()).observe(document.documentElement, {
+                attributes: true,
+                attributeFilter: ['data-theme']
+            });
+        }
+
         function isValidCluster5(cards) {
             if (!cards || cards.length !== 5) return false;
             return new Set(cards.map(c => c[0])).size === 5 &&
@@ -932,6 +1000,9 @@
                 }
             }
 
+            const pal = getLabThemePalette();
+            const traitColors = { reflex: pal.c5, kombo: pal.c1, sabotage: pal.c4, stabilitaet: pal.c3 };
+
             const radarSvg = document.getElementById('ai-radar-svg');
             if (radarSvg) {
                 const cx = 120, cy = 100, maxR = 64;
@@ -940,21 +1011,21 @@
                 [0.33, 0.66, 1.0].forEach(scale => {
                     const r = maxR * scale;
                     const pts = angles.map(a => `${(cx + Math.cos(a) * r).toFixed(1)},${(cy + Math.sin(a) * r).toFixed(1)}`).join(' ');
-                    html += `<polygon points="${pts}" fill="none" stroke="rgba(148,163,184,0.18)" stroke-width="1"/>`;
+                    html += `<polygon points="${pts}" fill="none" stroke="${pal.gridLine}" stroke-width="1"/>`;
                 });
                 angles.forEach(a => {
-                    html += `<line x1="${cx}" y1="${cy}" x2="${(cx + Math.cos(a) * maxR).toFixed(1)}" y2="${(cy + Math.sin(a) * maxR).toFixed(1)}" stroke="rgba(148,163,184,0.22)" stroke-width="1"/>`;
+                    html += `<line x1="${cx}" y1="${cy}" x2="${(cx + Math.cos(a) * maxR).toFixed(1)}" y2="${(cy + Math.sin(a) * maxR).toFixed(1)}" stroke="${pal.gridLine}" stroke-width="1"/>`;
                 });
                 const valPts = AI_TRAIT_META.map((m, i) => {
                     const r = (Math.max(8, ai.traits[m.key]) / 100) * maxR;
-                    return { x: cx + Math.cos(angles[i]) * r, y: cy + Math.sin(angles[i]) * r, m };
+                    return { x: cx + Math.cos(angles[i]) * r, y: cy + Math.sin(angles[i]) * r, m, col: traitColors[m.key] };
                 });
-                html += `<polygon points="${valPts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')}" fill="rgba(34,211,238,0.22)" stroke="#22d3ee" stroke-width="2.2"/>`;
-                valPts.forEach(p => html += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="${p.m.color}" stroke="#0f172a" stroke-width="1.5"/>`);
-                html += `<text x="${cx}" y="20" text-anchor="middle" fill="#facc15" font-size="10" font-weight="bold" class="mono">Reflex</text>`;
-                html += `<text x="${cx + maxR + 10}" y="${cy + 3}" text-anchor="start" fill="#22d3ee" font-size="10" font-weight="bold" class="mono">Kombo</text>`;
-                html += `<text x="${cx}" y="${cy + maxR + 18}" text-anchor="middle" fill="#fb7185" font-size="10" font-weight="bold" class="mono">Sabotage</text>`;
-                html += `<text x="${cx - maxR - 8}" y="${cy + 3}" text-anchor="end" fill="#34d399" font-size="10" font-weight="bold" class="mono">Stabilität</text>`;
+                html += `<polygon points="${valPts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')}" fill="${pal.radarFill}" stroke="${pal.radarStroke}" stroke-width="2.2"/>`;
+                valPts.forEach(p => html += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="${p.col}" stroke="${pal.dotCenter}" stroke-width="1.5"/>`);
+                html += `<text x="${cx}" y="20" text-anchor="middle" fill="${traitColors.reflex}" font-size="10" font-weight="bold" class="mono">Reflex</text>`;
+                html += `<text x="${cx + maxR + 10}" y="${cy + 3}" text-anchor="start" fill="${traitColors.kombo}" font-size="10" font-weight="bold" class="mono">Kombo</text>`;
+                html += `<text x="${cx}" y="${cy + maxR + 18}" text-anchor="middle" fill="${traitColors.sabotage}" font-size="10" font-weight="bold" class="mono">Sabotage</text>`;
+                html += `<text x="${cx - maxR - 8}" y="${cy + 3}" text-anchor="end" fill="${traitColors.stabilitaet}" font-size="10" font-weight="bold" class="mono">Stabilität</text>`;
                 radarSvg.innerHTML = html;
             }
 
@@ -966,9 +1037,9 @@
                             <span class="font-bold text-slate-200">${m.label} <span class="text-slate-500 font-normal">· ${m.sub}</span></span>
                             <span class="mono font-bold text-white">${ai.traits[m.key]}</span>
                         </div>
-                        <div class="w-full h-2.5 rounded-full bg-white/[0.06] overflow-hidden">
-                                <div class="h-full rounded-full ${m.bar} transition-all duration-300" style="width:${ai.traits[m.key]}%"></div>
-                            </div>
+                        <div class="w-full h-2 rounded-full bg-white/[0.08] overflow-hidden">
+                            <div class="h-full rounded-full transition-all duration-300" style="width:${ai.traits[m.key]}%;background:${traitColors[m.key]}"></div>
+                        </div>
                     </div>
                 `).join('');
             }
@@ -1077,6 +1148,10 @@
                 ? 'Treffer-Wahrscheinlichkeit P(X_m ≥ 1) in % — Hyper-Cluster vs. Vollraum'
                 : 'Erwartete Cluster-Anzahl E[X_m] — Hyper-Cluster vs. Vollraum (36,8× dichter)';
 
+            const pal = getLabThemePalette();
+            const colHyper = pal.c2;
+            const colFull = pal.c1;
+
             const kpiGrid = document.getElementById('phase-kpi-grid');
             if (kpiGrid) {
                 const fmtExp = (v) => v < 0.1 ? v.toFixed(4) : v.toFixed(2);
@@ -1085,34 +1160,34 @@
                 const liveF = phaseState.liveSample ? ` · Live: ${phaseState.liveSample.full125.toFixed(1)} %` : '';
 
                 kpiGrid.innerHTML = `
-                    <div class="rounded-2xl bg-slate-950/75 border border-purple-400/35 p-4 space-y-1">
+                    <div class="rounded-2xl bg-slate-950/75 border p-3.5 space-y-1" style="border-color:${colHyper}55">
                         <div class="flex items-center justify-between gap-2">
-                            <span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-purple-300 mono uppercase tracking-wider">
-                                <span class="w-2.5 h-2.5 rounded-full bg-purple-400"></span>
+                            <span class="inline-flex items-center gap-1.5 text-[11px] font-bold mono uppercase tracking-wider" style="color:${colHyper}">
+                                <span class="w-2.5 h-2.5 rounded-full" style="background:${colHyper}"></span>
                                 Hyper-Cluster (25 Karten)
                             </span>
                             <span class="text-[10px] mono text-slate-500">120 Cluster</span>
                         </div>
-                        <div class="text-3xl font-extrabold mono text-white pt-0.5">
+                        <div class="text-2xl font-extrabold mono text-white">
                             ${isProb ? fmtProb(stHyper.probApprox) : fmtExp(stHyper.expected)}
                         </div>
-                        <div class="text-[11px] mono text-purple-200">
+                        <div class="text-[11px] mono text-slate-300">
                             ${isProb ? `Erwartung E[X_${mCur}] = ${fmtExp(stHyper.expected)}${liveH}` : `Chance P(X_${mCur} ≥ 1) ≈ ${fmtProb(stHyper.probApprox)}${liveH}`}
                         </div>
                         <div class="text-[10px] text-slate-500">Schwelle E ≥ 1 bei m = 11 · ab m = 21 garantiert (100 %)</div>
                     </div>
-                    <div class="rounded-2xl bg-slate-950/75 border border-cyan-400/30 p-4 space-y-1">
+                    <div class="rounded-2xl bg-slate-950/75 border p-3.5 space-y-1" style="border-color:${colFull}55">
                         <div class="flex items-center justify-between gap-2">
-                            <span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-cyan-300 mono uppercase tracking-wider">
-                                <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+                            <span class="inline-flex items-center gap-1.5 text-[11px] font-bold mono uppercase tracking-wider" style="color:${colFull}">
+                                <span class="w-2.5 h-2.5 rounded-full" style="background:${colFull}"></span>
                                 Vollraum (125 Karten)
                             </span>
                             <span class="text-[10px] mono text-slate-500">14.400 Cluster</span>
                         </div>
-                        <div class="text-3xl font-extrabold mono text-white pt-0.5">
+                        <div class="text-2xl font-extrabold mono text-white">
                             ${isProb ? fmtProb(stFull.probApprox) : fmtExp(stFull.expected)}
                         </div>
-                        <div class="text-[11px] mono text-cyan-200">
+                        <div class="text-[11px] mono text-slate-300">
                             ${isProb ? `Erwartung E[X_${mCur}] = ${fmtExp(stFull.expected)}${liveF}` : `Chance P(X_${mCur} ≥ 1) ≈ ${fmtProb(stFull.probApprox)}${liveF}`}
                         </div>
                         <div class="text-[10px] text-slate-500">Schwelle E ≥ 1 erst bei m = 21 · ab m = 101 garantiert</div>
@@ -1122,7 +1197,7 @@
 
             const svg = document.getElementById('phase-curve-svg');
             if (!svg) return;
-            const W = 640, H = 270, padL = 50, padR = 18, padT = 22, padB = 40;
+            const W = 720, H = 225, padL = 50, padR = 18, padT = 18, padB = 34;
             const plotW = W - padL - padR;
             const plotH = H - padT - padB;
             const minM = 5, maxM = 25;
@@ -1142,39 +1217,33 @@
 
             let html = '';
 
-            // Achsen-Beschriftungen
-            html += `<text x="${padL}" y="12" fill="#94a3b8" font-size="9" class="mono">${isProb ? 'Chance P(X ≥ 1) in %' : 'Erwartete Cluster E[X_m]'}</text>`;
-            html += `<text x="${padL + plotW / 2}" y="${H - 5}" text-anchor="middle" fill="#64748b" font-size="9" class="mono">Offene Karten (m)</text>`;
+            html += `<text x="${padL}" y="11" fill="${pal.axisLabel}" font-size="9" class="mono">${isProb ? 'Chance P(X ≥ 1) in %' : 'Erwartete Cluster E[X_m]'}</text>`;
+            html += `<text x="${padL + plotW / 2}" y="${H - 4}" text-anchor="middle" fill="${pal.axisSub}" font-size="9" class="mono">Offene Karten (m)</text>`;
 
-            // Horizontale Hilfslinien & Y-Achse
             const ticksY = isProb ? [0, 25, 50, 75, 100] : [0, maxY * 0.25, maxY * 0.5, maxY * 0.75, maxY];
             ticksY.forEach(ty => {
                 const yy = yOf(ty);
-                html += `<line x1="${padL}" y1="${yy.toFixed(1)}" x2="${W - padR}" y2="${yy.toFixed(1)}" stroke="rgba(148,163,184,0.14)" stroke-width="1"/>`;
-                html += `<text x="${padL - 8}" y="${(yy + 3).toFixed(1)}" text-anchor="end" fill="#64748b" font-size="9.5" class="mono">${isProb ? `${Math.round(ty)}%` : Math.round(ty)}</text>`;
+                html += `<line x1="${padL}" y1="${yy.toFixed(1)}" x2="${W - padR}" y2="${yy.toFixed(1)}" stroke="${pal.gridLine}" stroke-width="1"/>`;
+                html += `<text x="${padL - 8}" y="${(yy + 3).toFixed(1)}" text-anchor="end" fill="${pal.axisSub}" font-size="9.5" class="mono">${isProb ? `${Math.round(ty)}%` : Math.round(ty)}</text>`;
             });
 
-            // Schwellenlinie (50 % bzw. E[X] = 1)
             const threshYVal = isProb ? 50 : 1;
             const threshY = yOf(threshYVal);
-            html += `<line x1="${padL}" y1="${threshY.toFixed(1)}" x2="${W - padR}" y2="${threshY.toFixed(1)}" stroke="#34d399" stroke-width="1.3" stroke-dasharray="5,4" opacity="0.75"/>`;
-            html += `<text x="${W - padR - 4}" y="${(threshY - 5).toFixed(1)}" text-anchor="end" fill="#34d399" font-size="9" font-weight="bold" class="mono">${isProb ? '50 %-Schwelle' : 'E[X] = 1'}</text>`;
+            html += `<line x1="${padL}" y1="${threshY.toFixed(1)}" x2="${W - padR}" y2="${threshY.toFixed(1)}" stroke="${pal.threshold}" stroke-width="1.3" stroke-dasharray="5,4" opacity="0.78"/>`;
+            html += `<text x="${W - padR - 4}" y="${(threshY - 5).toFixed(1)}" text-anchor="end" fill="${pal.threshold}" font-size="9" font-weight="bold" class="mono">${isProb ? '50 %-Schwelle' : 'E[X] = 1'}</text>`;
 
-            // Beide Kurven + sanfte Flächenfüllung
             const drawCurve = (pts, color, opacity) => {
                 const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xOf(p.m).toFixed(1)} ${yOf(p.val).toFixed(1)}`).join(' ');
                 const areaD = `${pathD} L ${xOf(maxM).toFixed(1)} ${(padT + plotH).toFixed(1)} L ${xOf(minM).toFixed(1)} ${(padT + plotH).toFixed(1)} Z`;
                 html += `<path d="${areaD}" fill="${color}" opacity="${opacity}"/>`;
                 html += `<path d="${pathD}" fill="none" stroke="${color}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>`;
             };
-            drawCurve(ptsHyper, '#a855f7', 0.13);
-            drawCurve(ptsFull, '#22d3ee', 0.11);
+            drawCurve(ptsHyper, colHyper, 0.14);
+            drawCurve(ptsFull, colFull, 0.11);
 
-            // Vertikale Linie beim aktiven m
             const ax = xOf(mCur);
-            html += `<line x1="${ax.toFixed(1)}" y1="${padT}" x2="${ax.toFixed(1)}" y2="${padT + plotH}" stroke="#e2e8f0" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.65"/>`;
+            html += `<line x1="${ax.toFixed(1)}" y1="${padT}" x2="${ax.toFixed(1)}" y2="${padT + plotH}" stroke="${pal.axisActive}" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.55"/>`;
 
-            // Klickbare Spalten + Punkte + X-Labels
             const colW = plotW / (maxM - minM);
             for (let i = 0; i < ptsHyper.length; i++) {
                 const ph = ptsHyper[i];
@@ -1183,22 +1252,20 @@
                 const isSel = ph.m === mCur;
 
                 if (ph.m % 5 === 0 || ph.m === 11 || ph.m === 21 || isSel) {
-                    html += `<text x="${px.toFixed(1)}" y="${padT + plotH + 15}" text-anchor="middle" fill="${isSel ? '#ffffff' : '#64748b'}" font-size="9.5" font-weight="${isSel ? 'bold' : 'normal'}" class="mono">${ph.m}</text>`;
+                    html += `<text x="${px.toFixed(1)}" y="${padT + plotH + 14}" text-anchor="middle" fill="${isSel ? pal.axisActive : pal.axisSub}" font-size="9.5" font-weight="${isSel ? 'bold' : 'normal'}" class="mono">${ph.m}</text>`;
                 }
 
-                // Unsichtbare Klick-Spalte für bequemes Anklicken von m
                 html += `<rect x="${(px - colW / 2).toFixed(1)}" y="${padT}" width="${colW.toFixed(1)}" height="${plotH}" fill="transparent" class="cursor-pointer" onclick="setPhaseM(${ph.m})"><title>m = ${ph.m} · Hyper-Cluster: ${ph.val.toFixed(1)}${isProb ? '%' : ''} · Vollraum: ${pf.val.toFixed(1)}${isProb ? '%' : ''}</title></rect>`;
 
-                html += `<circle cx="${px.toFixed(1)}" cy="${yOf(ph.val).toFixed(1)}" r="${isSel ? 5.2 : 2.6}" fill="${isSel ? '#ffffff' : '#a855f7'}" stroke="#a855f7" stroke-width="${isSel ? 2.4 : 1}" pointer-events="none"/>`;
-                html += `<circle cx="${px.toFixed(1)}" cy="${yOf(pf.val).toFixed(1)}" r="${isSel ? 5.2 : 2.6}" fill="${isSel ? '#ffffff' : '#22d3ee'}" stroke="#22d3ee" stroke-width="${isSel ? 2.4 : 1}" pointer-events="none"/>`;
+                html += `<circle cx="${px.toFixed(1)}" cy="${yOf(ph.val).toFixed(1)}" r="${isSel ? 5.2 : 2.6}" fill="${isSel ? pal.dotCenter : colHyper}" stroke="${colHyper}" stroke-width="${isSel ? 2.4 : 1}" pointer-events="none"/>`;
+                html += `<circle cx="${px.toFixed(1)}" cy="${yOf(pf.val).toFixed(1)}" r="${isSel ? 5.2 : 2.6}" fill="${isSel ? pal.dotCenter : colFull}" stroke="${colFull}" stroke-width="${isSel ? 2.4 : 1}" pointer-events="none"/>`;
             }
 
-            // Optional: Live-Stichproben-Marker auf der vertikalen m-Linie (bei Chance %)
             if (isProb && phaseState.liveSample) {
                 const yh = yOf(phaseState.liveSample.hyper25);
                 const yf = yOf(phaseState.liveSample.full125);
-                html += `<rect x="${(ax - 4).toFixed(1)}" y="${(yh - 4).toFixed(1)}" width="8" height="8" transform="rotate(45 ${ax.toFixed(1)} ${yh.toFixed(1)})" fill="#facc15" stroke="#0f172a" stroke-width="1.2" pointer-events="none"/>`;
-                html += `<rect x="${(ax - 4).toFixed(1)}" y="${(yf - 4).toFixed(1)}" width="8" height="8" transform="rotate(45 ${ax.toFixed(1)} ${yf.toFixed(1)})" fill="#facc15" stroke="#0f172a" stroke-width="1.2" pointer-events="none"/>`;
+                html += `<rect x="${(ax - 4).toFixed(1)}" y="${(yh - 4).toFixed(1)}" width="8" height="8" transform="rotate(45 ${ax.toFixed(1)} ${yh.toFixed(1)})" fill="${pal.c5}" stroke="${pal.dotCenter}" stroke-width="1.2" pointer-events="none"/>`;
+                html += `<rect x="${(ax - 4).toFixed(1)}" y="${(yf - 4).toFixed(1)}" width="8" height="8" transform="rotate(45 ${ax.toFixed(1)} ${yf.toFixed(1)})" fill="${pal.c5}" stroke="${pal.dotCenter}" stroke-width="1.2" pointer-events="none"/>`;
             }
 
             svg.innerHTML = html;
@@ -1206,15 +1273,15 @@
             const legEl = document.getElementById('phase-curve-legend');
             if (legEl) {
                 const liveLeg = (isProb && phaseState.liveSample)
-                    ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.02] border border-white/[0.06] text-amber-300"><span class="w-2 h-2 rotate-45 bg-amber-400 shrink-0"></span><span>Live-Stichprobe (400×)</span></span>`
+                    ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/[0.02] border border-white/[0.06]" style="color:${pal.c5}"><span class="w-2 h-2 rotate-45 shrink-0" style="background:${pal.c5}"></span><span>Live-Stichprobe (400×)</span></span>`
                     : '';
                 legEl.innerHTML = `
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.03] border border-purple-400/25">
-                        <span class="w-2.5 h-2.5 rounded-full bg-purple-400 shrink-0"></span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/[0.03] border" style="border-color:${colHyper}44">
+                        <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${colHyper}"></span>
                         <span class="text-slate-300">Hyper-Cluster (25 Karten)</span>
                     </span>
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.03] border border-cyan-400/25">
-                        <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0"></span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/[0.03] border" style="border-color:${colFull}44">
+                        <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${colFull}"></span>
                         <span class="text-slate-300">Vollraum (125 Karten)</span>
                     </span>
                     ${liveLeg}
@@ -1271,11 +1338,14 @@
             selectedIdx: null,
             draggedHandIdx: null,
             sktDraftIndices: [],
+            sktMeldedThisTurn: false,
             recalledKey: null,
             pendingCard: null,
             pendingIdx: null,
             intType: null,          // 'standard' | 'strict'
-            intStep: null,          // 'choose_prop' | 'no_match' | 'decide' | 'blind_pick'
+            intStep: null,          // 'choose_prop' | 'no_match' | 'strict_pick' | 'decide'
+            strictMatches: [],      // [{ idx, card }]
+            intDemandLabel: '',
             intNote: '',
             xrayOpen: false,
             aiMemory: { knownPlayerCards: [], lastBotThought: '' },
@@ -1311,11 +1381,14 @@
             vhState.selectedIdx = null;
             vhState.draggedHandIdx = null;
             vhState.sktDraftIndices = [];
+            vhState.sktMeldedThisTurn = false;
             vhState.recalledKey = null;
             vhState.pendingCard = null;
             vhState.pendingIdx = null;
             vhState.intType = null;
             vhState.intStep = null;
+            vhState.strictMatches = [];
+            vhState.intDemandLabel = '';
             vhState.winInfo = null;
             vhState.logs = [`<span class="text-slate-400">Bereit — klicke auf „Spielen“, um zu starten.</span>`];
             renderVerhoerStandaloneUI();
@@ -1356,11 +1429,14 @@
             vhState.selectedIdx = null;
             vhState.draggedHandIdx = null;
             vhState.sktDraftIndices = [];
+            vhState.sktMeldedThisTurn = false;
             vhState.recalledKey = null;
             vhState.pendingCard = null;
             vhState.pendingIdx = null;
             vhState.intType = null;
             vhState.intStep = null;
+            vhState.strictMatches = [];
+            vhState.intDemandLabel = '';
             vhState.aiMemory = { knownPlayerCards: [], lastBotThought: 'Beobachtet deinen ersten Zug.' };
             vhState.logs = [`<span class="text-slate-400">Startkarte auf M₁: (${firstDiscard.join(',')})</span>`];
             vhState.startTime = performance.now();
@@ -1375,7 +1451,7 @@
                 : vhState.playerHand.findIndex(c => !c);
             if (slot === -1) {
                 slot = vhState.playerHand.length;
-                vhPlaceCardInHand(card);
+                vhState.playerHand.push(card);
             } else {
                 vhState.playerHand[slot] = card;
             }
@@ -1479,17 +1555,14 @@
                     else if (dH === 2) window.BlinkHaptics.floatBadge(discEl, 'Standard-Verhör', 'cyan');
                 }
 
-                if (dH === 3) {
+               if (dH === 3) {
                     vhEndPlayerTurn();
-                } else if (dH === 2) {
-                    vhState.phase = 'interrogation';
-                    vhState.intType = 'standard';
-                    vhState.intStep = 'choose_prop';
-                    renderVerhoerStandaloneUI();
                 } else {
                     vhState.phase = 'interrogation';
-                    vhState.intType = 'strict';
-                    vhState.intStep = 'blind_pick';
+                    vhState.intType = dH === 2 ? 'standard' : 'strict';
+                    vhState.intStep = 'choose_prop';
+                    vhState.strictMatches = [];
+                    vhState.intDemandLabel = '';
                     renderVerhoerStandaloneUI();
                 }
             };
@@ -1505,34 +1578,55 @@
 
             commitDiscard();
         }
+
         function vhDemandProperty(dim, val) {
             const dimNames = ['Anzahl', 'Farbe', 'Symbol'];
             const valName = dim === 0 ? `${PALETTE_X[val].count}× (${PALETTE_X[val].word})` : (dim === 1 ? PALETTE_Y[val].name : PALETTE_Z[val].name);
-            const matchIdx = vhState.aiHand.findIndex(c => c[dim] === val);
+            const label = `${dimNames[dim]}: ${valName}`;
+            vhState.intDemandLabel = label;
+
+            const matchingIndices = vhState.aiHand
+                .map((c, i) => (c && c[dim] === val) ? i : -1)
+                .filter(i => i !== -1);
             playSound('tick');
 
-            if (matchIdx === -1) {
+            if (matchingIndices.length === 0) {
                 vhState.intStep = 'no_match';
-                vhState.intNote = `Der Bot besitzt keine Karte mit ${dimNames[dim]}: ${valName}.`;
+                vhState.strictMatches = [];
+                vhState.intNote = `Der Bot besitzt keine Karte mit ${label}.`;
                 vhAddLog(`<span class="text-amber-300">Verhör:</span> Bot hat kein ${valName}`);
                 renderVerhoerStandaloneUI();
                 return;
             }
-            vhState.pendingIdx = matchIdx;
-            vhState.pendingCard = vhState.aiHand[matchIdx];
+
+            if (vhState.intType === 'strict' && matchingIndices.length > 1) {
+                vhState.strictMatches = matchingIndices.map(i => ({ idx: i, card: vhState.aiHand[i] }));
+                vhState.intStep = 'strict_pick';
+                vhAddLog(`<span class="text-amber-300">⚡ Verschärftes Verhör:</span> Bot zeigt alle ${matchingIndices.length} Karten mit ${valName}`);
+                renderVerhoerStandaloneUI();
+                return;
+            }
+
+            const chosenIdx = matchingIndices[0];
+            vhState.pendingIdx = chosenIdx;
+            vhState.pendingCard = vhState.aiHand[chosenIdx];
+            vhState.strictMatches = [];
             vhState.intStep = 'decide';
-            vhAddLog(`<span class="text-amber-300">Verhör:</span> Bot zeigt (${vhState.pendingCard.join(',')})`);
+            vhAddLog(`<span class="text-amber-300">${vhState.intType === 'strict' ? '⚡ Verschärftes Verhör' : 'Verhör'}:</span> Bot zeigt (${vhState.pendingCard.join(',')})`);
             renderVerhoerStandaloneUI();
         }
 
-        function vhBlindPick(idx) {
+        function vhStrictPick(idx) {
             if (!vhState.aiHand[idx]) return;
             vhState.pendingIdx = idx;
             vhState.pendingCard = vhState.aiHand[idx];
+            vhState.strictMatches = [];
             vhState.intStep = 'decide';
             playSound('flip');
+            vhAddLog(`<span class="text-amber-300">⚡ Auswahl:</span> Du wählst (${vhState.pendingCard.join(',')})`);
             renderVerhoerStandaloneUI();
         }
+        window.vhBlindPick = vhStrictPick;
 
         function vhResolveDecision(takeCard) {
             const idx = vhState.pendingIdx;
@@ -1544,6 +1638,7 @@
             vhState.aiHand.push(vhState.deck.shift());
             vhState.pendingIdx = null;
             vhState.pendingCard = null;
+            vhState.strictMatches = [];
             vhState.intStep = null;
 
             if (takeCard) {
@@ -1563,7 +1658,7 @@
         }
 
         function vhCanUseSktDrop() {
-            return vhState.isRunning && vhState.turn === 'player' && vhState.phase !== 'interrogation' && vhState.phase !== 'ended';
+            return vhState.isRunning && vhState.turn === 'player' && !vhState.sktMeldedThisTurn && vhState.phase !== 'interrogation' && vhState.phase !== 'ended';
         }
 
         function vhOnHandDragStart(event, idx) {
@@ -1662,11 +1757,19 @@
         }
 
         function vhAddSelectedToSktDraft() {
+            if (vhState.isRunning && vhState.turn === 'player' && vhState.sktMeldedThisTurn) {
+                showSonnerToast('Pro Runde darf maximal 1 SKT ausgelegt werden.', 'warn');
+                return;
+            }
             if (!vhCanUseSktDrop() || vhState.selectedIdx === null) return;
             vhAddIndexToSktDraft(vhState.selectedIdx);
         }
 
         function vhAddIndexToSktDraft(idx) {
+            if (vhState.isRunning && vhState.turn === 'player' && vhState.sktMeldedThisTurn) {
+                showSonnerToast('Pro Runde darf maximal 1 SKT ausgelegt werden.', 'warn');
+                return;
+            }
             if (!vhCanUseSktDrop() || !vhState.playerHand[idx]) return;
             if (vhState.sktDraftIndices.includes(idx)) return;
             if (vhState.sktDraftIndices.length >= 3) return;
@@ -1717,6 +1820,7 @@
                 });
                 vhState.sktDraftIndices = [];
                 vhState.selectedIdx = null;
+                vhState.sktMeldedThisTurn = true;
                 playSound('flip');
  if (window.BlinkHaptics) {
  const box = document.getElementById('vh-player-skt-box');
@@ -1769,7 +1873,9 @@
             vhState.turn = 'ai';
             vhState.phase = 'draw';
             vhState.intStep = null;
+            vhState.strictMatches = [];
             vhState.sktDraftIndices = [];
+            vhState.sktMeldedThisTurn = false;
             renderVerhoerStandaloneUI();
             if (vhState.botTimer) clearTimeout(vhState.botTimer);
             vhState.botTimer = setTimeout(() => {
@@ -1859,6 +1965,7 @@
 
             vhState.turn = 'player';
             vhState.phase = 'draw';
+            vhState.sktMeldedThisTurn = false;
             renderVerhoerStandaloneUI();
         }
 
@@ -1918,8 +2025,8 @@
                     bannerTxt.textContent = 'Schritt 2: Melde optional ein SKT oder wähle eine Handkarte zum Abwerfen auf M₁.';
                 } else if (vhState.phase === 'interrogation') {
                     bannerTxt.textContent = vhState.intType === 'strict'
-                        ? ' Verschärftes Verhör: Wähle blind eine Karte aus der Hand des Bots!'
-                        : ' Standard-Verhör: Fordere eine Eigenschaft vom Bot!';
+                        ? '⚡ Verschärftes Verhör: Wähle eine Ausprägung — der Bot zeigt dir alle passenden Karten!'
+                        : 'Standard-Verhör: Fordere eine Eigenschaft vom Bot!';
                 } else if (vhState.phase === 'bonus_discard') {
                     bannerTxt.textContent = 'Tausch-Ausgleich: Du hast 6 Karten — wirf jetzt 1 beliebige Handkarte auf M₁ ab.';
                 }
@@ -1974,68 +2081,87 @@
                     : (canDropPhase ? 'Karte hierhin ziehen / klicken' : 'Oberste Karte');
             }
 
-            // 4. Interaktives Verhör-Panel
+            // 4. Interaktives Verhör-Panel (minimalistisch)
             const intPanel = document.getElementById('vh-interrogation-panel');
             const intTitle = document.getElementById('vh-int-title');
             const intBadge = document.getElementById('vh-int-badge');
             const intBody = document.getElementById('vh-int-body');
             if (intPanel && intBody) {
                 const showInt = vhState.phase === 'interrogation' && vhState.isRunning;
+                const isStrict = vhState.intType === 'strict';
                 intPanel.classList.toggle('hidden', !showInt);
+                intPanel.classList.toggle('is-strict', showInt && isStrict);
                 if (showInt) {
+                    const ord = [1, 2, 3, 4, 0];
                     if (vhState.intStep === 'choose_prop') {
-                        if (intTitle) intTitle.textContent = ' Standard-Verhör (1 gleiche Eigenschaft)';
-                        if (intBadge) intBadge.textContent = 'Eigenschaft fordern';
-                        const xBtns = [0,1,2,3,4].map(x => `<button type="button" onclick="vhDemandProperty(0,${x})" class="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-cyan-400 hover:text-slate-950 text-cyan-300 border border-white/10 font-bold mono transition">${PALETTE_X[x].count}× ${PALETTE_X[x].word}</button>`).join('');
-                        const yBtns = [0,1,2,3,4].map(y => `<button type="button" onclick="vhDemandProperty(1,${y})" class="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-emerald-400 hover:text-slate-950 text-emerald-300 border border-white/10 font-bold mono transition inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background:${PALETTE_Y[y].hex}"></span>${PALETTE_Y[y].name}</button>`).join('');
-                        const zBtns = [0,1,2,3,4].map(z => `<button type="button" onclick="vhDemandProperty(2,${z})" class="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-purple-400 hover:text-slate-950 text-purple-300 border border-white/10 font-bold mono transition">${PALETTE_Z[z].name}</button>`).join('');
+                        if (intTitle) intTitle.textContent = isStrict ? 'Verschärftes Verhör' : 'Standard-Verhör';
+                        if (intBadge) intBadge.textContent = isStrict ? 'Alle Treffer' : '1 Eigenschaft';
+                        const xBtns = ord.map(x => `
+                            <button type="button" onclick="vhDemandProperty(0,${x})" class="vh-int-chip mono">${PALETTE_X[x].count}×</button>
+                        `).join('');
+                        const yBtns = ord.map(y => `
+                            <button type="button" onclick="vhDemandProperty(1,${y})" class="vh-int-chip" title="${PALETTE_Y[y].name}">
+                                <span class="vh-int-chip-swatch" style="background:${PALETTE_Y[y].hex}"></span>
+                                <span class="truncate">${PALETTE_Y[y].name}</span>
+                            </button>
+                        `).join('');
+                        const zBtns = ord.map(z => `
+                            <button type="button" onclick="vhDemandProperty(2,${z})" class="vh-int-chip" title="${PALETTE_Z[z].name}">
+                                <span class="shrink-0 opacity-85">${getSymbolSVG(z, 'currentColor', 12, 'currentColor', 0.35)}</span>
+                                <span class="truncate">${PALETTE_Z[z].name}</span>
+                            </button>
+                        `).join('');
                         intBody.innerHTML = `
-                            <p class="text-slate-300">Wähle eine Eigenschaft — hat der Bot eine passende Karte, muss er sie dir zeigen:</p>
-                            <div class="space-y-2">
-                                <div class="flex flex-wrap items-center gap-1.5"><span class="text-[10px] mono text-slate-500 w-14">Anzahl</span>${xBtns}</div>
-                                <div class="flex flex-wrap items-center gap-1.5"><span class="text-[10px] mono text-slate-500 w-14">Farbe</span>${yBtns}</div>
-                                <div class="flex flex-wrap items-center gap-1.5"><span class="text-[10px] mono text-slate-500 w-14">Symbol</span>${zBtns}</div>
+                            <p class="vh-int-lead">${isStrict
+                                ? 'Ausprägung wählen — der Bot zeigt <strong>alle passenden Karten</strong>.'
+                                : 'Ausprägung fordern — der Bot zeigt eine passende Karte.'}</p>
+                            <div class="vh-int-rows">
+                                <div class="vh-int-row"><span class="vh-int-row-label mono">Anzahl</span><div class="vh-int-chips">${xBtns}</div></div>
+                                <div class="vh-int-row"><span class="vh-int-row-label mono">Farbe</span><div class="vh-int-chips">${yBtns}</div></div>
+                                <div class="vh-int-row"><span class="vh-int-row-label mono">Symbol</span><div class="vh-int-chips">${zBtns}</div></div>
                             </div>
                         `;
                     } else if (vhState.intStep === 'no_match') {
+                        if (intTitle) intTitle.textContent = isStrict ? 'Verschärftes Verhör' : 'Standard-Verhör';
                         if (intBadge) intBadge.textContent = 'Kein Treffer';
                         intBody.innerHTML = `
-                            <div class="flex flex-wrap items-center justify-between gap-3">
-                                <span class="text-slate-200">${vhState.intNote}</span>
-                                <button type="button" onclick="vhEndPlayerTurn()" class="px-4 py-2 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-xs transition">Zug beenden →</button>
+                            <div class="vh-int-status-row">
+                                <span class="vh-int-lead">${vhState.intNote}</span>
+                                <button type="button" onclick="vhEndPlayerTurn()" class="vh-int-btn-primary shrink-0">Weiter →</button>
                             </div>
                         `;
-                    } else if (vhState.intStep === 'blind_pick') {
-                        if (intTitle) intTitle.textContent = '⚡ Verschärftes Verhör (2 gleiche Eigenschaften)';
-                        if (intBadge) intBadge.textContent = 'Blinder Zugriff';
+                    } else if (vhState.intStep === 'strict_pick') {
+                        if (intTitle) intTitle.textContent = 'Verschärftes Verhör';
+                        if (intBadge) intBadge.textContent = `${vhState.strictMatches.length} Treffer`;
                         intBody.innerHTML = `
-                            <p class="text-slate-300">Wähle eine verdeckte Karte aus der Hand des Bots:</p>
-                            <div class="flex flex-wrap gap-2.5">
-                                ${vhState.aiHand.map((_, i) => `
-                                    <button type="button" onclick="vhBlindPick(${i})" class="w-16 card-63-88 rounded-xl bg-gradient-to-br from-rose-800 to-indigo-950 hover:from-amber-400 hover:to-amber-500 border-2 border-rose-400/60 hover:border-white flex flex-col items-center justify-center gap-1 shadow-lg transition group">
-                                        <span class="text-xs font-extrabold text-white group-hover:text-slate-950 mono">#${i + 1}</span>
-                                        <span class="text-[9px] text-rose-200 group-hover:text-slate-950 font-bold uppercase">Ziehen</span>
+                            <p class="vh-int-lead">Passend zu <strong>${vhState.intDemandLabel || ''}</strong> — wähle eine Karte:</p>
+                            <div class="vh-int-card-row">
+                                ${vhState.strictMatches.map(m => `
+                                    <button type="button" onclick="vhStrictPick(${m.idx})" class="vh-int-card-choice card-63-88">
+                                        ${renderLargePlayingCardInner(m.card, true)}
                                     </button>
                                 `).join('')}
                             </div>
                         `;
                     } else if (vhState.intStep === 'decide' && vhState.pendingCard) {
                         const [x, y, z] = vhState.pendingCard;
+                        if (intTitle) intTitle.textContent = isStrict ? 'Verschärftes Verhör' : 'Standard-Verhör';
                         if (intBadge) intBadge.textContent = 'Entscheidung';
                         intBody.innerHTML = `
-                            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-16 card-63-88 rounded-xl bg-white border-2 border-amber-400 p-1 flex flex-col justify-between shadow-lg shrink-0 overflow-hidden">
+                            <div class="vh-int-decide">
+                                <div class="vh-int-decide-meta">
+                                    <div class="vh-int-preview-card card-63-88">
                                         ${renderLargePlayingCardInner([x, y, z], true)}
                                     </div>
-                                    <div class="space-y-1">
-                                        <div class="font-bold text-white">Aufgedeckte Bot-Karte: (${x},${y},${z})</div>
-                                        <div class="text-[11px] text-slate-400">${PALETTE_X[x].count}× ${PALETTE_Y[y].name} ${PALETTE_Z[z].name} — Übernehmen (und 1 eigene abwerfen) oder den Bot zum Abwurf zwingen?</div>
+                                    <div class="min-w-0 space-y-0.5">
+                                        <div class="text-xs sm:text-sm font-bold text-white truncate">${PALETTE_X[x].count}× ${PALETTE_Y[y].name} ${PALETTE_Z[z].name}</div>
+                                        <div class="text-[11px] mono text-slate-400">(${x}, ${y}, ${z})</div>
+                                        <p class="vh-int-lead pt-0.5">Aufnehmen (+1 Abwurf) oder auf M₁ ablegen?</p>
                                     </div>
                                 </div>
-                                <div class="flex flex-col gap-2 w-full sm:w-auto shrink-0">
-                                    <button type="button" onclick="vhResolveDecision(true)" class="px-4 py-2 rounded-full bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-extrabold text-xs transition"> Übernehmen</button>
-                                    <button type="button" onclick="vhResolveDecision(false)" class="px-4 py-2 rounded-full bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs transition"> Auf M₁ zwingen</button>
+                                <div class="vh-int-actions">
+                                    <button type="button" onclick="vhResolveDecision(true)" class="vh-int-btn-primary">Übernehmen</button>
+                                    <button type="button" onclick="vhResolveDecision(false)" class="vh-int-btn-ghost">Auf M₁ ablegen</button>
                                 </div>
                             </div>
                         `;
@@ -2055,10 +2181,14 @@
             if (pTrioEl) pTrioEl.innerHTML = vhState.playerTrios.length > 0 ? vhRenderSKTGroupHTML(vhState.playerTrios) : '';
             if (bTrioEl) bTrioEl.innerHTML = vhRenderSKTGroupHTML(vhState.aiTrios);
             if (draftHint) {
-                draftHint.textContent = vhState.sktDraftIndices.length > 0
-                    ? `${vhState.sktDraftIndices.length} / 3 Karten im Prüffeld`
-                    : '3 Karten hierhin ziehen';
+                draftHint.textContent = vhState.sktMeldedThisTurn
+                    ? 'Max. 1 SKT pro Runde erreicht'
+                    : (vhState.sktDraftIndices.length > 0
+                        ? `${vhState.sktDraftIndices.length} / 3 Karten im Prüffeld`
+                        : '3 Karten hierhin ziehen (max. 1/Runde)');
             }
+            const sktBox = document.getElementById('vh-player-skt-box');
+            if (sktBox) sktBox.classList.toggle('opacity-75', Boolean(vhState.sktMeldedThisTurn));
             if (dropzoneEl) {
                 let slotsHtml = '';
                 for (let s = 0; s < 3; s++) {
@@ -4152,6 +4282,7 @@ function selectSudokuCell(idx) {
 
        function renderMcConvergenceSVG(series, done, totalN, isFinished) {
             window._mcConvSnapshot = { series, done, totalN, isFinished };
+            const pal = getLabThemePalette();
             const svg = document.getElementById('mc-convergence-svg');
             const legendEl = document.getElementById('mc-conv-legend');
             const statusEl = document.getElementById('mc-conv-status');
@@ -4163,7 +4294,7 @@ function selectSudokuCell(idx) {
                     : `Läuft... ${done.toLocaleString('de-DE')} / ${totalN.toLocaleString('de-DE')}`;
             }
 
-            const W = 640, H = 220, padL = 50, padR = 16, padT = 18, padB = 40;
+            const W = 720, H = 225, padL = 48, padR = 16, padT = 18, padB = 34;
             const plotW = W - padL - padR;
             const plotH = H - padT - padB;
 
@@ -4176,63 +4307,62 @@ function selectSudokuCell(idx) {
 
             const xOf = (n) => totalN <= 1 ? padL + plotW : padL + ((n - 1) / (totalN - 1)) * plotW;
             const yOf = (v) => padT + plotH - (Math.min(maxY, Math.max(0, v)) / maxY) * plotH;
+            const colorOf = (s) => (s.slot && pal[s.slot]) || s.color || pal.c1;
 
             let html = '';
 
-            // Achsen-Titel (Y & X)
-            html += `<text x="${padL}" y="10" fill="#94a3b8" font-size="9" class="mono">Anteil in %</text>`;
-            html += `<text x="${padL + plotW / 2}" y="${H - 4}" text-anchor="middle" fill="#64748b" font-size="9" class="mono">Anzahl der Durchläufe (n)</text>`;
+            html += `<text x="${padL}" y="10" fill="${pal.axisLabel}" font-size="9" class="mono">Anteil in %</text>`;
+            html += `<text x="${padL + plotW / 2}" y="${H - 4}" text-anchor="middle" fill="${pal.axisSub}" font-size="9" class="mono">Anzahl der Durchläufe (n)</text>`;
 
-            // Horizontale Hilfslinien & Y-Achse
             const ySteps = [0, maxY * 0.25, maxY * 0.5, maxY * 0.75, maxY];
             ySteps.forEach(val => {
                 const yy = yOf(val);
-                html += `<line x1="${padL}" y1="${yy.toFixed(1)}" x2="${W - padR}" y2="${yy.toFixed(1)}" stroke="rgba(148,163,184,0.13)" stroke-width="1"/>`;
-                html += `<text x="${padL - 8}" y="${(yy + 3).toFixed(1)}" text-anchor="end" fill="#64748b" font-size="9.5" class="mono">${Math.round(val)}%</text>`;
+                html += `<line x1="${padL}" y1="${yy.toFixed(1)}" x2="${W - padR}" y2="${yy.toFixed(1)}" stroke="${pal.gridLine}" stroke-width="1"/>`;
+                html += `<text x="${padL - 8}" y="${(yy + 3).toFixed(1)}" text-anchor="end" fill="${pal.axisSub}" font-size="9.5" class="mono">${Math.round(val)}%</text>`;
             });
 
-            // X-Achsen-Ticks
             const xTicks = totalN <= 10
                 ? [1, Math.max(1, Math.round(totalN / 2)), totalN]
                 : [1, Math.round(totalN * 0.25), Math.round(totalN * 0.5), Math.round(totalN * 0.75), totalN];
             const uniqTicks = [...new Set(xTicks)];
             uniqTicks.forEach(t => {
                 const xx = xOf(t);
-                html += `<line x1="${xx.toFixed(1)}" y1="${padT}" x2="${xx.toFixed(1)}" y2="${padT + plotH}" stroke="rgba(148,163,184,0.08)" stroke-width="1"/>`;
-                html += `<text x="${xx.toFixed(1)}" y="${padT + plotH + 15}" text-anchor="middle" fill="#64748b" font-size="9.5" class="mono">${t.toLocaleString('de-DE')}</text>`;
+                html += `<line x1="${xx.toFixed(1)}" y1="${padT}" x2="${xx.toFixed(1)}" y2="${padT + plotH}" stroke="${pal.gridLine}" stroke-width="1" opacity="0.65"/>`;
+                html += `<text x="${xx.toFixed(1)}" y="${padT + plotH + 14}" text-anchor="middle" fill="${pal.axisSub}" font-size="9.5" class="mono">${t.toLocaleString('de-DE')}</text>`;
             });
 
-            // Gestrichelte Erwartungswert-Linien
             series.forEach(s => {
+                const col = colorOf(s);
                 if (typeof s.theory === 'number') {
                     const ty = yOf(s.theory);
-                    html += `<line x1="${padL}" y1="${ty.toFixed(1)}" x2="${W - padR}" y2="${ty.toFixed(1)}" stroke="${s.color}" stroke-width="1.5" stroke-dasharray="5,4" opacity="0.75"><title>Erwartungswert ${s.label}: ${s.theory.toFixed(2)}%</title></line>`;
+                    html += `<line x1="${padL}" y1="${ty.toFixed(1)}" x2="${W - padR}" y2="${ty.toFixed(1)}" stroke="${col}" stroke-width="1.5" stroke-dasharray="5,4" opacity="0.72"><title>Erwartungswert ${s.label}: ${s.theory.toFixed(2)}%</title></line>`;
                 }
             });
 
-            // Konvergenz-Kurven
             series.forEach(s => {
                 if (s.points.length === 0) return;
+                const col = colorOf(s);
                 const d = s.points.map((pt, idx) => `${idx === 0 ? 'M' : 'L'} ${xOf(pt.n).toFixed(1)} ${yOf(pt.y).toFixed(1)}`).join(' ');
-                html += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round"/>`;
+                html += `<path d="${d}" fill="none" stroke="${col}" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round"/>`;
                 const last = s.points[s.points.length - 1];
-                html += `<circle cx="${xOf(last.n).toFixed(1)}" cy="${yOf(last.y).toFixed(1)}" r="4" fill="#ffffff" stroke="${s.color}" stroke-width="2"/>`;
+                html += `<circle cx="${xOf(last.n).toFixed(1)}" cy="${yOf(last.y).toFixed(1)}" r="4" fill="${pal.dotCenter}" stroke="${col}" stroke-width="2.2"/>`;
             });
 
             svg.innerHTML = html;
 
             if (legendEl) {
                 const itemsHtml = series.map(s => {
+                    const col = colorOf(s);
                     const cur = s.points.length ? s.points[s.points.length - 1].y.toFixed(2) : '0.00';
                     return `
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.03] border border-white/[0.08]">
-                            <span class="w-2 h-2 rounded-full shrink-0" style="background:${s.color}"></span>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/[0.03] border border-white/[0.08]">
+                            <span class="w-2 h-2 rounded-full shrink-0" style="background:${col}"></span>
                             <span class="text-slate-300">${s.label}: <strong class="text-white">${cur}%</strong></span>
                         </span>
                     `;
                 }).join('');
                 const dashLegend = `
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.02] border border-white/[0.06] text-slate-400">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/[0.02] border border-white/[0.06] text-slate-400">
                         <span class="w-4 border-t-2 border-dashed border-slate-400"></span>
                         <span>Erwartungswert</span>
                     </span>
@@ -4257,7 +4387,6 @@ function selectSudokuCell(idx) {
             const pDist = mcState.deadlockPileDist;
             const kClu = mcState.clusterK;
 
-         // Zähler je Experiment
             const counts = {
                 std180_1p: 0, std180_2p: 0, std125_1p: 0, std125_2p: 0, clu125_1p: 0, clu125_2p: 0,
                 d1_125: 0, d2_125: 0, d3_125: 0, d1_180: 0, d2_180: 0, d3_180: 0,
@@ -4265,34 +4394,32 @@ function selectSudokuCell(idx) {
                 trioInK_180: 0, clusterInK_180: 0
             };
 
-            // Kurven-Serien für das Live-Konvergenzdiagramm (inkl. Erwartungswert)
             let series = [];
             if (exp === 'deadlock') {
                 const dLbl = pDist === 'any' ? 'Zufall' : `d=${pDist}`;
                 series = [
-                    { key: 'std180_1p', label: `Standard 180er (${h}K, ${dLbl})`, color: '#22d3ee', theory: calcMcDeadlockTheory180(h, pDist), points: [] },
-                    { key: 'clu125_1p', label: `Cluster 125er (${h}K)`, color: '#a855f7', theory: calcMcDeadlockTheoryClu125(h), points: [] }
+                    { key: 'std180_1p', label: `Standard 180er (${h}K, ${dLbl})`, slot: 'c1', theory: calcMcDeadlockTheory180(h, pDist), points: [] },
+                    { key: 'clu125_1p', label: `Cluster 125er (${h}K)`, slot: 'c2', theory: calcMcDeadlockTheoryClu125(h), points: [] }
                 ];
             } else if (exp === 'verhoer') {
                 series = [
-                    { key: 'd1_125', label: 'Verschärftes Verhör', color: '#fb7185', theory: (12 / 124) * 100, points: [] },
-                    { key: 'd2_125', label: 'Standard-Verhör', color: '#fbbf24', theory: (48 / 124) * 100, points: [] },
-                    { key: 'd3_125', label: 'Stiller Abwurf', color: '#22d3ee', theory: (64 / 124) * 100, points: [] }
+                    { key: 'd1_125', label: 'Verschärftes Verhör', slot: 'c4', theory: (12 / 124) * 100, points: [] },
+                    { key: 'd2_125', label: 'Standard-Verhör', slot: 'c5', theory: (48 / 124) * 100, points: [] },
+                    { key: 'd3_125', label: 'Stiller Abwurf', slot: 'c1', theory: (64 / 124) * 100, points: [] }
                 ];
             } else {
                 series = [
-                    { key: 'trioInK', label: `SKT 125er (k=${kClu})`, color: '#34d399', theory: calcMcSktTheory(125, kClu), points: [] },
-                    { key: 'trioInK_180', label: `SKT 180er (k=${kClu})`, color: '#22d3ee', theory: calcMcSktTheory(180, kClu), points: [] }
+                    { key: 'trioInK', label: `SKT 125er (k=${kClu})`, slot: 'c3', theory: calcMcSktTheory(125, kClu), points: [] },
+                    { key: 'trioInK_180', label: `SKT 180er (k=${kClu})`, slot: 'c1', theory: calcMcSktTheory(180, kClu), points: [] }
                 ];
                 if (kClu >= 5) {
                     series.push(
-                        { key: 'clusterInK', label: `Cluster 125er (k=${kClu})`, color: '#a855f7', theory: calcMcClusterTheory(125, kClu), points: [] },
-                        { key: 'clusterInK_180', label: `Cluster 180er (k=${kClu})`, color: '#f472b6', theory: calcMcClusterTheory(180, kClu), points: [] }
+                        { key: 'clusterInK', label: `Cluster 125er (k=${kClu})`, slot: 'c2', theory: calcMcClusterTheory(125, kClu), points: [] },
+                        { key: 'clusterInK_180', label: `Cluster 180er (k=${kClu})`, slot: 'c4', theory: calcMcClusterTheory(180, kClu), points: [] }
                     );
                 }
             }
 
-            // Messpunkte für die Kurve (dicht am Anfang, insgesamt max. ~140 Punkte)
             const sampleStep = Math.max(1, Math.floor(N / 120));
             const targetFrames = N <= 25 ? N : 36;
             const batchSize = Math.max(1, Math.ceil(N / targetFrames));
@@ -4307,23 +4434,23 @@ function selectSudokuCell(idx) {
                         subtitle: `Anteil der ${fmt(curN)} Zufallssituationen, in denen keine Handkarte legal ablegbar ist.`,
                         groups: [
                             {
-                                heading: 'Grundlegendes Modell (180 Karten)',
-                                badge: 'Standard-Regeln',
-                                accent: 'text-cyan-300',
+                                heading: 'Grundlegendes Modell (180)',
+                                badge: 'Standard',
+                                accentSlot: 'c1',
                                 bars: [
-                                    { title: 'Standard · 1 Spieler blockiert', count: counts.std180_1p, total: curN, pct: pct(counts.std180_1p), color: 'bg-cyan-400' },
-                                    { title: 'Standard · beide Spieler blockiert', count: counts.std180_2p, total: curN, pct: pct(counts.std180_2p), color: 'bg-cyan-300/75' }
+                                    { title: 'Standard · 1 Spieler blockiert', count: counts.std180_1p, total: curN, pct: pct(counts.std180_1p), slot: 'c1' },
+                                    { title: 'Standard · beide blockiert', count: counts.std180_2p, total: curN, pct: pct(counts.std180_2p), slot: 'c1', soft: true }
                                 ]
                             },
                             {
-                                heading: 'Erweitertes Modell (125 Karten)',
+                                heading: 'Erweitertes Modell (125)',
                                 badge: 'Standard & Cluster',
-                                accent: 'text-purple-300',
+                                accentSlot: 'c2',
                                 bars: [
-                                    { title: 'Standard · 1 Spieler blockiert', count: counts.std125_1p, total: curN, pct: pct(counts.std125_1p), color: 'bg-sky-400' },
-                                    { title: 'Standard · beide Spieler blockiert', count: counts.std125_2p, total: curN, pct: pct(counts.std125_2p), color: 'bg-sky-300/75' },
-                                    { title: 'Cluster · 1 Spieler blockiert', count: counts.clu125_1p, total: curN, pct: pct(counts.clu125_1p), color: 'bg-purple-400' },
-                                    { title: 'Cluster · beide Spieler blockiert', count: counts.clu125_2p, total: curN, pct: pct(counts.clu125_2p), color: 'bg-emerald-400' }
+                                    { title: 'Standard · 1 Spieler blockiert', count: counts.std125_1p, total: curN, pct: pct(counts.std125_1p), slot: 'c6' },
+                                    { title: 'Standard · beide blockiert', count: counts.std125_2p, total: curN, pct: pct(counts.std125_2p), slot: 'c6', soft: true },
+                                    { title: 'Cluster · 1 Spieler blockiert', count: counts.clu125_1p, total: curN, pct: pct(counts.clu125_1p), slot: 'c2' },
+                                    { title: 'Cluster · beide blockiert', count: counts.clu125_2p, total: curN, pct: pct(counts.clu125_2p), slot: 'c3' }
                                 ]
                             }
                         ]
@@ -4334,23 +4461,23 @@ function selectSudokuCell(idx) {
                         subtitle: `Wie oft zwei zufällige Karten genau 2, 1 oder 0 Eigenschaften teilen.`,
                         groups: [
                             {
-                                heading: 'Erweitertes Modell (125 Karten)',
+                                heading: 'Erweitertes Modell (125)',
                                 badge: 'Das Verhör',
-                                accent: 'text-cyan-300',
+                                accentSlot: 'c1',
                                 bars: [
-                                    { title: 'Verschärftes Verhör (2 Gemeinsamkeiten)', count: counts.d1_125, total: curN, pct: pct(counts.d1_125), color: 'bg-rose-400' },
-                                    { title: 'Standard-Verhör (1 Gemeinsamkeit)', count: counts.d2_125, total: curN, pct: pct(counts.d2_125), color: 'bg-amber-400' },
-                                    { title: 'Stiller Abwurf (0 Gemeinsamkeiten)', count: counts.d3_125, total: curN, pct: pct(counts.d3_125), color: 'bg-cyan-400' }
+                                    { title: 'Verschärftes Verhör (2 gleich)', count: counts.d1_125, total: curN, pct: pct(counts.d1_125), slot: 'c4' },
+                                    { title: 'Standard-Verhör (1 gleich)', count: counts.d2_125, total: curN, pct: pct(counts.d2_125), slot: 'c5' },
+                                    { title: 'Stiller Abwurf (0 gleich)', count: counts.d3_125, total: curN, pct: pct(counts.d3_125), slot: 'c1' }
                                 ]
                             },
                             {
-                                heading: 'Grundlegendes Modell (180 Karten)',
+                                heading: 'Grundlegendes Modell (180)',
                                 badge: 'Vergleich',
-                                accent: 'text-slate-300',
+                                accentSlot: 'c6',
                                 bars: [
-                                    { title: '2 gleiche Eigenschaften', count: counts.d1_180, total: curN, pct: pct(counts.d1_180), color: 'bg-rose-400/75' },
-                                    { title: '1 gleiche Eigenschaft', count: counts.d2_180, total: curN, pct: pct(counts.d2_180), color: 'bg-amber-400/75' },
-                                    { title: '0 Gemeinsamkeiten', count: counts.d3_180, total: curN, pct: pct(counts.d3_180), color: 'bg-cyan-400/75' }
+                                    { title: '2 gleiche Eigenschaften', count: counts.d1_180, total: curN, pct: pct(counts.d1_180), slot: 'c4', soft: true },
+                                    { title: '1 gleiche Eigenschaft', count: counts.d2_180, total: curN, pct: pct(counts.d2_180), slot: 'c5', soft: true },
+                                    { title: '0 Gemeinsamkeiten', count: counts.d3_180, total: curN, pct: pct(counts.d3_180), slot: 'c1', soft: true }
                                 ]
                             }
                         ]
@@ -4361,23 +4488,23 @@ function selectSudokuCell(idx) {
                         subtitle: `Anteil der ${fmt(curN)} zufälligen ${kClu}-Karten-Hände mit mindestens einem gültigen Muster.`,
                         groups: [
                             {
-                                heading: 'Erweitertes Modell (125 Karten)',
+                                heading: 'Erweitertes Modell (125)',
                                 badge: `${kClu} Karten`,
-                                accent: 'text-purple-300',
+                                accentSlot: 'c2',
                                 bars: [
-                                    { title: `Mindestens ein SKT in ${kClu} Karten`, count: counts.trioInK, total: curN, pct: pct(counts.trioInK), color: 'bg-emerald-400' },
-                                    { title: `Mindestens ein Cluster in ${kClu} Karten`, count: counts.clusterInK, total: curN, pct: pct(counts.clusterInK), color: 'bg-purple-400' },
-                                    { title: `Davon strenges 5er-Cluster (affine Gerade)`, count: counts.strictInK, total: curN, pct: pct(counts.strictInK), color: 'bg-amber-400' }
+                                    { title: `Mindestens ein SKT`, count: counts.trioInK, total: curN, pct: pct(counts.trioInK), slot: 'c3' },
+                                    { title: `Mindestens ein Cluster`, count: counts.clusterInK, total: curN, pct: pct(counts.clusterInK), slot: 'c2' },
+                                    { title: `Davon strenges 5er-Cluster`, count: counts.strictInK, total: curN, pct: pct(counts.strictInK), slot: 'c5' }
                                 ]
                             },
                             {
-                                heading: 'Grundlegendes Modell (180 Karten)',
+                                heading: 'Grundlegendes Modell (180)',
                                 badge: `${kClu} Karten`,
-                                accent: 'text-cyan-300',
+                                accentSlot: 'c1',
                                 bars: [
-                                    { title: `Mindestens ein SKT in ${kClu} Karten`, count: counts.trioInK_180, total: curN, pct: pct(counts.trioInK_180), color: 'bg-cyan-400' },
-                                    { title: `Mindestens ein 5er-Cluster in ${kClu} Karten`, count: counts.clusterInK_180, total: curN, pct: pct(counts.clusterInK_180), color: 'bg-pink-400' },
-                                    { title: `Strenges 5er-Cluster (affine Gerade)`, infoOnly: 'Im 180er-Modell nicht definiert (kein Körper)' }
+                                    { title: `Mindestens ein SKT`, count: counts.trioInK_180, total: curN, pct: pct(counts.trioInK_180), slot: 'c1' },
+                                    { title: `Mindestens ein 5er-Cluster`, count: counts.clusterInK_180, total: curN, pct: pct(counts.clusterInK_180), slot: 'c4' },
+                                    { title: `Strenges 5er-Cluster`, infoOnly: 'Im 180er nicht definiert' }
                                 ]
                             }
                         ]
@@ -4503,6 +4630,8 @@ function selectSudokuCell(idx) {
         }
 
        function renderMcResults(display, N, elapsedMs, isFinished = true) {
+            window._mcLastDisplay = { display, N, elapsedMs, isFinished };
+            const pal = getLabThemePalette();
             const titleEl = document.getElementById('mc-result-title');
             const subEl = document.getElementById('mc-result-subtitle');
             const rtEl = document.getElementById('mc-runtime-pill');
@@ -4514,38 +4643,48 @@ function selectSudokuCell(idx) {
                 ? `N = ${N.toLocaleString('de-DE')} · ${elapsedMs} ms`
                 : `Läuft: ${N.toLocaleString('de-DE')} / ${mcState.trials.toLocaleString('de-DE')}`;
             if (barsEl) {
-                const groups = display.groups || [{ heading: '', badge: '', accent: 'text-slate-300', bars: display.bars || [] }];
-                barsEl.innerHTML = groups.map(g => `
-                    <div class="rounded-xl bg-white/[0.02] border border-white/[0.07] p-3.5 space-y-3">
+                const groups = display.groups || [{ heading: '', badge: '', accentSlot: 'c1', bars: display.bars || [] }];
+                barsEl.innerHTML = groups.map(g => {
+                    const headCol = (g.accentSlot && pal[g.accentSlot]) || pal.c1;
+                    return `
+                    <div class="rounded-xl bg-white/[0.02] border border-white/[0.07] p-3 space-y-2 flex flex-col justify-between">
                         ${g.heading ? `
-                            <div class="flex items-center justify-between gap-2 pb-2 border-b border-white/[0.06]">
-                                <span class="text-[11px] font-bold uppercase tracking-wider mono ${g.accent || 'text-slate-300'}">${g.heading}</span>
-                                ${g.badge ? `<span class="text-[10px] mono text-slate-500">${g.badge}</span>` : ''}
+                            <div class="flex items-center justify-between gap-2 pb-1.5 border-b border-white/[0.06]">
+                                <span class="text-[10.5px] font-bold uppercase tracking-wider mono" style="color:${headCol}">${g.heading}</span>
+                                ${g.badge ? `<span class="text-[9.5px] mono text-slate-500">${g.badge}</span>` : ''}
                             </div>
                         ` : ''}
-                        <div class="space-y-3">
-                            ${g.bars.map(b => b.infoOnly ? `
-                                <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 pt-1 opacity-60">
-                                    <span class="text-xs font-medium text-slate-400">${b.title}</span>
-                                    <span class="text-[11px] mono text-slate-500">${b.infoOnly}</span>
-                                </div>
-                            ` : `
-                                <div class="space-y-1.5">
-                                    <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                                        <span class="text-xs sm:text-sm font-semibold text-slate-200 min-w-0">${b.title}</span>
-                                        <div class="mono text-xs shrink-0 flex items-center gap-2">
-                                            <span class="text-slate-400">${b.count.toLocaleString('de-DE')} / ${b.total.toLocaleString('de-DE')}</span>
-                                            <strong class="text-white text-sm w-16 text-right">${b.pct.toFixed(2)}%</strong>
+                        <div class="space-y-2">
+                            ${g.bars.map(b => {
+                                if (b.infoOnly) {
+                                    return `
+                                        <div class="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 pt-0.5 opacity-60">
+                                            <span class="text-[11.5px] font-medium text-slate-400">${b.title}</span>
+                                            <span class="text-[10.5px] mono text-slate-500">${b.infoOnly}</span>
+                                        </div>
+                                    `;
+                                }
+                                const barCol = (b.slot && pal[b.slot]) || pal.c1;
+                                const barOp = b.soft ? 0.65 : 1;
+                                return `
+                                    <div class="space-y-1">
+                                        <div class="flex items-baseline justify-between gap-2">
+                                            <span class="text-[11.5px] font-semibold text-slate-200 min-w-0 truncate">${b.title}</span>
+                                            <div class="mono text-[11px] shrink-0 flex items-center gap-1.5">
+                                                <span class="text-slate-400">${b.count.toLocaleString('de-DE')}/${b.total.toLocaleString('de-DE')}</span>
+                                                <strong class="text-white text-xs w-14 text-right">${b.pct.toFixed(2)}%</strong>
+                                            </div>
+                                        </div>
+                                        <div class="w-full h-2 rounded-full bg-white/[0.07] overflow-hidden">
+                                            <div class="h-full rounded-full transition-all duration-150" style="width:${Math.max(1.2, Math.min(100, b.pct))}%;background:${barCol};opacity:${barOp}"></div>
                                         </div>
                                     </div>
-                                    <div class="w-full h-2.5 rounded-full bg-white/[0.06] overflow-hidden">
-                                        <div class="h-full rounded-full ${b.color} transition-all duration-150" style="width: ${Math.max(1.2, Math.min(100, b.pct))}%"></div>
-                                    </div>
-                                </div>
-                            `).join('')}
+                                `;
+                            }).join('')}
                         </div>
                     </div>
-                `).join('');
+                `;
+                }).join('');
             }
         }
 window.onload = function () {
