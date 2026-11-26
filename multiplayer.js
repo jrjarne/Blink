@@ -1695,8 +1695,6 @@
             }
             replaceBotTextInTree(intPanel, oppName);
         }
-            replaceBotTextInTree(intPanel, oppName);
-        }
 
         replaceBotTextInTree(document.getElementById('vh-bot-trios'), oppName);
 
