@@ -463,12 +463,6 @@ function toggleProfileModal(tab = 'profile') {
     }
 }
 
-function openProfileFromSettings() {
-    if (typeof setSettingsSection === 'function') {
-        setSettingsSection('profile', false);
-    }
-}
-
 function syncPlayerProfileUI() {
     const prof = playerProfileState;
     const col = prof.outfitColor || '#22d3ee';
@@ -1633,19 +1627,6 @@ function restartAILoop() {
     scheduleNextAIMove(false, false);
 }
 
-function addMoveLogEntry(htmlContent) {
-    gameState.moveCount++;
-    const badge = document.getElementById('move-count-badge');
-    if (badge) badge.textContent = `${gameState.moveCount} Züge`;
-    const logEl = document.getElementById('game-move-log');
-    if (logEl) {
-        if (gameState.moveCount === 1) logEl.innerHTML = '';
-        const entry = document.createElement('div');
-        entry.className = 'p-1.5 rounded bg-slate-900 border border-slate-800/80 flex items-center justify-between gap-1 text-[10.5px]';
-        entry.innerHTML = `<span class="text-slate-500">${gameState.moveCount}.</span> <div class="flex-1 truncate">${htmlContent}</div>`;
-        logEl.prepend(entry);
-    }
-}
 function startArenaTimerInterval() {
     if (gameState.timerInterval) clearInterval(gameState.timerInterval);
     gameState.timerInterval = setInterval(() => {
@@ -2049,24 +2030,8 @@ function renderLargePlayingCardInner(card, compact = false, cornerMark = '') {
             `;
 }
 
-function renderMiniTrioGroupHTML(trios) {
-    if (!trios || trios.length === 0) {
-        return `<span class="text-[10px] text-slate-500 mono m-auto">Noch kein Trio</span>`;
-    }
-    return trios.map((trio, tIdx) => `
-                <div class="flex items-center gap-1 bg-slate-950 px-1.5 py-1 rounded-lg border border-purple-500/40" title="Trio ${tIdx + 1}">
-                    ${trio.map(([x, y, z]) => `
-                        <div class="w-8 card-63-88 rounded bg-white border border-slate-300 flex flex-col items-center justify-center p-0.5 shadow-sm" title="(${x},${y},${z})">
-                            ${renderCardSymbolsHTML(x, y, z, 8)}
-                        </div>
-                    `).join('')}
-                </div>
-            `).join('');
-}
-
 function renderBlinkGameUI() {
     syncAbortButtonUI();
-    const isVerhoer = gameState.ruleMode === 'verhoer';
     const numPiles = getActivePileCount();
 
     for (let pileIdx = 0; pileIdx < numPiles; pileIdx++) {
@@ -2076,82 +2041,23 @@ function renderBlinkGameUI() {
         pileEl.className = 'w-[162px] sm:w-[190px] card-63-88 rounded-2xl bg-white border-4 border-slate-300 hover:border-slate-400 shadow-2xl flex flex-col justify-between p-3.5 cursor-pointer transition relative';
     }
 
-    // Im Verhör-Modus: Phasen-Anzeige, Buttons & Trios aktualisieren
-    if (isVerhoer) {
-        const phasePill = document.getElementById('verhoer-phase-pill');
-        const turnInd = document.getElementById('verhoer-turn-indicator');
-        const btnDeck = document.getElementById('btn-verhoer-draw-deck');
-        const btnDisc = document.getElementById('btn-verhoer-draw-discard');
-        const btnTrio = document.getElementById('btn-verhoer-trio');
-        const btnCluster = document.getElementById('btn-verhoer-cluster');
-
-        const phaseLabels = {
-            'draw': 'Phase 1: 6. Karte ziehen',
-            'action': 'Phase 2 & 3: Trio melden / 1 Karte auf M₁ abwerfen',
-            'interrogation': 'Phase 4: Verhör läuft',
-            'bonus_discard': 'Verhör-Tausch: 1 eigene Handkarte abwerfen'
-        };
-        if (phasePill) phasePill.textContent = gameState.verhoerTurn === 'ai' ? '🤖 Bot ist am Zug...' : (phaseLabels[gameState.verhoerPhase] || '');
-        if (turnInd) {
-            turnInd.textContent = gameState.verhoerTurn === 'player' ? '👤 Dein Zug' : '🤖 Bot am Zug';
-            turnInd.className = gameState.verhoerTurn === 'player' ? 'text-cyan-300 font-bold' : 'text-rose-400 font-bold';
-        }
-
-        const canDraw = gameState.isRunning && gameState.verhoerTurn === 'player' && gameState.verhoerPhase === 'draw';
-        const hasTrio = findValidTrioIndices(gameState.playerHand) !== null;
-        const hasCluster5 = findValidCluster5FromPool(gameState.playerHand, gameState.playerTrios) !== null;
-
-        if (btnDeck) btnDeck.disabled = !canDraw;
-        if (btnDisc) btnDisc.disabled = !canDraw || gameState.discardHistory.length === 0;
-        if (btnTrio) {
-            btnTrio.className = hasTrio && gameState.isRunning && gameState.verhoerTurn === 'player'
-                ? 'px-3 py-2 rounded-xl bg-purple-500 hover:bg-purple-400 text-slate-950 font-extrabold text-xs transition flex items-center justify-center gap-1.5 shadow animate-pulse'
-                : 'px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-500/40 font-bold text-xs transition flex items-center justify-center gap-1.5';
-        }
-        if (btnCluster) {
-            btnCluster.className = hasCluster5 && gameState.isRunning
-                ? 'px-3 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs transition flex items-center justify-center gap-1.5 ring-2 ring-cyan-400/70 shadow-[0_0_20px_rgba(34,211,238,0.35)]'
-                : 'px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs transition flex items-center justify-center gap-1.5 shadow';
-        }
-
-        const pTrioCount = document.getElementById('player-trio-count');
-        const aTrioCount = document.getElementById('ai-trio-count');
-        const pTrioCont = document.getElementById('player-trios-container');
-        const aTrioCont = document.getElementById('ai-trios-container');
-        if (pTrioCount) pTrioCount.textContent = gameState.playerTrios.length;
-        if (aTrioCount) aTrioCount.textContent = gameState.aiTrios.length;
-        if (pTrioCont) pTrioCont.innerHTML = renderMiniTrioGroupHTML(gameState.playerTrios);
-        if (aTrioCont) aTrioCont.innerHTML = renderMiniTrioGroupHTML(gameState.aiTrios);
-        renderVerhoerXRayUI();
-    } else {
-        const xrayPanel = document.getElementById('verhoer-ai-xray-panel');
-        if (xrayPanel) xrayPanel.classList.add('hidden');
-    }
-
     const handContainer = document.getElementById('player-hand-container');
     if (handContainer) {
-        const cardWidthCls = isVerhoer
-            ? 'flex-1 min-w-0 max-w-[112px]'
-            : 'w-[126px] sm:w-[145px] md:w-[158px] shrink-0';
+        const cardWidthCls = 'w-[126px] sm:w-[145px] md:w-[158px] shrink-0';
 
         handContainer.innerHTML = gameState.playerHand.map((card, idx) => {
             if (!card) {
                 return `<div id="hand-card-el-${idx}" class="${cardWidthCls} card-63-88 rounded-2xl border-2 border-dashed border-white/[0.08] bg-white/[0.015] pointer-events-none opacity-40"></div>`;
             }
             const isSelected = gameState.selectedHandIndex === idx;
-            const isRecalled = isVerhoer && gameState.recalledCardKey === keyOf(card[0], card[1], card[2]);
             const borderCls = isSelected ? 'border-cyan-400 selected-card' : 'border-slate-300 hover:border-slate-400';
 
             return `
                         <div id="hand-card-el-${idx}"
-                             draggable="true"
-                             ondragstart="onHandCardDragStart(event, ${idx})"
-                             ondragend="onHandCardDragEnd(event, ${idx})"
                              onclick="selectPlayerHandCard(${idx})"
                              ondblclick="quickPlayHandCard(${idx})"
                              class="game-card ${cardWidthCls} card-63-88 rounded-2xl bg-white border-4 ${borderCls} shadow-xl flex flex-col justify-between p-1.5 sm:p-2 relative">
-                            ${isRecalled ? `<span class="pointer-events-none absolute -top-2 right-1 px-1 py-0.5 rounded bg-amber-500 text-slate-950 text-[8.5px] font-extrabold mono shadow">M₁</span>` : ''}
-                            ${renderLargePlayingCardInner(card, isVerhoer)}
+                            ${renderLargePlayingCardInner(card, false)}
                         </div>
                     `;
         }).join('');
@@ -2166,69 +2072,36 @@ function renderBlinkGameUI() {
 
     if (deckCountEl) deckCountEl.textContent = gameState.playerDeck.length;
 
-    if (isVerhoer) {
-        const pClusterProg = getMaxClusterSubsetSize(gameState.playerHand, gameState.playerTrios);
-        const aClusterProg = getMaxClusterSubsetSize(gameState.aiHand, gameState.aiTrios);
-        if (progTitle) progTitle.textContent = 'Cluster-Fortschritt (Ziel: 5 / 5)';
-        if (scorePrefixEl) scorePrefixEl.textContent = 'Cluster-Karten:';
-        if (scoreTotalEl) scoreTotalEl.textContent = `${pClusterProg} / 5 kompatibel (${gameState.playerTrios.length} Trios)`;
-        if (barLbl) barLbl.textContent = `${pClusterProg} / 5 Karten`;
-        if (barProg) barProg.style.width = `${Math.round((pClusterProg / 5) * 100)}%`;
+    const playerTotal = gameState.playerDeck.length + gameState.playerHand.length;
+    const isVersus = gameState.mode === 'ai' || gameState.mode === 'online';
+    const maxInitial = gameState.initialCardTotal || (isVersus ? (gameState.ruleMode === 'cluster' ? 28 : 29) : 30);
+    const playerPct = Math.min(100, Math.max(0, Math.round((playerTotal / maxInitial) * 100)));
+    if (progTitle) progTitle.textContent = 'Karten-Fortschritt';
+    if (scorePrefixEl) scorePrefixEl.textContent = 'Karten übrig:';
+    if (scoreTotalEl) scoreTotalEl.textContent = `${playerTotal} Karten`;
+    if (barLbl) barLbl.textContent = `${playerTotal} Karten`;
+    if (barProg) barProg.style.width = `${playerPct}%`;
 
+    if (isVersus) {
+        const aiTotal = gameState.aiDeck.length + gameState.aiHand.length;
+        const aiPct = Math.min(100, Math.max(0, Math.round((aiTotal / maxInitial) * 100)));
         const subStats = document.getElementById('opponent-sub-stats');
         const aiScore = document.getElementById('score-ai-total');
         const aiProg = document.getElementById('bar-ai-progress');
         const aiHC = document.getElementById('ai-hand-container');
 
         if (subStats) {
-            subStats.innerHTML = `Geheime Hand: <strong class="text-rose-400">${gameState.aiHand.length} Karten</strong> • Offene Trios: <strong class="text-purple-300">${gameState.aiTrios.length}</strong>`;
+            subStats.innerHTML = `Karten übrig: <strong id="ai-total-remaining" class="text-rose-400">${aiTotal}</strong> (Stapel: <span id="ai-deck-count">${gameState.aiDeck.length}</span> • Hand: <span id="ai-hand-count">${gameState.aiHand.length}</span>)`;
         }
-        if (aiScore) aiScore.textContent = `${aClusterProg} / 5 Karten`;
-        if (aiProg) aiProg.style.width = `${Math.round((aClusterProg / 5) * 100)}%`;
+        if (aiScore) aiScore.textContent = `${aiTotal} Karten`;
+        if (aiProg) aiProg.style.width = `${aiPct}%`;
 
-        // Im Verhör-Modus sind die Handkarten des Gegners verdeckt!
         if (aiHC) {
-            aiHC.innerHTML = gameState.aiHand.map((_, i) => `
-                        <div class="w-10 sm:w-12 card-63-88 rounded-lg bg-gradient-to-br from-rose-900 via-slate-900 to-indigo-950 border-2 border-rose-400/50 p-1 flex flex-col items-center justify-center shadow" title="Verdeckte Gegnerkarte ${i + 1}">
-                            <span class="text-[10px] font-extrabold text-rose-300 mono">?</span>
+            aiHC.innerHTML = gameState.aiHand.filter(Boolean).map(([x, y, z]) => `
+                        <div class="w-12 sm:w-14 card-63-88 rounded-lg bg-white border-2 border-slate-300 p-1 flex flex-col items-center justify-center shadow" title="KI-Handkarte">
+                            ${renderCardSymbolsHTML(x, y, z, 11)}
                         </div>
                     `).join('');
-        }
-    } else {
-        const playerTotal = gameState.playerDeck.length + gameState.playerHand.length;
-        const isVersus = gameState.mode === 'ai' || gameState.mode === 'online';
-        const maxInitial = gameState.initialCardTotal || (isVersus ? (gameState.ruleMode === 'cluster' ? 28 : 29) : 30);
-        const playerPct = Math.min(100, Math.max(0, Math.round((playerTotal / maxInitial) * 100)));
-        if (progTitle) progTitle.textContent = 'Karten-Fortschritt';
-        if (scorePrefixEl) scorePrefixEl.textContent = 'Karten übrig:';
-        if (scoreTotalEl) scoreTotalEl.textContent = `${playerTotal} Karten`;
-        if (barLbl) barLbl.textContent = `${playerTotal} Karten`;
-        if (barProg) barProg.style.width = `${playerPct}%`;
-
-        if (isVersus) {
-            const aiTotal = gameState.aiDeck.length + gameState.aiHand.length;
-            const aiPct = Math.min(100, Math.max(0, Math.round((aiTotal / maxInitial) * 100)));
-            const subStats = document.getElementById('opponent-sub-stats');
-            const aiScore = document.getElementById('score-ai-total');
-            const aiProg = document.getElementById('bar-ai-progress');
-            const aiHC = document.getElementById('ai-hand-container');
-
-            if (subStats) {
-                subStats.innerHTML = `Karten übrig: <strong id="ai-total-remaining" class="text-rose-400">${aiTotal}</strong> (Stapel: <span id="ai-deck-count">${gameState.aiDeck.length}</span> • Hand: <span id="ai-hand-count">${gameState.aiHand.length}</span>)`;
-            }
-            if (aiScore) aiScore.textContent = `${aiTotal} Karten`;
-            if (aiProg) aiProg.style.width = `${aiPct}%`;
-
-            if (aiHC) {
-                aiHC.innerHTML = gameState.aiHand.filter(Boolean).map(([x, y, z]) => `
-                            <div class="w-12 sm:w-14 card-63-88 rounded-lg bg-white border-2 border-slate-300 p-1 flex flex-col items-center justify-center shadow" title="KI-Handkarte">
-                                ${renderCardSymbolsHTML(x, y, z, 11)}
-                            </div>
-                        `).join('');
-            }
-        } else {
-            const streakEl = document.getElementById('solo-streak-count');
-            if (streakEl) streakEl.textContent = `${gameState.streak}×`;
         }
     }
 }
@@ -2245,547 +2118,6 @@ function triggerInvalidShake(elId, silent = false) {
     el.classList.add('shake-invalid');
 }
 
-// ============================================================================
-// SPEZIFISCHE LOGIK FÜR „BLINK: DAS VERHÖR“
-// ============================================================================
-function verhoerDrawFromDeck() {
-    if (!gameState.isRunning || gameState.ruleMode !== 'verhoer') return;
-    if (gameState.verhoerTurn !== 'player' || gameState.verhoerPhase !== 'draw') {
-        setGameBanner('Du hast in diesem Zug bereits eine 6. Karte aufgenommen!', 'warn');
-        return;
-    }
-    if (gameState.playerDeck.length === 0) {
-        gameState.playerDeck = shuffleArray(CARDS_125);
-    }
-    const drawn = gameState.playerDeck.shift();
-    gameState.playerHand.push(drawn);
-    gameState.recalledCardKey = null;
-    gameState.verhoerPhase = 'action';
-    addMoveLogEntry(`<span class="text-cyan-400 font-bold">Du:</span> Blind vom Stapel gezogen`);
-    setGameBanner('Karte gezogen (6 Handkarten). Melde optional ein Trio oder wirf 1 Karte auf M₁ ab!', 'neutral');
-    renderBlinkGameUI();
-}
-
-function verhoerTakeFromDiscard() {
-    if (!gameState.isRunning || gameState.ruleMode !== 'verhoer') return;
-    if (gameState.verhoerTurn !== 'player' || gameState.verhoerPhase !== 'draw') {
-        setGameBanner('Der taktische Rückruf ist nur zu Beginn deines Zuges (Phase 1) möglich!', 'warn');
-        return;
-    }
-    if (gameState.discardHistory.length === 0 || !gameState.centerPiles[0]) {
-        setGameBanner('Der Ablagestapel M₁ ist aktuell leer!', 'warn');
-        return;
-    }
-    const taken = gameState.discardHistory.pop();
-    gameState.playerHand.push(taken);
-    gameState.recalledCardKey = keyOf(taken[0], taken[1], taken[2]);
-    if (!gameState.aiMemory.knownPlayerCards.some(c => keyOf(...c) === keyOf(...taken))) {
-        gameState.aiMemory.knownPlayerCards.push([...taken]);
-    }
-    gameState.centerPiles[0] = gameState.discardHistory.length > 0
-        ? gameState.discardHistory[gameState.discardHistory.length - 1]
-        : null;
-    gameState.verhoerPhase = 'action';
-    addMoveLogEntry(`<span class="text-amber-300 font-bold">Du:</span> Rückruf (${taken.join(',')}) von M₁`);
-    setGameBanner(`Rückruf (${taken.join(',')}) aufgenommen! (Darf in diesem Zug nicht direkt wieder abgeworfen werden).`, 'neutral');
-    renderBlinkGameUI();
-}
-
-function verhoerMeldTrio() {
-    if (!gameState.isRunning || gameState.ruleMode !== 'verhoer') return;
-    if (gameState.verhoerTurn !== 'player') return;
-    const trioIdx = findValidTrioIndices(gameState.playerHand);
-    if (!trioIdx) {
-        setGameBanner('Kein gültiges 3er-Trio ($d_H=3$ paarweise) in deinen aktuellen Handkarten gefunden!', 'warn');
-        return;
-    }
-    const [i, j, k] = trioIdx;
-    const c3 = gameState.playerHand.splice(k, 1)[0];
-    const c2 = gameState.playerHand.splice(j, 1)[0];
-    const c1 = gameState.playerHand.splice(i, 1)[0];
-    gameState.playerTrios.push([c1, c2, c3]);
-
-    for (let d = 0; d < 3; d++) {
-        if (gameState.playerDeck.length === 0) gameState.playerDeck = shuffleArray(CARDS_125);
-        gameState.playerHand.push(gameState.playerDeck.shift());
-    }
-    gameState.selectedHandIndex = null;
-    addMoveLogEntry(`<span class="text-purple-400 font-bold">Du:</span> 3er-Trio ausgelegt + 3 gezogen!`);
-    setGameBanner(`Stark! Offenes 3er-Trio (${c1.join(',')}), (${c2.join(',')}), (${c3.join(',')}) gemeldet & 3 Karten nachgezogen!`, 'success');
-    renderBlinkGameUI();
-}
-
-function verhoerCallCluster() {
-    if (!gameState.isRunning || gameState.ruleMode !== 'verhoer') return;
-    const winningCluster = findValidCluster5FromPool(gameState.playerHand, gameState.playerTrios);
-    if (winningCluster) {
-        gameState.isRunning = false;
-        pauseGameLoops();
-        if (typeof stopGameMusic === 'function') stopGameMusic();
-        const elapsed = (performance.now() - gameState.startTime) / 1000;
-        const timeStr = formatElapsedTime(elapsed);
-        saveRecordTime('verhoer', elapsed, timeStr);
-        playSound('win');
-        updatePlayerEloAfterMatch(1200, true, 'Taktik-Bot (Verhör)', 28);
-        const clusterStr = winningCluster.map(c => `(${c.join(',')})`).join(' • ');
-        addMoveLogEntry(`<span class="text-emerald-400 font-bold">🏆 CLUSTER-SIEG:</span> ${clusterStr}`);
-        setGameBanner(`🏆 CLUSTER! Du gewinnst mit dem perfekten Cluster: ${clusterStr}!`, 'success');
-        renderBlinkGameUI();
-    } else {
-        setGameBanner('Noch kein vollständiges 5er-Cluster ($d_H = 3$ für alle 5 Karten) aus Hand & Trios vorhanden!', 'warn');
-    }
-}
-
-function executeVerhoerDiscard(handIdx) {
-    const card = gameState.playerHand[handIdx];
-    if (!card) return;
-
-    if (gameState.verhoerPhase === 'draw') {
-        setGameBanner('Bitte ziehe zuerst deine 6. Karte (Button „📥 Blind ziehen“ oder „♻️ Rückruf“)!', 'warn');
-        triggerInvalidShake(`hand-card-el-${handIdx}`);
-        return;
-    }
-
-    // Falls der Spieler nach der Kartenübernahme im Verhör eine Karte abwirft:
-    if (gameState.verhoerPhase === 'bonus_discard') {
-        gameState.playerHand.splice(handIdx, 1);
-        gameState.discardHistory.push(card);
-        gameState.centerPiles[0] = card;
-        gameState.selectedHandIndex = null;
-        addMoveLogEntry(`<span class="text-cyan-400 font-bold">Du:</span> Tausch-Abwurf (${card.join(',')}) → M₁`);
-        closeVerhoerPanelAndEndPlayerTurn();
-        return;
-    }
-
-    if (gameState.verhoerPhase !== 'action') return;
-
-    if (gameState.recalledCardKey && keyOf(card[0], card[1], card[2]) === gameState.recalledCardKey) {
-        setGameBanner('Regel-Verstoß: Die gerade per Rückruf von M₁ genommene Karte darf nicht sofort wieder abgeworfen werden!', 'warn');
-        triggerInvalidShake(`hand-card-el-${handIdx}`);
-        return;
-    }
-
-    // Flug-Animation auslösen (Ziel ist immer M1 im Verhör)
-    const cardEl = document.getElementById(`hand-card-el-${handIdx}`);
-    const targetPile = document.getElementById(`center-pile-0`);
-
-    if (cardEl && targetPile) {
-        const startRect = cardEl.getBoundingClientRect();
-        const targetRect = targetPile.getBoundingClientRect();
-
-        cardEl.style.left = `${startRect.left}px`;
-        cardEl.style.top = `${startRect.top}px`;
-        cardEl.style.width = `${startRect.width}px`;
-        cardEl.style.height = `${startRect.height}px`;
-        cardEl.style.margin = '0';
-        cardEl.classList.add('card-fly-discard');
-
-        requestAnimationFrame(() => {
-            cardEl.style.left = `${targetRect.left + (targetRect.width - startRect.width) / 2}px`;
-            cardEl.style.top = `${targetRect.top + (targetRect.height - startRect.height) / 2}px`;
-        });
-    }
-
-    setTimeout(() => {
-        const prevTop = gameState.centerPiles[0];
-        gameState.playerHand.splice(handIdx, 1);
-        gameState.discardHistory.push(card);
-        gameState.centerPiles[0] = card;
-        gameState.selectedHandIndex = null;
-        gameState.recalledCardKey = null;
-
-        const dH = prevTop ? hammingDistance(card, prevTop) : 3;
-        addMoveLogEntry(`<span class="text-cyan-400 font-bold">Du:</span> (${card.join(',')}) → M₁ [d_H=${dH}]`);
-        renderBlinkGameUI();
-
-        if (dH === 3) {
-            setGameBanner(`Stiller Abwurf ($d_H = 3$ zu M₁) – kein Trigger. Der Bot ist am Zug...`, 'neutral');
-            closeVerhoerPanelAndEndPlayerTurn();
-        } else if (dH === 2) {
-            openStandardVerhoerUI(card, prevTop);
-        } else {
-            openStrictVerhoerUI(card, prevTop);
-        }
-    }, 180);
-}
-
-function openStandardVerhoerUI(playedCard, prevCard) {
-    gameState.verhoerPhase = 'interrogation';
-    const panel = document.getElementById('verhoer-interaction-panel');
-    const title = document.getElementById('verhoer-panel-title');
-    const badge = document.getElementById('verhoer-panel-badge');
-    const body = document.getElementById('verhoer-panel-body');
-    if (!panel || !body) return;
-
-    panel.classList.remove('hidden');
-    title.textContent = '🕵️ Standard-Verhör ausgelöst (d_H = 2 • 1 gemeinsame Eigenschaft)';
-    badge.textContent = 'Eigenschaft fordern';
-    setGameBanner('🕵️ Standard-Verhör! Fordere gezielt eine Eigenschaftsausprägung vom Gegner.', 'success');
-
-    const xBtns = [0, 1, 2, 3, 4].map(x => `<button onclick="verhoerDemandProperty(0, ${x})" class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-cyan-500 hover:text-slate-950 text-cyan-300 border border-slate-700 font-bold mono transition">${PALETTE_X[x].count}× (${PALETTE_X[x].word})</button>`).join('');
-    const yBtns = [0, 1, 2, 3, 4].map(y => `<button onclick="verhoerDemandProperty(1, ${y})" class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-emerald-500 hover:text-slate-950 text-emerald-300 border border-slate-700 font-bold mono transition flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full" style="background:${PALETTE_Y[y].hex}"></span>${PALETTE_Y[y].name}</button>`).join('');
-    const zBtns = [0, 1, 2, 3, 4].map(z => `<button onclick="verhoerDemandProperty(2, ${z})" class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-purple-500 hover:text-slate-950 text-purple-300 border border-slate-700 font-bold mono transition">${PALETTE_Z[z].name}</button>`).join('');
-
-    body.innerHTML = `
-                <p class="text-slate-300">Wähle <strong>genau eine Ausprägung</strong>, nach der du den Bot verhören möchtest:</p>
-                <div class="space-y-2">
-                    <div class="flex flex-wrap items-center gap-1.5"><span class="text-[10px] uppercase mono text-slate-400 w-16">Anzahl:</span>${xBtns}</div>
-                    <div class="flex flex-wrap items-center gap-1.5"><span class="text-[10px] uppercase mono text-slate-400 w-16">Farbe:</span>${yBtns}</div>
-                    <div class="flex flex-wrap items-center gap-1.5"><span class="text-[10px] uppercase mono text-slate-400 w-16">Symbol:</span>${zBtns}</div>
-                </div>
-            `;
-    renderBlinkGameUI();
-}
-
-function verhoerDemandProperty(dim, val) {
-    const body = document.getElementById('verhoer-panel-body');
-    if (!body) return;
-    const dimNames = ['Anzahl', 'Farbe', 'Symbol'];
-    const valName = dim === 0 ? `${PALETTE_X[val].count}× (${PALETTE_X[val].word})` : (dim === 1 ? PALETTE_Y[val].name : PALETTE_Z[val].name);
-    const propLabel = `${dimNames[dim]}: ${valName}`;
-    if (!gameState.aiMemory.demandedProps.includes(propLabel)) {
-        gameState.aiMemory.demandedProps.push(propLabel);
-    }
-
-    const matchingIndices = [];
-    gameState.aiHand.forEach((c, idx) => {
-        if (c[dim] === val) matchingIndices.push(idx);
-    });
-
-    if (matchingIndices.length === 0) {
-        addMoveLogEntry(`<span class="text-amber-300">Verhör:</span> Bot hat keine Karte mit ${valName}`);
-        body.innerHTML = `
-                    <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-                        <span>🤖 <strong>Antwort des Bots:</strong> „Ich besitze <em>keine</em> Karte mit <strong>${dimNames[dim]}: ${valName}</strong>!“</span>
-                        <button onclick="closeVerhoerPanelAndEndPlayerTurn()" class="px-4 py-1.5 rounded-xl bg-cyan-500 text-slate-950 font-bold text-xs">Zug beenden →</button>
-                    </div>
-                `;
-        return;
-    }
-
-    // Bot wählt eine passende Karte zum Vorzeigen
-    const chosenIdx = matchingIndices[0];
-    const offeredCard = gameState.aiHand[chosenIdx];
-    gameState.pendingVerhoerIdx = chosenIdx;
-    gameState.pendingVerhoerCard = offeredCard;
-
-    const [x, y, z] = offeredCard;
-    addMoveLogEntry(`<span class="text-amber-300">Verhör:</span> Bot zeigt (${x},${y},${z})`);
-
-    body.innerHTML = `
-                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-3 rounded-xl bg-slate-900 border border-slate-800">
-                    <div class="flex items-center gap-3">
-                        <div class="w-16 card-63-88 rounded-xl bg-white border-2 border-amber-400 p-1.5 flex flex-col justify-between shadow-lg shrink-0">
-                            <div class="text-[9px] font-bold mono text-slate-700 text-center">(${x},${y},${z})</div>
-                            <div class="flex-1 flex items-center justify-center">${renderCardSymbolsHTML(x, y, z, 14)}</div>
-                        </div>
-                        <div class="space-y-1">
-                            <div class="font-bold text-white">🤖 Bot zeigt dir: (${x},${y},${z}) → ${PALETTE_X[x].count}× ${PALETTE_Y[y].name} ${PALETTE_Z[z].name}</div>
-                            <div class="text-[11px] text-slate-400">Möchtest du diese Karte auf deine Hand nehmen (und 1 eigene abwerfen) oder ablehnen (Bot muss sie auf M₁ abwerfen)?</div>
-                        </div>
-                    </div>
-                    <div class="flex flex-col gap-2 shrink-0 w-full sm:w-auto">
-                        <button onclick="resolveVerhoerDecision(true)" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs">📥 Karte übernehmen</button>
-                        <button onclick="resolveVerhoerDecision(false)" class="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs">🗑️ Ablehnen (Bot wirft ab)</button>
-                    </div>
-                </div>
-            `;
-}
-
-function openStrictVerhoerUI() {
-    gameState.verhoerPhase = 'interrogation';
-    const panel = document.getElementById('verhoer-interaction-panel');
-    const title = document.getElementById('verhoer-panel-title');
-    const badge = document.getElementById('verhoer-panel-badge');
-    const body = document.getElementById('verhoer-panel-body');
-    if (!panel || !body) return;
-
-    panel.classList.remove('hidden');
-    title.textContent = '⚡ Verschärftes Verhör ausgelöst (d_H = 1 • 2 gemeinsame Eigenschaften!)';
-    badge.textContent = 'Blinder Zugriff';
-    setGameBanner('⚡ Verschärftes Verhör! Ziehe blind eine Karte direkt aus der Hand des Bots.', 'success');
-
-    const cardButtons = gameState.aiHand.map((_, idx) => `
-                <button onclick="verhoerBlindDrawFromAI(${idx})" class="w-16 card-63-88 rounded-xl bg-gradient-to-br from-rose-800 to-indigo-950 hover:from-amber-500 hover:to-amber-600 border-2 border-rose-400/60 hover:border-white flex flex-col items-center justify-center gap-1 shadow-lg transition group">
-                    <span class="text-xs font-extrabold text-white group-hover:text-slate-950 mono">#${idx + 1}</span>
-                    <span class="text-[9px] text-rose-200 group-hover:text-slate-950 uppercase font-bold">Ziehen</span>
-                </button>
-            `).join('');
-
-    body.innerHTML = `
-                <p class="text-slate-300">Wähle blind <strong>eine verdeckte Handkarte des Gegners</strong> zur geheimen Prüfung:</p>
-                <div class="flex flex-wrap items-center gap-3 pt-1">${cardButtons}</div>
-            `;
-    renderBlinkGameUI();
-}
-
-function verhoerBlindDrawFromAI(idx) {
-    const body = document.getElementById('verhoer-panel-body');
-    if (!body || !gameState.aiHand[idx]) return;
-    const drawnCard = gameState.aiHand[idx];
-    gameState.pendingVerhoerIdx = idx;
-    gameState.pendingVerhoerCard = drawnCard;
-    const [x, y, z] = drawnCard;
-
-    body.innerHTML = `
-                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-3 rounded-xl bg-slate-900 border border-slate-800">
-                    <div class="flex items-center gap-3">
-                        <div class="w-16 card-63-88 rounded-xl bg-white border-2 border-cyan-400 p-1.5 flex flex-col justify-between shadow-lg shrink-0">
-                            <div class="text-[9px] font-bold mono text-slate-700 text-center">(${x},${y},${z})</div>
-                            <div class="flex-1 flex items-center justify-center">${renderCardSymbolsHTML(x, y, z, 14)}</div>
-                        </div>
-                        <div class="space-y-1">
-                            <div class="font-bold text-white">🕵️ Geheime Prüfung: (${x},${y},${z}) → ${PALETTE_X[x].count}× ${PALETTE_Y[y].name} ${PALETTE_Z[z].name}</div>
-                            <div class="text-[11px] text-slate-400">Behältst du diese Karte (und wirfst 1 eigene ab) oder zwingst du den Bot zur Zwangsentfernung auf M₁?</div>
-                        </div>
-                    </div>
-                    <div class="flex flex-col gap-2 shrink-0 w-full sm:w-auto">
-                        <button onclick="resolveVerhoerDecision(true)" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs">📥 Behalten (+1 eigene abwerfen)</button>
-                        <button onclick="resolveVerhoerDecision(false)" class="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs">🔥 Zwangsentfernung auf M₁</button>
-                    </div>
-                </div>
-            `;
-}
-
-function resolveVerhoerDecision(takeCard) {
-    const idx = gameState.pendingVerhoerIdx;
-    const card = gameState.pendingVerhoerCard;
-    if (idx === null || !card) return;
-
-    // Entferne Karte beim Bot und lasse Bot 1 nachziehen
-    gameState.aiHand.splice(idx, 1);
-    if (gameState.playerDeck.length === 0) gameState.playerDeck = shuffleArray(CARDS_125);
-    gameState.aiHand.push(gameState.playerDeck.shift());
-
-    const panel = document.getElementById('verhoer-interaction-panel');
-    if (panel) panel.classList.add('hidden');
-
-    if (takeCard) {
-        gameState.playerHand.push(card);
-        gameState.verhoerPhase = 'bonus_discard';
-        addMoveLogEntry(`<span class="text-emerald-400 font-bold">Du:</span> (${card.join(',')}) vom Bot übernommen`);
-        setGameBanner(`Karte (${card.join(',')}) übernommen! Wirf jetzt zum Ausgleich 1 deiner 6 Handkarten auf M₁ ab.`, 'success');
-        renderBlinkGameUI();
-    } else {
-        gameState.discardHistory.push(card);
-        gameState.centerPiles[0] = card;
-        addMoveLogEntry(`<span class="text-rose-400 font-bold">Strafabwurf:</span> Bot muss (${card.join(',')}) auf M₁ werfen`);
-        setGameBanner(`Abgelehnt! Bot musste (${card.join(',')}) auf M₁ abwerfen und blind nachziehen.`, 'neutral');
-        closeVerhoerPanelAndEndPlayerTurn();
-    }
-}
-
-function closeVerhoerPanelAndEndPlayerTurn() {
-    const panel = document.getElementById('verhoer-interaction-panel');
-    if (panel) panel.classList.add('hidden');
-    gameState.pendingVerhoerCard = null;
-    gameState.pendingVerhoerIdx = null;
-    gameState.verhoerTurn = 'ai';
-    renderBlinkGameUI();
-
-    setTimeout(() => {
-        if (!gameState.isRunning || gameState.ruleMode !== 'verhoer') return;
-        executeAIVerhoerTurn();
-    }, 950);
-}
-
-function toggleVerhoerXRay() {
-    gameState.verhoerXRayOpen = !gameState.verhoerXRayOpen;
-    playSound('tick');
-    renderVerhoerXRayUI();
-}
-
-function getBestCompatibleSubset(cards) {
-    let best = [];
-    function bt(start, cur) {
-        if (cur.length > best.length) best = [...cur];
-        if (best.length === 5) return;
-        for (let i = start; i < cards.length; i++) {
-            if (cur.every(c => areCardsCompletelyDifferent(c, cards[i]))) {
-                cur.push(cards[i]);
-                bt(i + 1, cur);
-                cur.pop();
-                if (best.length === 5) return;
-            }
-        }
-    }
-    bt(0, []);
-    return best;
-}
-
-function syncBotKnownPlayerCards() {
-    const actualKeys = new Set(gameState.playerHand.map(c => keyOf(...c)));
-    gameState.aiMemory.knownPlayerCards = gameState.aiMemory.knownPlayerCards.filter(c => actualKeys.has(keyOf(...c)));
-}
-
-function renderVerhoerXRayUI() {
-    const btn = document.getElementById('btn-verhoer-xray');
-    const panel = document.getElementById('verhoer-ai-xray-panel');
-    if (btn) {
-        btn.textContent = gameState.verhoerXRayOpen ? 'KI-X-Ray: An' : 'KI-X-Ray: Aus';
-        btn.className = gameState.verhoerXRayOpen
-            ? 'px-2 py-0.5 rounded-full text-[10px] font-bold border border-purple-400/60 bg-purple-500/20 text-purple-200 transition'
-            : 'px-2 py-0.5 rounded-full text-[10px] font-bold border border-white/15 bg-white/[0.04] hover:bg-white/[0.1] text-slate-300 transition';
-    }
-    if (!panel) return;
-    panel.classList.toggle('hidden', !gameState.verhoerXRayOpen || gameState.ruleMode !== 'verhoer');
-    if (!gameState.verhoerXRayOpen || gameState.ruleMode !== 'verhoer') return;
-
-    syncBotKnownPlayerCards();
-
-    const pProg = getMaxClusterSubsetSize(gameState.playerHand, gameState.playerTrios);
-    const aProg = getMaxClusterSubsetSize(gameState.aiHand, gameState.aiTrios);
-    const evalDiff = (pProg + gameState.playerTrios.length * 0.4) - (aProg + gameState.aiTrios.length * 0.4);
-    const pct = Math.max(12, Math.min(88, Math.round(50 + evalDiff * 14)));
-
-    const evalBar = document.getElementById('xray-eval-bar');
-    const evalLbl = document.getElementById('xray-eval-label');
-    if (evalBar) evalBar.style.width = `${pct}%`;
-    if (evalLbl) {
-        const sign = evalDiff > 0.05 ? '+' : '';
-        evalLbl.textContent = Math.abs(evalDiff) < 0.05
-            ? 'Ausgeglichen (0.0)'
-            : `${evalDiff > 0 ? 'Vorteil Du' : 'Vorteil Bot'} (${sign}${evalDiff.toFixed(1)})`;
-    }
-
-    const knownEl = document.getElementById('xray-known-player');
-    const needsEl = document.getElementById('xray-suspected-needs');
-    if (knownEl) {
-        knownEl.innerHTML = gameState.aiMemory.knownPlayerCards.length > 0
-            ? `Bekannt auf deiner Hand: ${gameState.aiMemory.knownPlayerCards.map(c => `<span class="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-200">(${c.join(',')})</span>`).join(' ')}`
-            : 'Noch keine Handkarten sicher aufgedeckt (wird bei Rückruf von M₁ erkannt).';
-    }
-    if (needsEl) {
-        const hints = [];
-        if (gameState.playerTrios.length > 0) {
-            const t0 = gameState.playerTrios[0];
-            const missX = [0, 1, 2, 3, 4].filter(v => !t0.some(c => c[0] === v)).map(v => `${PALETTE_X[v].count}×`);
-            const missY = [0, 1, 2, 3, 4].filter(v => !t0.some(c => c[1] === v)).map(v => PALETTE_Y[v].name);
-            hints.push(`Fehlt zu deinem Trio #1: ${missX.join('/')} · ${missY.join('/')}`);
-        }
-        if (gameState.aiMemory.demandedProps.length > 0) {
-            hints.push(`Gefordert im Verhör: ${gameState.aiMemory.demandedProps.slice(-3).join(', ')}`);
-        }
-        needsEl.textContent = hints.length > 0 ? hints.join(' | ') : 'Noch keine offenen Trio- oder Verhör-Signale ausgewertet.';
-    }
-
-    const botPool = [...gameState.aiHand];
-    gameState.aiTrios.forEach(t => t.forEach(c => botPool.push(c)));
-    const botCore = getBestCompatibleSubset(botPool);
-
-    const coreEl = document.getElementById('xray-bot-core');
-    const nextEl = document.getElementById('xray-bot-next');
-    if (coreEl) {
-        coreEl.innerHTML = `Cluster-Kern (${botCore.length}/5): ${botCore.map(c => `<span class="px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-200">(${c.join(',')})</span>`).join(' ')}`;
-    }
-    if (nextEl) {
-        nextEl.textContent = gameState.aiMemory.lastBotThought || 'Sucht passende Ergänzungen und prüft Verhör-Trigger auf M₁.';
-    }
-}
-
-function executeAIVerhoerTurn() {
-    if (!gameState.isRunning || gameState.ruleMode !== 'verhoer') return;
-    syncBotKnownPlayerCards();
-
-    // 1. Ziehen (Taktischer Rückruf von M₁, falls die Karte den Bot-Cluster-Kern vergrößert)
-    const topDiscard = gameState.centerPiles[0];
-    const curScore = getMaxClusterSubsetSize(gameState.aiHand, gameState.aiTrios);
-    let recalledKey = null;
-    if (topDiscard && gameState.discardHistory.length > 0 &&
-        getMaxClusterSubsetSize([...gameState.aiHand, topDiscard], gameState.aiTrios) > curScore) {
-        const taken = gameState.discardHistory.pop();
-        gameState.aiHand.push(taken);
-        recalledKey = keyOf(...taken);
-        gameState.centerPiles[0] = gameState.discardHistory.length > 0 ? gameState.discardHistory[gameState.discardHistory.length - 1] : null;
-        gameState.aiMemory.lastBotThought = `Hat (${taken.join(',')}) per Rückruf von M₁ genommen (verbessert Cluster-Kern auf ${curScore + 1}/5).`;
-        addMoveLogEntry(`<span class="text-rose-400 font-bold">Bot:</span> Rückruf (${taken.join(',')}) von M₁`);
-    } else {
-        if (gameState.playerDeck.length === 0) gameState.playerDeck = shuffleArray(CARDS_125);
-        gameState.aiHand.push(gameState.playerDeck.shift());
-    }
-
-    // 2. Prüfe ob Bot ein 3er-Trio auslegen kann
-    const aiTrioIdx = findValidTrioIndices(gameState.aiHand);
-    if (aiTrioIdx) {
-        const [i, j, k] = aiTrioIdx;
-        const c3 = gameState.aiHand.splice(k, 1)[0];
-        const c2 = gameState.aiHand.splice(j, 1)[0];
-        const c1 = gameState.aiHand.splice(i, 1)[0];
-        gameState.aiTrios.push([c1, c2, c3]);
-        for (let d = 0; d < 3; d++) {
-            if (gameState.playerDeck.length === 0) gameState.playerDeck = shuffleArray(CARDS_125);
-            gameState.aiHand.push(gameState.playerDeck.shift());
-        }
-        addMoveLogEntry(`<span class="text-rose-400 font-bold">Bot:</span> 3er-Trio offen ausgelegt!`);
-    }
-
-    // 3. Prüfe ob Bot gewonnen hat (5er-Cluster)
-    const aiWinCluster = findValidCluster5FromPool(gameState.aiHand, gameState.aiTrios);
-    if (aiWinCluster) {
-        gameState.isRunning = false;
-        pauseGameLoops();
-        if (typeof stopGameMusic === 'function') stopGameMusic();
-        const cStr = aiWinCluster.map(c => `(${c.join(',')})`).join(' • ');
-        addMoveLogEntry(`<span class="text-rose-400 font-bold">BOT-CLUSTER:</span> ${cStr}`);
-        setGameBanner(`Der Bot ruft „Cluster!“ und gewinnt mit: ${cStr}`, 'ai');
-        updatePlayerEloAfterMatch(1200, false, 'Taktik-Bot (Verhör)', 28);
-        renderBlinkGameUI();
-        return;
-    }
-
-    // 4. Intelligenter Abwurf: schützt eigenen Cluster-Kern und sucht Verhör-Trigger (d_H <= 2)
-    const prevTop = gameState.centerPiles[0];
-    let bestDiscardIdx = gameState.aiHand.length - 1;
-    let bestVal = -999;
-    gameState.aiHand.forEach((cand, idx) => {
-        if (recalledKey && keyOf(...cand) === recalledKey) return;
-        const remHand = gameState.aiHand.filter((_, i) => i !== idx);
-        const remScore = getMaxClusterSubsetSize(remHand, gameState.aiTrios);
-        const dH = prevTop ? hammingDistance(cand, prevTop) : 3;
-        const triggerBonus = dH === 1 ? 1.4 : (dH === 2 ? 0.9 : 0);
-        const val = remScore * 3 + triggerBonus;
-        if (val > bestVal) {
-            bestVal = val;
-            bestDiscardIdx = idx;
-        }
-    });
-
-    const discardCard = gameState.aiHand.splice(bestDiscardIdx, 1)[0];
-    gameState.discardHistory.push(discardCard);
-    gameState.centerPiles[0] = discardCard;
-    const dH = prevTop ? hammingDistance(discardCard, prevTop) : 3;
-
-    let msg = `Bot wirft (${discardCard.join(',')}) auf M₁ ab (d_H=${dH}).`;
-    addMoveLogEntry(`<span class="text-rose-400 font-bold">Bot:</span> (${discardCard.join(',')}) → M₁ [d_H=${dH}]`);
-
-    // Falls Bot ein Verhör auslöst, sabotiert er gezielt bekannte Handkarten des Spielers
-    if (dH <= 2 && gameState.playerHand.length > 0) {
-        let targetIdx = -1;
-        if (gameState.aiMemory.knownPlayerCards.length > 0) {
-            const knownKey = keyOf(...gameState.aiMemory.knownPlayerCards[0]);
-            targetIdx = gameState.playerHand.findIndex(c => keyOf(...c) === knownKey);
-        }
-        if (targetIdx === -1) targetIdx = Math.floor(Math.random() * gameState.playerHand.length);
-
-        const forcedCard = gameState.playerHand.splice(targetIdx, 1)[0];
-        gameState.discardHistory.push(forcedCard);
-        gameState.centerPiles[0] = forcedCard;
-        if (gameState.playerDeck.length === 0) gameState.playerDeck = shuffleArray(CARDS_125);
-        gameState.playerHand.push(gameState.playerDeck.shift());
-        gameState.aiMemory.lastBotThought = `Löst Verhör (d_H=${dH}) aus und zwingt gezielt (${forcedCard.join(',')}) aus deiner Hand auf M₁.`;
-        msg = `Bot löst Verhör aus (d_H=${dH}) und zwingt deine Karte (${forcedCard.join(',')}) auf M₁! Du bist am Zug.`;
-        addMoveLogEntry(`<span class="text-rose-400 font-bold">Bot-Verhör:</span> Deine (${forcedCard.join(',')}) → M₁`);
-    } else {
-        gameState.aiMemory.lastBotThought = `Warf (${discardCard.join(',')}) ab (d_H=${dH}), um seinen Cluster-Kern intakt zu halten.`;
-        msg += ` Dein Zug: Ziehe deine 6. Karte!`;
-    }
-
-    gameState.verhoerTurn = 'player';
-    gameState.verhoerPhase = 'draw';
-    setGameBanner(msg, 'ai');
-    renderBlinkGameUI();
-}
-
 function selectPlayerHandCard(handIdx) {
     if (!gameState.isRunning || !gameState.playerHand[handIdx]) return;
     if (gameState.selectedHandIndex === handIdx) {
@@ -2794,7 +2126,6 @@ function selectPlayerHandCard(handIdx) {
         return;
     }
     gameState.selectedHandIndex = handIdx;
-    const targetHint = gameState.ruleMode === 'verhoer' ? 'Ablagestapel M₁' : (gameState.ruleMode === 'cluster' ? 'M₁, M₂ oder M₃' : 'M₁ oder M₂');
     renderBlinkGameUI();
 }
 
@@ -2813,10 +2144,6 @@ function sendGuestPlayRequest(handIdx, pileIdx, card) {
 
 function quickPlayHandCard(handIdx) {
     if (!gameState.isRunning || !gameState.playerHand[handIdx]) return;
-    if (gameState.ruleMode === 'verhoer') {
-        executeVerhoerDiscard(handIdx);
-        return;
-    }
     const card = gameState.playerHand[handIdx];
     const numPiles = getActivePileCount();
     for (let p = 0; p < numPiles; p++) {
@@ -2842,16 +2169,6 @@ function quickPlayHandCard(handIdx) {
 
 function tryPlaySelectedOnPile(pileIdx) {
     if (!gameState.isRunning) return;
-    if (gameState.ruleMode === 'verhoer') {
-        if (gameState.verhoerTurn === 'player' && gameState.verhoerPhase === 'draw' && gameState.selectedHandIndex === null) {
-            verhoerTakeFromDiscard();
-            return;
-        }
-        if (gameState.selectedHandIndex !== null) {
-            executeVerhoerDiscard(gameState.selectedHandIndex);
-        }
-        return;
-    }
     if (gameState.selectedHandIndex === null) return;
     const handIdx = gameState.selectedHandIndex;
     const card = gameState.playerHand[handIdx];
@@ -2973,10 +2290,6 @@ function executeCardPlay(actor, handIdx, pileIdx) {
 
 function manualDrawCard() {
     if (!gameState.isRunning || gameState.mode === 'online') return;
-    if (gameState.ruleMode === 'verhoer') {
-        verhoerDrawFromDeck();
-        return;
-    }
     if (gameState.playerDeck.length === 0) return;
     let emptySlot = (typeof gameState.lastClearedHandSlot === 'number' && gameState.playerHand[gameState.lastClearedHandSlot] === null)
         ? gameState.lastClearedHandSlot
@@ -3667,73 +2980,9 @@ window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT') return;
     if (state.currentPage !== 'game' || labState.activeGameTab !== 'arena' || !gameState.isRunning) return;
     if (e.key >= '1' && e.key <= '6') quickPlayHandCard(parseInt(e.key, 10) - 1);
-    if (e.key === ' ' && gameState.ruleMode !== 'verhoer') { e.preventDefault(); resolveDeadlockStocken(); }
+    if (e.key === ' ') { e.preventDefault(); resolveDeadlockStocken(); }
 });
 
-window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        ['settings-modal', 'profile-modal', 'mapping-modal', 'game-info-modal', 'elo-overview-modal'].forEach(id => {
-            const m = document.getElementById(id);
-            if (m && !m.classList.contains('hidden')) toggleModalState(id);
-        });
-    }
-});
-
-function onHandCardDragStart(event, handIdx) {
-    if (!gameState.isRunning || !gameState.playerHand[handIdx]) {
-        event.preventDefault();
-        return;
-    }
-    gameState.draggedHandIndex = handIdx;
-    gameState.selectedHandIndex = handIdx;
-    if (event.dataTransfer) {
-        event.dataTransfer.setData('text/plain', String(handIdx));
-        event.dataTransfer.effectAllowed = 'move';
-    }
-    const el = document.getElementById(`hand-card-el-${handIdx}`);
-    if (el) setTimeout(() => el.classList.add('dragging-card'), 0);
-}
-
-function onHandCardDragEnd(event, handIdx) {
-    const el = document.getElementById(`hand-card-el-${handIdx}`);
-    if (el) el.classList.remove('dragging-card');
-    [0, 1, 2].forEach(i => {
-        const p = document.getElementById(`center-pile-${i}`);
-        if (p) p.classList.remove('pile-drag-over');
-    });
-}
-
-function onPileDragOver(event, pileIdx) {
-    if (!gameState.isRunning) return;
-    event.preventDefault();
-    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
-    const pileEl = document.getElementById(`center-pile-${pileIdx}`);
-    if (pileEl && !pileEl.classList.contains('pile-drag-over')) {
-        pileEl.classList.add('pile-drag-over');
-    }
-}
-
-function onPileDragLeave(event, pileIdx) {
-    const pileEl = document.getElementById(`center-pile-${pileIdx}`);
-    if (pileEl) pileEl.classList.remove('pile-drag-over');
-}
-
-function onPileDrop(event, pileIdx) {
-    event.preventDefault();
-    const pileEl = document.getElementById(`center-pile-${pileIdx}`);
-    if (pileEl) pileEl.classList.remove('pile-drag-over');
-    if (!gameState.isRunning) return;
-
-    let handIdx = gameState.draggedHandIndex;
-    if ((handIdx === undefined || handIdx === null) && event.dataTransfer) {
-        handIdx = parseInt(event.dataTransfer.getData('text/plain'), 10);
-    }
-    gameState.draggedHandIndex = null;
-
-    if (isNaN(handIdx) || !gameState.playerHand[handIdx]) return;
-    gameState.selectedHandIndex = handIdx;
-    tryPlaySelectedOnPile(pileIdx);
-}
 // ============================================================================
         // PARTIE-ANALYSE & LIVE-ZUG-NOTATION (FÜR HOST, GAST & EINZELSPIELER)
         // ============================================================================

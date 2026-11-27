@@ -138,14 +138,13 @@
 
                 if (!this._isHostSide) {
                     this._channel = null;
-                    setTimeout(() => {
-                        try { this._peerInstance._sb.removeChannel(ch); } catch (e) { }
-                    }, 60);
+                    this._peerInstance._removeChannel(ch, 60);
                 }
             }
             if (this._isHostSide) {
                 this._peerInstance._conns.delete(this.peer);
             }
+            this._listeners = Object.create(null);
         }
 
         _handleRemoteClose() {
@@ -160,11 +159,12 @@
             } else if (this._channel) {
                 const ch = this._channel;
                 this._channel = null;
-                try { this._peerInstance._sb.removeChannel(ch); } catch (e) { }
+                this._peerInstance._removeChannel(ch, 0);
             }
             if (wasOpen) {
                 this._emit('close');
             }
+            this._listeners = Object.create(null);
         }
 
         _clearTimers() {
@@ -208,6 +208,17 @@
                     }
                 }, 0);
             }
+        }
+
+        _removeChannel(ch, delayMs = 0) {
+            if (!ch) return;
+            if (this._channel === ch) this._channel = null;
+            if (this._guestConn && this._guestConn._channel === ch) this._guestConn._channel = null;
+            const doRemove = () => {
+                try { this._sb.removeChannel(ch); } catch (e) { }
+            };
+            if (delayMs > 0) setTimeout(doRemove, delayMs);
+            else doRemove();
         }
 
         _cleanupExistingChannel(channelName) {
@@ -295,6 +306,8 @@
             channel.on('presence', { event: 'leave' }, ({ key }) => {
                 if (this.destroyed || !key || key === this.id) return;
                 if (!this._conns.has(key)) return;
+                const prev = this._leaveTimers.get(key);
+                if (prev) clearTimeout(prev);
                 const t = setTimeout(() => {
                     this._leaveTimers.delete(key);
                     if (this.destroyed) return;
@@ -328,6 +341,10 @@
         }
 
         connect(targetId) {
+            if (this._guestConn) {
+                this._guestConn.close();
+                this._guestConn = null;
+            }
             const hostId = String(targetId);
             const channelName = `blink-rt:${hostId}`;
             this._cleanupExistingChannel(channelName);
@@ -367,7 +384,7 @@
                     conn._clearTimers();
                     if (!conn.open) {
                         conn._destroyed = true;
-                        try { this._sb.removeChannel(channel); } catch (e) { }
+                        this._removeChannel(channel, 0);
                         const errObj = { type: 'room-full', message: 'Raum ist bereits voll' };
                         conn._emit('error', errObj);
                         this._emit('error', errObj);
@@ -380,6 +397,8 @@
             // Erkennt Tab-Schließen oder Abbruch des Hosts
             channel.on('presence', { event: 'leave' }, ({ key }) => {
                 if (this.destroyed || conn._destroyed || key !== hostId || !conn.open) return;
+                const prev = this._leaveTimers.get(hostId);
+                if (prev) clearTimeout(prev);
                 const t = setTimeout(() => {
                     this._leaveTimers.delete(hostId);
                     if (this.destroyed || conn._destroyed || !conn.open) return;
@@ -423,7 +442,7 @@
                         if (!conn.open && !conn._destroyed && !this.destroyed) {
                             conn._clearTimers();
                             conn._destroyed = true;
-                            try { this._sb.removeChannel(channel); } catch (e) { }
+                            this._removeChannel(channel, 0);
                             const errObj = { type: 'peer-unavailable', message: 'Raum nicht gefunden' };
                             conn._emit('error', errObj);
                             this._emit('error', errObj);
@@ -431,6 +450,8 @@
                     }, 8000);
                 } else if ((status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') && !conn.open) {
                     conn._clearTimers();
+                    conn._destroyed = true;
+                    this._removeChannel(channel, 0);
                     const errObj = { type: 'network', message: err?.message || 'Verbindung fehlgeschlagen' };
                     conn._emit('error', errObj);
                     this._emit('error', errObj);
@@ -468,18 +489,11 @@
             }
 
             if (this._channel) {
-                const ch = this._channel;
-                this._channel = null;
-                setTimeout(() => {
-                    try { this._sb.removeChannel(ch); } catch (e) { }
-                }, 60);
+                this._removeChannel(this._channel, 60);
             }
+            this._listeners = Object.create(null);
         }
     }
 
     window.Peer = SupabasePeer;
-    window.BlinkRealtimeTransport = {
-        isSupabaseActive: () => Boolean(getSupabaseClient()),
-        OriginalPeer
-    };
 })();

@@ -10,15 +10,17 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Three.js (r128) & OrbitControls -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <!-- PeerJS für echten Peer-to-Peer Online-Multiplayer (WebRTC) -->
-    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <script defer src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap"
         rel="stylesheet">
 
     <!-- MathJax für sauberes LaTeX-Rendering -->
@@ -27,7 +29,7 @@
             tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] }
         };
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -118,8 +120,8 @@
                 Modell</button>
         </div>
         <div class="hidden sm:flex items-center gap-2 text-[11px] mono text-slate-400">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-            <span>Spielen &amp; Rätsel</span>
+            <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+            <span>3D- &amp; 2D-Modelle</span>
         </div>
     </div>
 
@@ -864,8 +866,6 @@
                                             class="text-xs font-bold uppercase tracking-wider text-slate-400 mono">Stapel
                                             M₁</span>
                                         <div id="center-pile-0" onclick="tryPlaySelectedOnPile(0)"
-                                            ondragover="onPileDragOver(event, 0)"
-                                            ondragleave="onPileDragLeave(event, 0)" ondrop="onPileDrop(event, 0)"
                                             class="w-[162px] sm:w-[190px] card-63-88 rounded-2xl bg-white border-4 border-slate-300 hover:border-slate-400 shadow-2xl flex flex-col justify-between p-3.5 cursor-pointer transition relative">
                                         </div>
                                     </div>
@@ -876,8 +876,6 @@
                                             class="text-xs font-bold uppercase tracking-wider text-slate-400 mono">Stapel
                                             M₂</span>
                                         <div id="center-pile-1" onclick="tryPlaySelectedOnPile(1)"
-                                            ondragover="onPileDragOver(event, 1)"
-                                            ondragleave="onPileDragLeave(event, 1)" ondrop="onPileDrop(event, 1)"
                                             class="w-[162px] sm:w-[190px] card-63-88 rounded-2xl bg-white border-4 border-slate-300 hover:border-slate-400 shadow-2xl flex flex-col justify-between p-3.5 cursor-pointer transition relative">
                                         </div>
                                     </div>
@@ -888,8 +886,6 @@
                                             class="text-xs font-bold uppercase tracking-wider text-purple-400 mono">Stapel
                                             M₃ (Cluster)</span>
                                         <div id="center-pile-2" onclick="tryPlaySelectedOnPile(2)"
-                                            ondragover="onPileDragOver(event, 2)"
-                                            ondragleave="onPileDragLeave(event, 2)" ondrop="onPileDrop(event, 2)"
                                             class="w-[162px] sm:w-[190px] card-63-88 rounded-2xl bg-white border-4 border-slate-300 hover:border-slate-400 shadow-2xl flex flex-col justify-between p-3.5 cursor-pointer transition relative">
                                         </div>
                                     </div>
@@ -1253,36 +1249,6 @@
 
                         <!-- Cluster-Button + Neustart -->
                         <div class="flex flex-wrap items-center gap-3 shrink-0">
-                            <div class="hidden">
-                                <div class="w-24 space-y-1">
-                                    <div class="flex justify-between text-[9.5px] mono font-bold">
-                                        <span class="inline-flex items-center gap-1 text-cyan-300 min-w-0"><span
-                                                id="vh-player-mini-avatar"
-                                                class="inline-flex items-center shrink-0"></span><span
-                                                id="vh-player-name-lbl" class="truncate">Du</span></span>
-                                        <span id="vh-bar-player-lbl" class="text-cyan-200">0 / 5</span>
-                                    </div>
-                                    <div class="w-full h-1.5 rounded-full bg-white/[0.08] overflow-hidden">
-                                        <div id="vh-bar-player"
-                                            class="h-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-300"
-                                            style="width: 0%"></div>
-                                    </div>
-                                </div>
-                                <div class="w-px h-5 bg-white/10"></div>
-                                <div class="w-24 space-y-1">
-                                    <div class="flex justify-between text-[9.5px] mono font-bold">
-                                        <span id="vh-bar-bot-name" class="text-rose-300 truncate pr-1">Bot</span>
-                                        <span id="vh-bar-bot-lbl" class="text-rose-200 shrink-0">0 / 5</span>
-                                    </div>
-                                    <div class="w-full h-1.5 rounded-full bg-white/[0.08] overflow-hidden">
-                                        <div id="vh-bar-bot"
-                                            class="h-full bg-gradient-to-r from-rose-500 to-amber-400 transition-all duration-300"
-                                            style="width: 0%"></div>
-                                    </div>
-                                </div>
-                                <span id="vh-progress-pill" class="hidden">0 / 5</span>
-                            </div>
-
                             <button type="button" id="vh-btn-cluster" onclick="vhCallCluster()"
                                 class="vh-cluster-cta-btn px-5 py-2.5 rounded-full font-extrabold text-xs sm:text-sm tracking-wide transition inline-flex items-center gap-2">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -4138,17 +4104,17 @@
     <div id="sonner-toaster"></div>
 
 
-    <script src="core.js"></script>
-    <script src="games.js"></script>
-    <script src="analysis.js"></script>
-    <script src="models.js"></script>
-    <script src="lab.js"></script>
-    <script src="haptics.js"></script>
-    <script src="multiplayer.js"></script>
-    <script src="realtime-p2p.js"></script>
-    <script src="cloud-auth.js"></script>
-    <script src="game-hub.js"></script>
-    <script src="profile-sync.js"></script>
+    <script defer src="core.js"></script>
+    <script defer src="games.js"></script>
+    <script defer src="analysis.js"></script>
+    <script defer src="models.js"></script>
+    <script defer src="lab.js"></script>
+    <script defer src="haptics.js"></script>
+    <script defer src="multiplayer.js"></script>
+    <script defer src="realtime-p2p.js"></script>
+    <script defer src="cloud-auth.js"></script>
+    <script defer src="game-hub.js"></script>
+    <script defer src="profile-sync.js"></script>
 </body>
 
 </html>

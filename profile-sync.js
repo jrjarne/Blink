@@ -1,5 +1,5 @@
 // ============================================================================
-// PROFIL-PERSISTENZ: DOPPEL-SICHERUNG (localStorage + IndexedDB) & BACKUP
+// PROFIL-PERSISTENZ: DOPPEL-SICHERUNG (localStorage + IndexedDB)
 // ============================================================================
 (function initBlinkProfilePersistence() {
   if (window.__BLINK_PROFILE_SYNC_READY) return;
@@ -26,8 +26,10 @@
     return { v: 1, savedAt: Date.now(), data };
   }
 
+  let cachedDbPromise = null;
   function openVaultDB() {
-    return new Promise((resolve, reject) => {
+    if (cachedDbPromise) return cachedDbPromise;
+    cachedDbPromise = new Promise((resolve, reject) => {
       if (!window.indexedDB) return reject(new Error('No IndexedDB'));
       const req = indexedDB.open(IDB_NAME, 1);
       req.onupgradeneeded = () => {
@@ -36,9 +38,18 @@
           db.createObjectStore(IDB_STORE);
         }
       };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.onsuccess = () => {
+        const db = req.result;
+        db.onclose = () => { cachedDbPromise = null; };
+        db.onversionchange = () => { db.close(); cachedDbPromise = null; };
+        resolve(db);
+      };
+      req.onerror = () => {
+        cachedDbPromise = null;
+        reject(req.error);
+      };
     });
+    return cachedDbPromise;
   }
 
   async function saveSnapshotToIDB(snapshot) {
@@ -61,6 +72,20 @@
     } catch (e) {
       return null;
     }
+  }
+
+  async function clearVault() {
+    clearTimeout(mirrorTimer);
+    try {
+      const db = await openVaultDB();
+      await new Promise((resolve) => {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).delete(IDB_KEY);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+        tx.onabort = () => resolve();
+      });
+    } catch (e) {}
   }
 
   let mirrorTimer = null;
@@ -120,123 +145,18 @@
 
   // 4. Spielername sofort beim Tippen speichern (nicht erst nach Wegklicken)
   function bindInstantNameInputs() {
-    ['player-name-input', 'settings-player-name-input'].forEach((id) => {
-      const el = document.getElementById(id);
-      if (!el || el.dataset.instantNameBound) return;
-      el.dataset.instantNameBound = '1';
-      let t = null;
-      el.addEventListener('input', () => {
-        clearTimeout(t);
-        t = setTimeout(() => {
-          if (typeof setPlayerName === 'function') setPlayerName(el.value);
-        }, 250);
-      });
+    const el = document.getElementById('player-name-input');
+    if (!el || el.dataset.instantNameBound) return;
+    el.dataset.instantNameBound = '1';
+    let t = null;
+    el.addEventListener('input', () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        if (typeof setPlayerName === 'function') setPlayerName(el.value);
+      }, 250);
     });
   }
   bindInstantNameInputs();
 
-  // 5. UTF-8-sichere Kodierung für Backup-Codes & Datei-Export
-  function encodeProfileCode(obj) {
-    const bytes = new TextEncoder().encode(JSON.stringify(obj));
-    let bin = '';
-    bytes.forEach((b) => { bin += String.fromCharCode(b); });
-    return 'BLINK1:' + btoa(bin);
-  }
-
-  function decodeProfileCode(raw) {
-    const clean = (raw || '').trim();
-    if (!clean) throw new Error('Leerer Code');
-    if (clean.startsWith('{')) return JSON.parse(clean);
-    const b64 = clean.replace(/^BLINK1:/i, '').replace(/\s+/g, '');
-    const bin = atob(b64);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return JSON.parse(new TextDecoder().decode(bytes));
-  }
-
-  async function applyRestoredSnapshot(parsed) {
-    const data = parsed && parsed.data && typeof parsed.data === 'object' ? parsed.data : parsed;
-    if (!data || typeof data !== 'object') throw new Error('Ungültiges Format');
-
-    let restoredCount = 0;
-    Object.entries(data).forEach(([k, v]) => {
-      if (isBlinkProfileKey(k) && typeof v === 'string') {
-        origSetItem.call(localStorage, k, v);
-        restoredCount++;
-      }
-    });
-    if (restoredCount === 0) throw new Error('Keine Profil-Daten enthalten');
-
-    await saveSnapshotToIDB(collectProfileSnapshot());
-    if (typeof showSonnerToast === 'function') {
-      showSonnerToast('Profil erfolgreich wiederhergestellt! Seite wird aktualisiert...', 'success');
-    }
-    setTimeout(() => window.location.reload(), 550);
-  }
-
-  window.copyProfileBackupCode = function () {
-    const snap = collectProfileSnapshot();
-    const code = encodeProfileCode(snap);
-    const input = document.getElementById('profile-backup-input');
-    if (input) input.value = code;
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(code).then(() => {
-        if (typeof showSonnerToast === 'function') {
-          showSonnerToast('Backup-Code kopiert! Sicher aufbewahren oder auf dem Handy einfügen.', 'success');
-        }
-      }).catch(() => {
-        if (input) { input.select(); }
-        if (typeof showSonnerToast === 'function') {
-          showSonnerToast('Code im Feld angezeigt – bitte manuell kopieren.', 'neutral');
-        }
-      });
-    }
-  };
-
-  window.restoreProfileBackupCode = async function () {
-    const input = document.getElementById('profile-backup-input');
-    const raw = input ? input.value : '';
-    try {
-      const parsed = decodeProfileCode(raw);
-      await applyRestoredSnapshot(parsed);
-    } catch (e) {
-      if (typeof showSonnerToast === 'function') {
-        showSonnerToast('Ungültiger Backup-Code – bitte vollständig einfügen.', 'warn');
-      }
-    }
-  };
-
-  window.downloadProfileBackupFile = function () {
-    const snap = collectProfileSnapshot();
-    const blob = new Blob([JSON.stringify(snap, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const name = (typeof getPlayerName === 'function' ? getPlayerName() : 'blink').replace(/[^a-z0-9_-]/gi, '_');
-    a.href = url;
-    a.download = `blink-profil-${name}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    if (typeof showSonnerToast === 'function') {
-      showSonnerToast('Profil-Backup als JSON-Datei gespeichert.', 'success');
-    }
-  };
-
-  window.importProfileBackupFile = function (fileInput) {
-    const file = fileInput && fileInput.files ? fileInput.files[0] : null;
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const parsed = decodeProfileCode(String(reader.result || ''));
-        await applyRestoredSnapshot(parsed);
-      } catch (e) {
-        if (typeof showSonnerToast === 'function') {
-          showSonnerToast('Die gewählte Datei ist kein gültiges Blink-Backup.', 'warn');
-        }
-      }
-    };
-    reader.readAsText(file);
-    fileInput.value = '';
-  };
+  window.BlinkProfileSync = { clearVault };
 })();

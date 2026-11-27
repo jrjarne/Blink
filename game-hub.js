@@ -148,6 +148,7 @@
     };
 
     function escHtml(str) {
+        if (typeof window.escapeHtml === 'function') return window.escapeHtml(str);
         return String(str || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
     }
 
@@ -166,6 +167,7 @@
     }
 
     function renderAvatarSafe(prof, size = 22) {
+        if (typeof window.renderAvatarSafe === 'function') return window.renderAvatarSafe(prof, size);
         if (typeof getPlayerAvatarSVG === 'function') return getPlayerAvatarSVG(prof || undefined, size);
         return `<span class="inline-flex items-center justify-center rounded-full bg-cyan-500/20 text-cyan-300 font-bold mono" style="width:${size}px;height:${size}px">●</span>`;
     }
@@ -2458,8 +2460,6 @@
     window.BlinkGameHub = {
         selectMode,
         openGame: selectMode,
-        openGallery: () => {},
-        openOverlay: openOnlineSection,
         openOnlineOverlay: openOnlineSection,
         closeOverlay: () => {},
         exitFocusMode,
@@ -2479,8 +2479,7 @@
         leaveInlineOnline,
         syncOnlineInline,
         handleOnlineDeepLink,
-        isPuzzleActive: (id) => Boolean(isPuzzleInFocus(id)),
-        isGalleryOpen: () => false
+        isPuzzleActive: (id) => Boolean(isPuzzleInFocus(id))
     };
 
     if (document.readyState === 'loading') {
@@ -2503,8 +2502,7 @@
         space:    `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2"></circle><circle cx="18" cy="6" r="2"></circle><circle cx="6" cy="18" r="2"></circle><circle cx="18" cy="18" r="2"></circle><circle cx="12" cy="12" r="2.2"></circle></svg>`,
         struct:   `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"></circle><circle cx="18" cy="6" r="2.5"></circle><circle cx="12" cy="18" r="2.5"></circle><line x1="8.2" y1="7.2" x2="15.8" y2="7.2"></line><line x1="7.2" y1="8.2" x2="10.8" y2="15.8"></line><line x1="16.8" y1="8.2" x2="13.2" y2="15.8"></line></svg>`,
         mc:       `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>`,
-        phase:    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>`,
-        brain:    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>`
+        phase:    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>`
     };
 
     const SHORT_LABELS = {
@@ -2529,13 +2527,12 @@
     const modelViewState = {
         basicView: '3d',   // '3d' | 'ring' | 'bipartite' | 'matrix' | 'matrices'
         basicCam: 'iso',
-        basicOptsOpen: true,
         advView: '3d',     // '3d' | 'theory'
-        advCam: 'iso',
-        advOptsOpen: true
+        advCam: 'iso'
     };
 
     function escHtml(str) {
+        if (typeof window.escapeHtml === 'function') return window.escapeHtml(str);
         return String(str || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
     }
 
@@ -3174,18 +3171,6 @@
         }
     }
 
-    function toggleModelOpts(which) {
-        const isBasic = which === 'basic';
-        const key = isBasic ? 'basicOptsOpen' : 'advOptsOpen';
-        modelViewState[key] = !modelViewState[key];
-        if (typeof playSound === 'function') playSound('tick');
-
-        const dock = document.getElementById(isBasic ? 'ws-basic-ins-opts-dock' : 'ws-adv-ins-opts-dock');
-        const btn = document.getElementById(isBasic ? 'ws-basic-opts-toggle' : 'ws-adv-opts-toggle');
-        if (dock) dock.classList.toggle('hidden', !modelViewState[key]);
-        if (btn) btn.classList.toggle('is-open', modelViewState[key]);
-    }
-
     // ------------------------------------------------------------------------
     // 2. LABORREITER: KOMBINIERTE LINKE KARTE & SPIELERPROFIL IM KI-TRAINING ENTFERNT
     // ------------------------------------------------------------------------
@@ -3456,7 +3441,6 @@
         clickAdvStruct,
         clickLayerBtn,
         setCam,
-        toggleModelOpts,
         selectLab,
         syncAllRails
     };

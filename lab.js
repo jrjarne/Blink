@@ -76,9 +76,14 @@
 
         function isValidCluster5(cards) {
             if (!cards || cards.length !== 5) return false;
-            return new Set(cards.map(c => c[0])).size === 5 &&
-                   new Set(cards.map(c => c[1])).size === 5 &&
-                   new Set(cards.map(c => c[2])).size === 5;
+            let xm = 0, ym = 0, zm = 0;
+            for (let i = 0; i < 5; i++) {
+                const c = cards[i];
+                xm |= (1 << c[0]);
+                ym |= (1 << c[1]);
+                zm |= (1 << c[2]);
+            }
+            return xm === 31 && ym === 31 && zm === 31;
         }
 
         function isStrictCluster5(cards) {
@@ -115,8 +120,7 @@
         const phaseState = {
             activeTab: 'montecarlo',
             m: 13,
-            metric: 'prob', // 'prob' | 'expected'
-            liveSample: null // { hyper25: number, full125: number }
+            metric: 'prob' // 'prob' | 'expected'
         };
 
         function setLabSubTab(tabName) {
@@ -147,10 +151,6 @@
 
             if (typeof syncUrlHash === 'function') syncUrlHash();
             if (tabName === 'phase') renderPhaseCurveUI();
-            if (tabName === 'brain') {
-                initBrainLabIfNeeded();
-                renderBrainLabUI();
-            }
             safeRenderMathJax();
         }
 
@@ -330,7 +330,6 @@
         const brainState = {
             ...loadAIRosterState(),
             initialized: false,
-            isTraining: false,
             creatorOpen: false,
             logoPickerOpen: false
         };
@@ -343,8 +342,6 @@
             traits: { reflex: 15, kombo: 15, sabotage: 15, stabilitaet: 15 },
             starterPerk: 'flow_state'
         };
-
-        function stopBrainTraining() { brainState.isTraining = false; }
 
         function saveAIRosterState() {
             try {
@@ -533,12 +530,6 @@
 
             saveAIRosterState();
             return ai.elo;
-        }
-
-        function initBrainLabIfNeeded() {
-            if (brainState.initialized) return;
-            brainState.initialized = true;
-            renderBrainLabUI();
         }
 
         function openAICreator() {
@@ -837,6 +828,7 @@
         
 
         function renderBrainLabUI() {
+            brainState.initialized = true;
             const ai = getActiveTrainedAI();
 
             const pEloEl = document.getElementById('lab-player-elo-val');
@@ -1091,7 +1083,6 @@
 
         function setPhaseM(val) {
             phaseState.m = Math.max(5, Math.min(25, parseInt(val, 10) || 13));
-            phaseState.liveSample = null;
             const slider = document.getElementById('phase-m-slider');
             if (slider) slider.value = phaseState.m;
             renderPhaseCurveUI();
@@ -1100,29 +1091,6 @@
         function setPhaseMetric(metric) {
             phaseState.metric = metric;
             playSound('tick');
-            renderPhaseCurveUI();
-        }
-
-        function runPhaseLiveSample() {
-            playSound('play');
-            const hyperDeck = [];
-            for (let s = 0; s < 5; s++) {
-                for (let t = 0; t < 5; t++) {
-                    hyperDeck.push([(s + 2 * t) % 5, (2 * s + t) % 5, (3 * s + t) % 5]);
-                }
-            }
-
-            const trials = 400;
-            let hitsHyper = 0;
-            let hitsFull = 0;
-            for (let i = 0; i < trials; i++) {
-                if (findClusterInCardsFast(sampleDistinctCards(hyperDeck, phaseState.m), false).hasAny) hitsHyper++;
-                if (findClusterInCardsFast(sampleDistinctCards(CARDS_125, phaseState.m), false).hasAny) hitsFull++;
-            }
-            phaseState.liveSample = {
-                hyper25: (hitsHyper / trials) * 100,
-                full125: (hitsFull / trials) * 100
-            };
             renderPhaseCurveUI();
         }
 
@@ -1157,8 +1125,6 @@
             if (kpiGrid) {
                 const fmtExp = (v) => v < 0.1 ? v.toFixed(4) : v.toFixed(2);
                 const fmtProb = (v) => v >= 100 ? '100 %' : `${v.toFixed(v < 1 ? 2 : 1)} %`;
-                const liveH = phaseState.liveSample ? ` · Live: ${phaseState.liveSample.hyper25.toFixed(1)} %` : '';
-                const liveF = phaseState.liveSample ? ` · Live: ${phaseState.liveSample.full125.toFixed(1)} %` : '';
 
                 kpiGrid.innerHTML = `
                     <div class="rounded-2xl bg-slate-950/75 border p-3.5 space-y-1" style="border-color:${colHyper}55">
@@ -1173,7 +1139,7 @@
                             ${isProb ? fmtProb(stHyper.probApprox) : fmtExp(stHyper.expected)}
                         </div>
                         <div class="text-[11px] mono text-slate-300">
-                            ${isProb ? `Erwartung E[X_${mCur}] = ${fmtExp(stHyper.expected)}${liveH}` : `Chance P(X_${mCur} ≥ 1) ≈ ${fmtProb(stHyper.probApprox)}${liveH}`}
+                            ${isProb ? `Erwartung E[X_${mCur}] = ${fmtExp(stHyper.expected)}` : `Chance P(X_${mCur} ≥ 1) ≈ ${fmtProb(stHyper.probApprox)}`}
                         </div>
                         <div class="text-[10px] text-slate-500">Schwelle E ≥ 1 bei m = 11 · ab m = 21 garantiert (100 %)</div>
                     </div>
@@ -1189,7 +1155,7 @@
                             ${isProb ? fmtProb(stFull.probApprox) : fmtExp(stFull.expected)}
                         </div>
                         <div class="text-[11px] mono text-slate-300">
-                            ${isProb ? `Erwartung E[X_${mCur}] = ${fmtExp(stFull.expected)}${liveF}` : `Chance P(X_${mCur} ≥ 1) ≈ ${fmtProb(stFull.probApprox)}${liveF}`}
+                            ${isProb ? `Erwartung E[X_${mCur}] = ${fmtExp(stFull.expected)}` : `Chance P(X_${mCur} ≥ 1) ≈ ${fmtProb(stFull.probApprox)}`}
                         </div>
                         <div class="text-[10px] text-slate-500">Schwelle E ≥ 1 erst bei m = 21 · ab m = 101 garantiert</div>
                     </div>
@@ -1262,20 +1228,10 @@
                 html += `<circle cx="${px.toFixed(1)}" cy="${yOf(pf.val).toFixed(1)}" r="${isSel ? 5.2 : 2.6}" fill="${isSel ? pal.dotCenter : colFull}" stroke="${colFull}" stroke-width="${isSel ? 2.4 : 1}" pointer-events="none"/>`;
             }
 
-            if (isProb && phaseState.liveSample) {
-                const yh = yOf(phaseState.liveSample.hyper25);
-                const yf = yOf(phaseState.liveSample.full125);
-                html += `<rect x="${(ax - 4).toFixed(1)}" y="${(yh - 4).toFixed(1)}" width="8" height="8" transform="rotate(45 ${ax.toFixed(1)} ${yh.toFixed(1)})" fill="${pal.c5}" stroke="${pal.dotCenter}" stroke-width="1.2" pointer-events="none"/>`;
-                html += `<rect x="${(ax - 4).toFixed(1)}" y="${(yf - 4).toFixed(1)}" width="8" height="8" transform="rotate(45 ${ax.toFixed(1)} ${yf.toFixed(1)})" fill="${pal.c5}" stroke="${pal.dotCenter}" stroke-width="1.2" pointer-events="none"/>`;
-            }
-
             svg.innerHTML = html;
 
             const legEl = document.getElementById('phase-curve-legend');
             if (legEl) {
-                const liveLeg = (isProb && phaseState.liveSample)
-                    ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/[0.02] border border-white/[0.06]" style="color:${pal.c5}"><span class="w-2 h-2 rotate-45 shrink-0" style="background:${pal.c5}"></span><span>Live-Stichprobe (400×)</span></span>`
-                    : '';
                 legEl.innerHTML = `
                     <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/[0.03] border" style="border-color:${colHyper}44">
                         <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${colHyper}"></span>
@@ -1285,7 +1241,6 @@
                         <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${colFull}"></span>
                         <span class="text-slate-300">Vollraum (125 Karten)</span>
                     </span>
-                    ${liveLeg}
                 `;
             }
         }
@@ -1630,7 +1585,6 @@
             vhAddLog(`<span class="text-amber-300">⚡ Auswahl:</span> Du wählst (${vhState.pendingCard.join(',')})`);
             renderVerhoerStandaloneUI();
         }
-        window.vhBlindPick = vhStrictPick;
 
         function vhResolveDecision(takeCard) {
             const idx = vhState.pendingIdx;
@@ -1841,7 +1795,10 @@
                 if (new Set(cards.map(c => c[2])).size < 3) reasons.push('Symbol');
                 triggerInvalidShake('vh-player-skt-box');
                 showSonnerToast(`Kein gültiges SKT! Dopplung bei: ${reasons.join(', ')}.`, 'warn');
-                setTimeout(() => {
+                if (vhState.sktTimer) clearTimeout(vhState.sktTimer);
+                vhState.sktTimer = setTimeout(() => {
+                    vhState.sktTimer = null;
+                    if (!vhState.isRunning) return;
                     vhState.sktDraftIndices = [];
                     renderVerhoerStandaloneUI();
                 }, 550);
@@ -2422,6 +2379,7 @@
             cascadeState.clears = 0;
             cascadeState.skipsLeft = 3;
             cascadeState.rotatesLeft = 3;
+            if (cascadeState.clearTimer) { clearTimeout(cascadeState.clearTimer); cascadeState.clearTimer = null; }
             cascadeState.rotateMode = false;
             cascadeState.isAnimating = false;
             cascadeState.gameOver = false;
@@ -2602,7 +2560,9 @@
 
             renderCascadeUI();
 
-            setTimeout(() => {
+            if (cascadeState.clearTimer) clearTimeout(cascadeState.clearTimer);
+            cascadeState.clearTimer = setTimeout(() => {
+                cascadeState.clearTimer = null;
                 cascadeState.clearingCells.forEach(k => {
                     const [r, c] = k.split(',').map(Number);
                     cascadeState.board[r][c] = null;
@@ -2844,6 +2804,7 @@
         }
 
         function initDailyChallenge(isPractice = false) {
+            if (dailyState.errTimer) { clearTimeout(dailyState.errTimer); dailyState.errTimer = null; }
             dailyState.isPractice = isPractice;
             dailyState.dateKey = getTodayDateKey();
             dailyState.selectedIndices = [];
@@ -2927,7 +2888,9 @@
                 } else {
                     dailyState.selectedIndices.forEach(i => triggerInvalidShake(`daily-card-${i}`));
                 }
-                setTimeout(() => {
+                if (dailyState.errTimer) clearTimeout(dailyState.errTimer);
+                dailyState.errTimer = setTimeout(() => {
+                    dailyState.errTimer = null;
                     dailyState.selectedIndices = [];
                     renderDailyUI();
                 }, 520);
@@ -4803,45 +4766,27 @@ let heroSpinCount = 0;
             }
         }, 150);
         
-        // --- Interaktiver 3D-Tilt-Effekt + Holografischer Lichtglanz ---
             updateSoundButtonUI();
-            const hero3DContainer = null;
-            const heroCardGroup = document.querySelector('.hero-card-group');
 
-            if (hero3DContainer && heroCardGroup) {
-                hero3DContainer.addEventListener('mousemove', (e) => {
-                    const rect = hero3DContainer.getBoundingClientRect();
-                    const xRel = (e.clientX - rect.left - rect.width / 2) / (rect.width / 2);
-                    const yRel = (e.clientY - rect.top - rect.height / 2) / (rect.height / 2);
-
-                    const newRotX = 25 - (yRel * 20);
-                    const newRotY = -30 + (xRel * 30);
-
-                    heroCardGroup.style.transform = `rotateX(${newRotX}deg) rotateY(${newRotY}deg)`;
-                    heroCardGroup.style.setProperty('--glare-x', `${Math.round(50 + xRel * 45)}%`);
-                    heroCardGroup.style.setProperty('--glare-y', `${Math.round(50 + yRel * 45)}%`);
-                    heroCardGroup.style.setProperty('--glare-bg-x', `${Math.round(50 - xRel * 45)}%`);
-                    heroCardGroup.style.setProperty('--glare-bg-y', `${Math.round(50 - yRel * 45)}%`);
-                    heroCardGroup.style.setProperty('--glare-opacity', '1');
-                });
-
-                hero3DContainer.addEventListener('mouseleave', () => {
-                    heroCardGroup.style.transform = `rotateX(25deg) rotateY(-30deg)`;
-                    heroCardGroup.style.setProperty('--glare-opacity', '0');
-                });
-            }
-            
             let _lastAnimTs = performance.now();
+            let _animRafId = null;
+            let _cachedBasicPane = null;
+            let _cachedAdvPane = null;
+
             function animate(now) {
-                requestAnimationFrame(animate);
-                if (document.hidden) { _lastAnimTs = now || performance.now(); return; }
+                const page = state.currentPage;
+                if (document.hidden || (page !== 'basic-model' && page !== 'advanced-model')) {
+                    _animRafId = null;
+                    return;
+                }
+                _animRafId = requestAnimationFrame(animate);
                 const ts = now || performance.now();
                 const step60 = Math.min(2.5, Math.max(0.1, (ts - _lastAnimTs) / 16.6667));
                 _lastAnimTs = ts;
 
-                if (state.currentPage === 'basic-model') {
-                    const pane = document.getElementById('ws-basic-pane');
-                    if (pane && !pane.classList.contains('ws-mview-3d')) return;
+                if (page === 'basic-model') {
+                    if (!_cachedBasicPane || !_cachedBasicPane.isConnected) _cachedBasicPane = document.getElementById('ws-basic-pane');
+                    if (_cachedBasicPane && !_cachedBasicPane.classList.contains('ws-mview-3d')) return;
                     controls.update();
                     highlight3DGroup.children.forEach(child => {
                         if (child.userData.isRotatingHalo) {
@@ -4850,13 +4795,25 @@ let heroSpinCount = 0;
                         }
                     });
                     renderer.render(scene, camera);
-                } else if (state.currentPage === 'advanced-model' && advState.initialized) {
-                    const pane = document.getElementById('ws-adv-pane');
-                    if (pane && !pane.classList.contains('ws-mview-3d')) return;
+                } else if (page === 'advanced-model' && advState.initialized) {
+                    if (!_cachedAdvPane || !_cachedAdvPane.isConnected) _cachedAdvPane = document.getElementById('ws-adv-pane');
+                    if (_cachedAdvPane && !_cachedAdvPane.classList.contains('ws-mview-3d')) return;
                     advState.controls.update();
                     advState.renderer.render(advState.scene, advState.camera);
                 }
             }
-            requestAnimationFrame(animate);
+
+            window.sync3DAnimLoop = function sync3DAnimLoop() {
+                const needLoop = !document.hidden && (state.currentPage === 'basic-model' || state.currentPage === 'advanced-model');
+                if (needLoop && !_animRafId) {
+                    _lastAnimTs = performance.now();
+                    _animRafId = requestAnimationFrame(animate);
+                } else if (!needLoop && _animRafId) {
+                    cancelAnimationFrame(_animRafId);
+                    _animRafId = null;
+                }
+            };
+            document.addEventListener('visibilitychange', window.sync3DAnimLoop);
+            window.sync3DAnimLoop();
         };
     

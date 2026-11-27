@@ -417,10 +417,6 @@ function setAdvStructureMode(mode) {
     renderAdv2DGrid();
 }
 
-function selectAdvPreset(val) {
-    setAdvStructureMode(val);
-}
-
 function setAdvLayerX(xVal) {
     if (advState.layerX !== xVal) playSound('tick');
     advState.layerX = xVal;

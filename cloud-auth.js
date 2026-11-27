@@ -22,24 +22,32 @@
         lastSyncAt: null,
         statusMsg: '',
         statusTone: 'neutral', // 'neutral' | 'ok' | 'err'
-        activeTab: 'avatar',   // 'avatar' | 'account'
         syncTimer: null,
-        isRestoring: false
+        isRestoring: false,
+        dirty: false,
+        lastPushedSig: ''
     };
 
     function isConfigured() {
         return Boolean(
             SUPABASE_URL &&
             SUPABASE_PUBLISHABLE_KEY &&
-            !SUPABASE_URL.includes('DEINE-PROJEKT-ID') &&
-            !SUPABASE_PUBLISHABLE_KEY.includes('DEIN_KEY_HIER') &&
             window.supabase &&
             typeof window.supabase.createClient === 'function'
         );
     }
 
     function esc(str) {
+        if (typeof window.escapeHtml === 'function') return window.escapeHtml(str);
         return String(str || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+
+    function stableSaveSignature(obj) {
+        if (!obj || typeof obj !== 'object') return '';
+        const keys = Object.keys(obj).sort();
+        const sorted = {};
+        for (let i = 0; i < keys.length; i++) sorted[keys[i]] = obj[keys[i]];
+        return JSON.stringify(sorted);
     }
 
     function normalizeUsername(raw) {
@@ -125,9 +133,14 @@
     // ------------------------------------------------------------------------
     // 2. CLOUD-SYNC (PUSH & PULL)
     // ------------------------------------------------------------------------
-    async function pushToCloud(silent = true) {
+    async function pushToCloud(silent = true, force = false) {
         if (!cloudState.client || !cloudState.user || cloudState.isRestoring) return false;
         const saveData = collectLocalSaveData();
+        const sig = stableSaveSignature(saveData);
+        if (!force && silent && sig === cloudState.lastPushedSig) {
+            cloudState.dirty = false;
+            return true;
+        }
         const summary = readSummaryFromLocal();
         const payload = {
             id: cloudState.user.id,
@@ -151,6 +164,8 @@
             return false;
         }
 
+        cloudState.lastPushedSig = sig;
+        cloudState.dirty = false;
         cloudState.lastSyncAt = new Date();
         if (!silent) {
             setCloudFeedback('Spielstand erfolgreich in der Cloud gespeichert.', 'ok');
@@ -175,6 +190,7 @@
 
     function scheduleAutoSync() {
         if (!cloudState.client || !cloudState.user || cloudState.isRestoring) return;
+        cloudState.dirty = true;
         if (cloudState.syncTimer) clearTimeout(cloudState.syncTimer);
         cloudState.syncTimer = setTimeout(() => {
             cloudState.syncTimer = null;
@@ -188,21 +204,27 @@
         const origRemove = Storage.prototype.removeItem;
 
         Storage.prototype.setItem = function (key, value) {
+            const prev = (this === window.localStorage && typeof key === 'string') ? this.getItem(key) : undefined;
             origSet.apply(this, arguments);
-            if (this === window.localStorage && typeof key === 'string' && key.startsWith(STORAGE_PREFIX)) {
+            if (this === window.localStorage && typeof key === 'string' && key.startsWith(STORAGE_PREFIX) && prev !== String(value)) {
                 scheduleAutoSync();
             }
         };
         Storage.prototype.removeItem = function (key) {
+            const existed = (this === window.localStorage && typeof key === 'string') ? this.getItem(key) !== null : false;
             origRemove.apply(this, arguments);
-            if (this === window.localStorage && typeof key === 'string' && key.startsWith(STORAGE_PREFIX)) {
+            if (existed && key.startsWith(STORAGE_PREFIX)) {
                 scheduleAutoSync();
             }
         };
         Storage.prototype.__blinkCloudHooked = true;
 
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden' && cloudState.user) {
+            if (document.visibilityState === 'hidden' && cloudState.user && (cloudState.dirty || cloudState.syncTimer)) {
+                if (cloudState.syncTimer) {
+                    clearTimeout(cloudState.syncTimer);
+                    cloudState.syncTimer = null;
+                }
                 pushToCloud(true);
             }
         });
@@ -331,15 +353,24 @@
     async function handleLogout(resetDevice = false) {
         if (!cloudState.client || cloudState.busy) return;
         cloudState.busy = true;
+        if (cloudState.syncTimer) {
+            clearTimeout(cloudState.syncTimer);
+            cloudState.syncTimer = null;
+        }
         await pushToCloud(true);
         await cloudState.client.auth.signOut();
         cloudState.user = null;
         cloudState.username = '';
         cloudState.lastSyncAt = null;
+        cloudState.lastPushedSig = '';
+        cloudState.dirty = false;
         cloudState.busy = false;
 
         if (resetDevice) {
             clearLocalBlinkKeys();
+            if (window.BlinkProfileSync && typeof window.BlinkProfileSync.clearVault === 'function') {
+                await window.BlinkProfileSync.clearVault();
+            }
             if (typeof showSonnerToast === 'function') showSonnerToast('Abgemeldet & Gerät zurückgesetzt.', 'neutral');
             setTimeout(() => window.location.reload(), 380);
             return;
@@ -351,24 +382,9 @@
     }
 
     // ------------------------------------------------------------------------
-    // 4. UI-INTEGRATION DIREKT IM BESTEHENDEN #profile-modal (APPLE SHEET)
+    // 4. UI-INTEGRATION IM EINSTELLUNGSFENSTER
     // ------------------------------------------------------------------------
     function updateHeaderCloudDot() {
-        const btn = document.getElementById('header-profile-btn');
-        if (btn) {
-            btn.style.position = 'relative';
-            btn.style.overflow = 'visible';
-            let dot = document.getElementById('header-cloud-dot');
-            if (!dot) {
-                dot = document.createElement('span');
-                dot.id = 'header-cloud-dot';
-                dot.className = 'cloud-status-dot';
-                btn.appendChild(dot);
-            }
-            dot.classList.toggle('is-online', Boolean(cloudState.user));
-            dot.title = cloudState.user ? `Cloud aktiv (${cloudState.username})` : 'Nicht angemeldet (nur lokal)';
-        }
-
         const sideDot = document.getElementById('ios-sidebar-cloud-dot');
         if (sideDot) {
             sideDot.classList.toggle('is-online', Boolean(cloudState.user));
@@ -378,19 +394,6 @@
         if (sideTxt) {
             sideTxt.textContent = cloudState.user ? `Cloud · ${cloudState.username}` : 'Lokal';
         }
-    }
-
-    function setProfileSheetTab(tab = 'avatar', silent = false) {
-        cloudState.activeTab = tab === 'account' ? 'account' : 'avatar';
-        if (typeof setSettingsSection === 'function') {
-            setSettingsSection(cloudState.activeTab === 'account' ? 'cloud' : 'profile', silent);
-        }
-        if (cloudState.activeTab === 'account') renderCloudAccountView();
-    }
-
-    function injectProfileSheetTabs() {
-        // Im vereinheitlichten iOS-Einstellungsfenster existiert #profile-cloud-account-body bereits direkt im DOM
-        renderCloudAccountView();
     }
 
     function renderCloudAccountView() {
@@ -529,7 +532,6 @@
     // 5. BOOT & BESTEHENDE SESSION PRÜFEN
     // ------------------------------------------------------------------------
     async function bootCloudAuth() {
-        injectProfileSheetTabs();
         hookLocalStorageAutoSync();
 
         if (!isConfigured()) {
@@ -551,14 +553,15 @@
                 // Beim Laden prüfen, ob in der Cloud ein neuerer Spielstand liegt
                 const remote = await pullFromCloud();
                 if (remote && remote.save_data) {
-                    const localSig = JSON.stringify(collectLocalSaveData());
-                    const remoteSig = JSON.stringify(remote.save_data);
+                    const localSig = stableSaveSignature(collectLocalSaveData());
+                    const remoteSig = stableSaveSignature(remote.save_data);
                     if (remoteSig !== localSig && Object.keys(remote.save_data).length > 0 && !sessionStorage.getItem('blink_cloud_hydrated')) {
                         sessionStorage.setItem('blink_cloud_hydrated', '1');
                         applyCloudSaveData(remote.save_data);
                         window.location.reload();
                         return;
                     }
+                    cloudState.lastPushedSig = localSig;
                 }
                 cloudState.lastSyncAt = new Date();
             }
@@ -569,11 +572,10 @@
     }
 
     window.BlinkCloudAuth = {
-        setTab: setProfileSheetTab,
         render: renderCloudAccountView,
         login: handleLogin,
         register: handleRegister,
-        syncNow: () => pushToCloud(false),
+        syncNow: () => pushToCloud(false, true),
         changePassword: handlePasswordChange,
         logout: handleLogout
     };

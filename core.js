@@ -1,8 +1,26 @@
-        function safeRenderMathJax() {
+        function safeRenderMathJax(targetEl = null) {
             if (typeof MathJax !== 'undefined' && typeof MathJax.typesetPromise === 'function') {
-                MathJax.typesetPromise().catch((err) => console.log('MathJax Error:', err));
+                const targets = targetEl ? (Array.isArray(targetEl) ? targetEl : [targetEl]) : undefined;
+                MathJax.typesetPromise(targets).catch((err) => console.log('MathJax Error:', err));
             }
         }
+
+        // Gemeinsame Kern-Utilities (geteilt von core, games, game-hub, multiplayer, cloud-auth)
+        window.escapeHtml = function escapeHtml(str) {
+            return String(str || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        };
+        window.genRoomCode = function genRoomCode(len = 4) {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let out = '';
+            for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
+            return out;
+        };
+        window.renderAvatarSafe = function renderAvatarSafe(prof, size = 28) {
+            if (typeof getPlayerAvatarSVG === 'function') {
+                return getPlayerAvatarSVG(prof || undefined, size);
+            }
+            return `<span class="inline-flex items-center justify-center rounded-full bg-cyan-500/20 text-cyan-300 font-bold mono" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.42)}px">●</span>`;
+        };
 
        // ============================================================================
         // CINEMATIC SOUND-DESIGN (INTERSTELLAR „CORNFIELD CHASE“ · WEB AUDIO API)
@@ -472,10 +490,6 @@
             } else {
                 playSound('flip');
             }
-        }
-
-        function toggleSoundEnabled() {
-            setSoundEnabled(!soundEnabled);
         }
 
 // ============================================================================
@@ -1129,8 +1143,6 @@
             subView2D: 'ring',
             splitLeftPercent: 48,
             filterX: null,
-            filterY: null,
-            filterZ: null,
             cycleLayer: 0,
             colorMode: 'y',
             showEmptyNodes: true,
@@ -1139,9 +1151,6 @@
             showGridBox: true,
             highlightedCard: null,
             highlightedProp: null,
-            animTimer: null,
-            animStepIndex: -1,
-            animSequence: [],
             searchQuery: ''
         };
 
@@ -1203,7 +1212,7 @@
             if (sub) sub.textContent = GAME_INFO_SUBTITLES[validTab] || '';
 
             requestAnimationFrame(() => moveSlidingPill('game-info-mode-tabs', `game-info-tab-${validTab}`));
-            safeRenderMathJax();
+            safeRenderMathJax(document.getElementById(`game-info-view-${validTab}`));
         }
 
         function toggleGameInfoModal(preferredTab = null) {
@@ -1216,7 +1225,6 @@
                     : ((typeof labState !== 'undefined' && GAME_INFO_TABS.includes(labState.activeGameTab)) ? labState.activeGameTab : 'arena');
                 setGameInfoModalTab(activeGame, true);
             }
-            safeRenderMathJax();
         }
 
         const SETTINGS_SECTIONS = {
@@ -1488,8 +1496,6 @@
                     e.stopPropagation();
                     const wasOpen = wrap.classList.contains('open');
                     closeAllCustomSelects(wrap);
-                    const lessonMenu = document.getElementById('lessons-dropdown-menu');
-                    if (lessonMenu) lessonMenu.classList.add('hidden');
                     wrap.classList.toggle('open', !wasOpen);
                     playSound('tick');
                 });
@@ -1516,19 +1522,6 @@
                 });
             }
         }
-
-        function handleAceternitySpotlight(e) {
-            const cards = document.querySelectorAll('.aceternity-bento-card');
-            cards.forEach(card => {
-                const rect = card.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                card.style.setProperty('--mouse-x', `${x}px`);
-                card.style.setProperty('--mouse-y', `${y}px`);
-            });
-        }
-
-        
 
      let _isApplyingHashRoute = false;
         let _lastSyncedHash = '';
@@ -1628,7 +1621,7 @@
             state.currentPage = pageId;
             syncUrlHash();
     if (pageId !== 'game' && typeof stopGameMusic === 'function') stopGameMusic();
-    if (pageId !== 'ai' && typeof brainState !== 'undefined' && brainState.isTraining && typeof stopBrainTraining === 'function') stopBrainTraining();
+    if (typeof window.sync3DAnimLoop === 'function') window.sync3DAnimLoop();
     if (navigateTo._ready) playSound('tick');
     navigateTo._ready = true;
 
@@ -1775,10 +1768,6 @@
             if (next < 1) next = 8;
             if (next > 8) next = 1;
             openLessonPage(next);
-        }
-
-        function toggleMappingModal() {
-            toggleSettingsModal('mapping');
         }
 
         function setupDraggableResizer(resizerId, workspaceId, badgeId, onPercentChange) {
@@ -1990,9 +1979,7 @@
                     for (let z = 0; z < 6; z++) {
                         const key = keyOf(x, y, z);
                         const isCard = activeSet.has(key);
-                        const matchesSlice = (state.filterX === null || state.filterX === x) &&
-                                             (state.filterY === null || state.filterY === y) &&
-                                             (state.filterZ === null || state.filterZ === z);
+                        const matchesSlice = (state.filterX === null || state.filterX === x);
 
                         const isHighlightedCard = state.highlightedCard && state.highlightedCard.x === x && state.highlightedCard.y === y && state.highlightedCard.z === z;
                         const renderAsFullSphere = isCard || state.showFullSpace;
@@ -2201,7 +2188,7 @@
                 }
             } else {
                 renderer.domElement.style.cursor = 'grab';
-                if (hovered3DMesh && !state.animTimer) {
+                if (hovered3DMesh) {
                     hovered3DMesh = null;
                     clearHighlights();
                 }
@@ -2432,7 +2419,7 @@
                     html += `
                         <g class="svg-card-badge" style="opacity:${hasAnyHighlight ? (active ? 1.0 : 0.28) : 0.98}"
                            onmouseenter="highlightCardAcrossViews(${kx},${ky},${kz}, false)"
-                           onmouseleave="if(!state.animTimer) clearHighlights()"
+                           onmouseleave="clearHighlights()"
                            onclick="highlightCardAcrossViews(${kx},${ky},${kz}, true)">
                             <rect x="${bx - 32}" y="${by - 10}" width="64" height="20" rx="10" fill="${active ? pal.badgeActiveFill : pal.badgeFill}" stroke="${active ? pal.activeStroke : PALETTE_Y[ky].strokeHex}" stroke-width="${active ? 2.2 : 1.5}" />
                             <svg x="${bx - 28}" y="${by - 7}" width="14" height="14" viewBox="0 0 24 24">${getSymbolInnerSVG(kz, PALETTE_Y[ky].hex, '#020617', 1.1)}</svg>

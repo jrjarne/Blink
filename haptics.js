@@ -366,45 +366,6 @@
         card.classList.remove('is-tilting');
     }
 
-    function updateHandFanAngles() {
-        const handContainers = [
-            { id: 'player-hand-container', itemSel: '.game-card', maxDeg: 0, dropPx: 0 },
-            { id: 'eg-hand-container', itemSel: '.game-card', maxDeg: 0, dropPx: 0 }
-        ];
-        handContainers.forEach(({ id, itemSel, maxDeg, dropPx }) => {
-            const cont = document.getElementById(id);
-            if (!cont) return;
-            const cards = cont.querySelectorAll(itemSel);
-            const n = cards.length;
-            if (n <= 1) {
-                cards.forEach(c => {
-                    c.style.setProperty('--card-fan-rot', '0deg');
-                    c.style.setProperty('--card-fan-y', '0px');
-                });
-                return;
-            }
-            const mid = (n - 1) / 2;
-            cards.forEach((c, idx) => {
-                const norm = mid > 0 ? (idx - mid) / mid : 0; // -1 .. +1
-                const rot = norm * maxDeg;
-                const drop = norm * norm * dropPx;
-                c.style.setProperty('--card-fan-rot', `${rot.toFixed(2)}deg`);
-                c.style.setProperty('--card-fan-y', `${drop.toFixed(1)}px`);
-            });
-        });
-    }
-
-    // Beobachtet Karten-Container, damit Fächerbogen nach jedem Render automatisch sitzt
-    function observeHandFanContainers() {
-        if (typeof MutationObserver === 'undefined') return;
-        const obs = new MutationObserver(() => updateHandFanAngles());
-        ['player-hand-container', 'eg-hand-container'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) obs.observe(el, { childList: true });
-        });
-        updateHandFanAngles();
-    }
-
     // ------------------------------------------------------------------------
     // 4. BALATRO PHYSIK-DRAG-&-DROP ENGINE (MAUS + TOUCH, VELOCITY-TILT, MAGNET)
     // ------------------------------------------------------------------------
@@ -1101,18 +1062,15 @@
         burst: hapticCelebrationBurst,
         flyCard: hapticFlyCard,
         stampPop: hapticStampPop,
-        syncRanges: syncAllRangeFills,
-        updateFans: updateHandFanAngles
+        syncRanges: syncAllRangeFills
     };
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             syncAllRangeFills();
-            observeHandFanContainers();
         });
     } else {
         syncAllRangeFills();
-        observeHandFanContainers();
     }
 })();
 // ============================================================================
@@ -1787,9 +1745,28 @@
             }
         };
 
-        // 5. Haupt-Simulationsschleife (pausiert automatisch auf allen Unterseiten)
+        // 5. Haupt-Simulationsschleife (pausiert automatisch auf allen Unterseiten & außerhalb Viewport)
+        let heroInViewport = true;
+        let cachedWrapW = wrapper.clientWidth || 420;
+        let cachedIsLight = document.documentElement.getAttribute('data-theme') === 'academic-light';
+
+        if (typeof ResizeObserver !== 'undefined') {
+            new ResizeObserver(() => { cachedWrapW = wrapper.clientWidth || 420; }).observe(wrapper);
+        }
+        if (typeof MutationObserver !== 'undefined') {
+            new MutationObserver(() => {
+                cachedIsLight = document.documentElement.getAttribute('data-theme') === 'academic-light';
+            }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        }
+        if (typeof IntersectionObserver !== 'undefined') {
+            new IntersectionObserver((entries) => {
+                heroInViewport = Boolean(entries[0] && entries[0].isIntersecting);
+                if (heroInViewport) ensureRunning();
+            }, { threshold: 0.01 }).observe(wrapper);
+        }
+
         function isHeroVisible() {
-            if (document.visibilityState === 'hidden') return false;
+            if (document.visibilityState === 'hidden' || !heroInViewport) return false;
             const home = document.getElementById('page-home');
             return Boolean(home && !home.classList.contains('hidden'));
         }
@@ -1803,7 +1780,7 @@
             lastFrameTime = now;
             const tSec = now * 0.001;
 
-            const wrapW = wrapper.clientWidth || 420;
+            const wrapW = cachedWrapW;
             const mobScale = wrapW < 310 ? 0.70 : (wrapW < 370 ? 0.84 : 1.0);
 
             // Gruppen-Zielwinkel (sanfte Trägheit + Rückführung bei Einzelkarten-Fokus)
@@ -1899,7 +1876,7 @@
                 const shX = -totalRy * 0.42;
                 const shY = 16 + totalRx * 0.34 + liftFactor * 0.35;
                 const shBlur = 26 + liftFactor * 0.65;
-                const isLight = document.documentElement.getAttribute('data-theme') === 'academic-light';
+                const isLight = cachedIsLight;
                 const baseAlpha = isLight ? 0.17 : 0.44;
                 const shAlpha = Math.max(isLight ? 0.08 : 0.22, baseAlpha - liftFactor * 0.003);
                 card.style.setProperty('--hero-sh-x', `${shX.toFixed(1)}px`);
@@ -2779,47 +2756,7 @@
     }
 
     // ------------------------------------------------------------------------
-    // 2. ELASTISCHES HAND-AUSWEICHEN (ARENA, DAS VERHÖR, ENDGAMES)
-    // ------------------------------------------------------------------------
-    const HAND_CONTAINERS = ['player-hand-container', 'vh-player-hand', 'eg-hand-container'];
-
-    function clearHandParting(container) {
-        if (!container) return;
-        container.querySelectorAll('.game-card, [id^="vh-card-"]').forEach(c => {
-            c.style.setProperty('--hand-shift-x', '0px');
-        });
-    }
-
-    function setupHandParting() {
-        return;
-        const isCoarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-        if (isCoarse) return;
-
-        HAND_CONTAINERS.forEach(id => {
-            const cont = document.getElementById(id);
-            if (!cont || cont.dataset.partingWired === '1') return;
-            cont.dataset.partingWired = '1';
-
-            cont.addEventListener('pointerover', (e) => {
-                if (e.pointerType === 'touch' || document.body.classList.contains('haptic-is-dragging')) return;
-                const card = e.target.closest('.game-card, [id^="vh-card-"]');
-                if (!card || !cont.contains(card)) return;
-                const cards = Array.from(cont.querySelectorAll('.game-card, [id^="vh-card-"]'));
-                const idx = cards.indexOf(card);
-                if (idx === -1) return;
-                cards.forEach((c, i) => {
-                    const diff = i - idx;
-                    const shift = diff === 0 ? 0 : (diff < 0 ? -Math.max(4, 11 - Math.abs(diff) * 3) : Math.max(4, 11 - Math.abs(diff) * 3));
-                    c.style.setProperty('--hand-shift-x', `${shift}px`);
-                });
-            }, { passive: true });
-
-            cont.addEventListener('pointerleave', () => clearHandParting(cont));
-        });
-    }
-
-    // ------------------------------------------------------------------------
-    // 3. FLICK-TO-PLAY & ELASTISCHER ABPRALLER BEI UNGÜLTIGEM ZUG
+    // 2. FLICK-TO-PLAY & ELASTISCHER ABPRALLER BEI UNGÜLTIGEM ZUG
     // ------------------------------------------------------------------------
     function resolveFlickTarget(dragState, findTargetFn) {
         if (!dragState || prefersReducedMotion()) return null;
@@ -3035,13 +2972,6 @@
         }
     }
 
-    function animateArenaRestock() {
-        const numPiles = typeof getActivePileCount === 'function' ? getActivePileCount() : 2;
-        for (let i = 0; i < numPiles; i++) {
-            setTimeout(() => animateDealFromDeck('player-draw-pile-btn', `center-pile-${i}`, 'amber'), i * 65);
-        }
-    }
-
     function animateEndgameDealWave() {
         document.querySelectorAll('[id^="eg-pile-"]').forEach(p => applyPileScatter(p, true));
         animateGridDealWave('#eg-piles-container [id^="eg-pile-"], #eg-hand-container .game-card', 45);
@@ -3214,7 +3144,6 @@
     // 7. INITIALISIERUNG & OBSERVER
     // ------------------------------------------------------------------------
     function bootUnifiedPhysics() {
-        setupHandParting();
         wireSudokuFlightHook();
 
         if (typeof MutationObserver !== 'undefined') {
@@ -3233,7 +3162,6 @@
         animateRectToSelector,
         animateGridDealWave,
         animateArenaOpeningDeal,
-        animateArenaRestock,
         animateEndgameDealWave,
         popSelectedCard,
         playDailyRepulsion,
