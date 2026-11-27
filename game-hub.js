@@ -1460,16 +1460,101 @@
     }
 
     // ------------------------------------------------------------------------
-    // 2. FOKUSMODUS-STEUERUNG (ALLE 6 SPIELMODI · WERKZEUGE ERST IM FOKUSMODUS)
+    // 2. FOKUSMODUS-STEUERUNG (ALLE 6 SPIELMODI · IDENTISCHE FLIP-STARTANIMATION)
     // ------------------------------------------------------------------------
+    function getModeTransitionParts(modeId) {
+        const view = document.getElementById(`game-view-${modeId}`);
+        if (!view || view.classList.contains('hidden')) return null;
+
+        if (modeId === 'arena') {
+            const centerCard = view.querySelector('.aceternity-bento-card') || view;
+            const topHud = document.getElementById('arena-opponent-bar') || document.getElementById('game-status-banner');
+            const rightSide = document.getElementById('g3-right-col');
+            const overlay = document.getElementById('game-lobby-overlay');
+            const innerZones = [
+                document.getElementById('game-center-piles'),
+                document.getElementById('game-player-hand')
+            ].filter(Boolean);
+            return { view, centerCard, topHud, rightSide, overlay, innerZones };
+        }
+
+        if (PUZZLE_MODES.has(modeId)) {
+            const centerCard = view.querySelector('.g3-puzzle-board-host') || view;
+            const topHud = document.getElementById('g3-focus-puzzle-bar');
+            const rightSide = document.getElementById('g3-right-dock');
+            const overlay = document.getElementById(`g3-lobby-overlay-${modeId}`);
+            const innerZones = Array.from(centerCard.children).filter(
+                el => el !== overlay && !el.classList.contains('hidden')
+            );
+            return { view, centerCard, topHud, rightSide, overlay, innerZones };
+        }
+
+        return null;
+    }
+
+    function animateModeFocusTransition(parts, entering, beforeRect) {
+        if (!parts || !parts.centerCard) return;
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        if (typeof parts.centerCard.animate !== 'function') return;
+
+        const spring = 'cubic-bezier(0.22, 1, 0.36, 1)';
+        const { centerCard, topHud, rightSide, overlay, innerZones } = parts;
+
+        if (beforeRect && beforeRect.width > 40 && beforeRect.height > 40) {
+            const afterRect = centerCard.getBoundingClientRect();
+            if (afterRect.width > 40 && afterRect.height > 40) {
+                const dx = (beforeRect.left + beforeRect.width / 2) - (afterRect.left + afterRect.width / 2);
+                const dy = (beforeRect.top + beforeRect.height / 2) - (afterRect.top + afterRect.height / 2);
+                const sx = Math.max(0.45, Math.min(1.65, beforeRect.width / afterRect.width));
+                const sy = Math.max(0.55, Math.min(1.45, beforeRect.height / afterRect.height));
+                centerCard.animate([
+                    { transform: `translate3d(${dx.toFixed(1)}px, ${dy.toFixed(1)}px, 0) scale(${sx.toFixed(3)}, ${sy.toFixed(3)})` },
+                    { transform: 'translate3d(0, 0, 0) scale(1, 1)' }
+                ], {
+                    duration: entering ? 420 : 340,
+                    easing: spring
+                });
+            }
+        }
+
+        if (entering) {
+            if (topHud && !topHud.classList.contains('hidden')) {
+                topHud.animate([
+                    { opacity: 0, transform: 'translate3d(0, -14px, 0) scale(0.985)' },
+                    { opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)' }
+                ], { duration: 360, delay: 35, easing: spring, fill: 'backwards' });
+            }
+            if (rightSide && !rightSide.classList.contains('hidden')) {
+                rightSide.animate([
+                    { opacity: 0, transform: 'translate3d(34px, 0, 0) scale(0.96)' },
+                    { opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)' }
+                ], { duration: 430, delay: 75, easing: spring, fill: 'backwards' });
+            }
+            innerZones.forEach((el, idx) => {
+                if (!el || typeof el.animate !== 'function') return;
+                el.animate([
+                    { opacity: 0, transform: 'translate3d(0, 10px, 0)' },
+                    { opacity: 1, transform: 'translate3d(0, 0, 0)' }
+                ], { duration: 320, delay: 80 + idx * 45, easing: spring, fill: 'backwards' });
+            });
+        } else if (overlay && !overlay.classList.contains('hidden')) {
+            overlay.animate([
+                { opacity: 0 },
+                { opacity: 1 }
+            ], { duration: 260, delay: 40, easing: 'ease-out', fill: 'backwards' });
+        }
+    }
+
     function syncFocusModeClasses() {
         const shell = document.getElementById('g3-shell');
         if (!shell) return;
 
         const id = hubState.activeGame;
         const isSparring = typeof gameState !== 'undefined' && Boolean(gameState.isTrainingMatch);
+        const wasInFocus = shell.classList.contains('is-focus-mode');
         const inFocus = !isSparring && isCurrentModeInFocus();
         const isPuzzleFocus = inFocus && PUZZLE_MODES.has(id);
+        const focusChanged = wasInFocus !== inFocus;
 
         // Für „Das Verhör“: Ausgangsposition VOR dem Verbreitern / Aufklappen der SKT-Spalten messen (FLIP)
         const vhParts = id === 'verhoer' ? getVerhoerLayoutParts() : null;
@@ -1477,6 +1562,10 @@
         const vhNextLobby = vhParts ? (!isVerhoerRunning() && Boolean(vhParts.vhLobbyOv && !vhParts.vhLobbyOv.classList.contains('hidden'))) : false;
         const vhStateChanged = Boolean(vhParts && vhVisible && vhParts.vhView.classList.contains('is-vh-lobby') !== vhNextLobby);
         const vhBeforeRect = (vhStateChanged && vhParts.centerCard) ? vhParts.centerCard.getBoundingClientRect() : null;
+
+        // Für alle übrigen 5 Spielmodi (Arena, Daily, Sudoku, Endgame, Cascade): identische FLIP-Vorabmessung
+        const modeParts = (id !== 'verhoer' && focusChanged) ? getModeTransitionParts(id) : null;
+        const modeBeforeRect = (modeParts && modeParts.centerCard) ? modeParts.centerCard.getBoundingClientRect() : null;
 
         shell.classList.toggle('is-sparring', isSparring);
         shell.classList.toggle('is-focus-mode', inFocus);
@@ -1544,6 +1633,9 @@
         });
 
         updateDockVisibility();
+        if (modeParts) {
+            animateModeFocusTransition(modeParts, inFocus, modeBeforeRect);
+        }
         hideArenaPlayerAndBotSublines();
         unifyAbortButtons();
         syncArenaLobbyDemo();
@@ -1606,16 +1698,16 @@
         }, delayMs);
     }
 
-    function exitFocusMode(silent = false) {
+    function performExitFocusMode(silent = false) {
         const id = hubState.activeGame;
         if (!silent && typeof playSound === 'function') playSound('tick');
 
         if (id === 'arena' && isArenaRunning() && typeof abortCurrentBlinkGame === 'function') {
-            abortCurrentBlinkGame();
+            abortCurrentBlinkGame(true);
             return;
         }
         if (id === 'verhoer' && isVerhoerRunning() && typeof vhAbortGame === 'function') {
-            vhAbortGame();
+            vhAbortGame(true);
             return;
         }
         if (PUZZLE_MODES.has(id)) {
@@ -1633,6 +1725,26 @@
             if (typeof stopGameMusic === 'function') stopGameMusic();
             renderWorkspaceSidebars();
         }
+    }
+
+    function exitFocusMode(silent = false) {
+        if (silent || !isCurrentModeInFocus() || typeof window.showBlinkConfirm !== 'function') {
+            performExitFocusMode(silent);
+            return;
+        }
+        const id = hubState.activeGame;
+        const meta = GAME_META[id] || { title: 'Blink' };
+        const isOnlineArena = id === 'arena' && typeof gameState !== 'undefined' && gameState.mode === 'online';
+        window.showBlinkConfirm({
+            title: 'Laufende Partie beenden?',
+            message: isOnlineArena
+                ? 'Das laufende Online-Duell wird abgebrochen.'
+                : `Dein aktueller Fortschritt in „${meta.title}“ geht dabei verloren.`,
+            confirmLabel: 'Beenden',
+            cancelLabel: 'Weiterspielen',
+            danger: true,
+            onConfirm: () => performExitFocusMode(false)
+        });
     }
 
     // ------------------------------------------------------------------------
@@ -2479,7 +2591,8 @@
         leaveInlineOnline,
         syncOnlineInline,
         handleOnlineDeepLink,
-        isPuzzleActive: (id) => Boolean(isPuzzleInFocus(id))
+        isPuzzleActive: (id) => Boolean(isPuzzleInFocus(id)),
+        isAnyModeInFocus: () => Boolean(isCurrentModeInFocus())
     };
 
     if (document.readyState === 'loading') {

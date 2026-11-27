@@ -1666,6 +1666,14 @@
         };
 
         let isHovering = false;
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let dragMoved = 0;
+        let dragRotX = 0;
+        let dragRotY = 0;
+        let shuffleFlash = 0;
+        let surgeTimer = null;
         let ptrX = 0;
         let ptrY = 0;
         let focusedSide = null;
@@ -1693,7 +1701,28 @@
             }
         }
 
+        wrapper.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0 && e.pointerType === 'mouse') return;
+            isDragging = true;
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            dragMoved = 0;
+            wrapper.classList.add('is-hero-dragging');
+            try { wrapper.setPointerCapture(e.pointerId); } catch (_) {}
+        });
+
         wrapper.addEventListener('pointermove', (e) => {
+            if (isDragging) {
+                const dx = e.clientX - dragStartX;
+                const dy = e.clientY - dragStartY;
+                dragMoved = Math.max(dragMoved, Math.hypot(dx, dy));
+                dragRotY = Math.max(-56, Math.min(56, dx * 0.26));
+                dragRotX = Math.max(-42, Math.min(42, -dy * 0.22));
+                isHovering = true;
+                ptrX = Math.max(-1, Math.min(1, dragRotY / 42));
+                ptrY = Math.max(-1, Math.min(1, -dragRotX / 34));
+                return;
+            }
             if (e.pointerType === 'touch') return;
             const rect = wrapper.getBoundingClientRect();
             if (rect.width <= 0 || rect.height <= 0) return;
@@ -1721,7 +1750,23 @@
             }
         }, { passive: true });
 
+        const endDrag = (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            wrapper.classList.remove('is-hero-dragging');
+            try { if (e && e.pointerId !== undefined) wrapper.releasePointerCapture(e.pointerId); } catch (_) {}
+            if (dragMoved > 8) {
+                window.__heroSuppressNextClick = true;
+                setTimeout(() => { window.__heroSuppressNextClick = false; }, 80);
+            }
+            dragRotX = 0;
+            dragRotY = 0;
+        };
+        wrapper.addEventListener('pointerup', endDrag);
+        wrapper.addEventListener('pointercancel', endDrag);
+
         wrapper.addEventListener('pointerleave', () => {
+            if (isDragging) return;
             isHovering = false;
             ptrX = 0;
             ptrY = 0;
@@ -1732,15 +1777,23 @@
         // 4. Shuffle-Impuls beim Klick auf die Hero-Karten
         window.BlinkHeroPhysics = {
             onShuffle(turboLevel = 0) {
-                const boost = 1 + Math.min(4, turboLevel) * 0.22;
-                groupSprings.rotX.vel -= 75 * boost;
+                const boost = 1 + Math.min(4, turboLevel) * 0.24;
+                shuffleFlash = Math.min(1.6, 1.0 + turboLevel * 0.16);
+                wrapper.classList.remove('is-cinema-surge');
+                void wrapper.offsetWidth;
+                wrapper.classList.add('is-cinema-surge');
+                if (surgeTimer) clearTimeout(surgeTimer);
+                surgeTimer = setTimeout(() => wrapper.classList.remove('is-cinema-surge'), 640);
+
+                groupSprings.rotX.vel -= 88 * boost;
+                groupSprings.rotY.vel += (turboLevel % 2 === 0 ? 64 : -64) * boost;
                 SIDES.forEach(side => {
                     const cs = cardSprings[side];
                     if (!cs) return;
-                    cs.y.vel -= (210 + (side === 'center' ? 45 : 0)) * boost;
-                    cs.z.vel += (side === 'center' ? 150 : 95) * boost;
-                    cs.x.vel += (side === 'left' ? -130 : (side === 'right' ? 130 : 0)) * boost;
-                    cs.rz.vel += (side === 'left' ? -40 : (side === 'right' ? 40 : 0)) * boost;
+                    cs.y.vel -= (230 + (side === 'center' ? 52 : 0)) * boost;
+                    cs.z.vel += (side === 'center' ? 175 : 110) * boost;
+                    cs.x.vel += (side === 'left' ? -155 : (side === 'right' ? 155 : 0)) * boost;
+                    cs.rz.vel += (side === 'left' ? -48 : (side === 'right' ? 48 : 0)) * boost;
                 });
             }
         };
@@ -1779,19 +1832,24 @@
             const dt = lastFrameTime ? Math.min(0.032, Math.max(0.004, (now - lastFrameTime) / 1000)) : 0.016;
             lastFrameTime = now;
             const tSec = now * 0.001;
+            shuffleFlash = Math.max(0, shuffleFlash - dt * 1.9);
 
             const wrapW = cachedWrapW;
             const mobScale = wrapW < 310 ? 0.70 : (wrapW < 370 ? 0.84 : 1.0);
 
-            // Gruppen-Zielwinkel (sanfte Trägheit + Rückführung bei Einzelkarten-Fokus)
+            // Gruppen-Zielwinkel (sanfte Trägheit + freies 3D-Drag-Drehen)
             const focusDamp = focusedSide ? 0.58 : 1.0;
-            const targetGroupRx = 22 - (isHovering ? ptrY * 16 * focusDamp : 0);
-            const targetGroupRy = -24 + (isHovering ? ptrX * 22 * focusDamp : 0);
-            const targetPanX = isHovering ? ptrX * 6 : 0;
-            const targetPanY = isHovering ? ptrY * 4 : 0;
+            const targetGroupRx = isDragging
+                ? (22 + dragRotX)
+                : (22 - (isHovering ? ptrY * 18 * focusDamp : 0));
+            const targetGroupRy = isDragging
+                ? (-24 + dragRotY)
+                : (-24 + (isHovering ? ptrX * 26 * focusDamp : 0));
+            const targetPanX = isDragging ? dragRotY * 0.28 : (isHovering ? ptrX * 8 : 0);
+            const targetPanY = isDragging ? -dragRotX * 0.24 : (isHovering ? ptrY * 6 : 0);
 
-            stepSpring(groupSprings.rotX, targetGroupRx, 92, 13.5, dt);
-            stepSpring(groupSprings.rotY, targetGroupRy, 92, 13.5, dt);
+            stepSpring(groupSprings.rotX, targetGroupRx, isDragging ? 140 : 92, isDragging ? 16 : 13.5, dt);
+            stepSpring(groupSprings.rotY, targetGroupRy, isDragging ? 140 : 92, isDragging ? 16 : 13.5, dt);
             stepSpring(groupSprings.panX, targetPanX, 85, 13.0, dt);
             stepSpring(groupSprings.panY, targetPanY, 85, 13.0, dt);
 
@@ -1805,7 +1863,9 @@
                 `translate3d(${groupSprings.panX.v.toFixed(2)}px, ${groupSprings.panY.v.toFixed(2)}px, 0) ` +
                 `rotateX(${gRx.toFixed(2)}deg) rotateY(${gRy.toFixed(2)}deg)`;
 
-            // Einzelkarten-Federn, Parallaxe, Magnet-Fächer, Glanz & Bodenschatten
+            const groupAngularVel = Math.hypot(groupSprings.rotX.vel, groupSprings.rotY.vel);
+
+            // Einzelkarten-Federn, Parallaxe, Magnet-Fächer, Holo-Foil, Kanten-Glow & Bodenschatten
             SIDES.forEach(side => {
                 const slot = slots[side];
                 const card = cards[side];
@@ -1820,28 +1880,29 @@
                 const floatY = breathe * spec.floatAmp * (focusedSide === side ? 0.35 : 1.0);
                 const floatRz = reducedMotion ? 0 : Math.cos(tSec * 0.9 + spec.floatPhase) * spec.floatRot;
 
-                // Magnetisches Auffächern bei Container-Hover
-                const fanX = isHovering ? (side === 'left' ? -15 : (side === 'right' ? 15 : 0)) : 0;
-                const fanY = isHovering && side === 'center' ? -4 : 0;
-                const fanZ = isHovering && side === 'center' ? 8 : 0;
-                const fanRz = isHovering ? (side === 'left' ? -3.2 : (side === 'right' ? 3.2 : 0)) : 0;
+                // Magnetisches Auffächern bei Container-Hover / Drag
+                const fanMult = isDragging ? 1.45 : (isHovering ? 1.0 : 0);
+                const fanX = fanMult * (side === 'left' ? -18 : (side === 'right' ? 18 : 0));
+                const fanY = fanMult && side === 'center' ? -5 * fanMult : 0;
+                const fanZ = fanMult && side === 'center' ? 12 * fanMult : 0;
+                const fanRz = fanMult * (side === 'left' ? -3.6 : (side === 'right' ? 3.6 : 0));
 
                 // Tiefen-Parallaxe relativ zur Maus
                 const parX = isHovering ? ptrX * spec.parallax.x : 0;
                 const parY = isHovering ? ptrY * spec.parallax.y : 0;
-                const parRx = isHovering ? -ptrY * spec.parallax.rx : 0;
-                const parRy = isHovering ? ptrX * spec.parallax.ry : 0;
+                const parRx = isHovering ? -ptrY * spec.parallax.rx * 1.25 : 0;
+                const parRy = isHovering ? ptrX * spec.parallax.ry * 1.25 : 0;
 
                 // Einzelkarten-Fokus
-                const foc = focusedSide ? FOCUS_OFFSETS[focusedSide][side] : null;
+                const foc = (!isDragging && focusedSide) ? FOCUS_OFFSETS[focusedSide][side] : null;
                 const tx = (b.x + fanX + parX + (foc ? foc.x : 0)) * mobScale;
                 const ty = (b.y + fanY + parY + floatY + (foc ? foc.y : 0)) * mobScale;
                 const tz = (b.z + fanZ + (foc ? foc.z : 0)) * mobScale;
                 const trx = parRx + (foc ? foc.rx : 0);
                 const tryDeg = parRy + (foc ? foc.ry : 0);
                 const trz = b.rz + fanRz + floatRz + (foc ? foc.rz : 0);
-                const ts = foc ? foc.s : (isHovering ? 1.015 : 1.0);
-                const tGlareOp = focusedSide === side ? 1.0 : (isHovering ? 0.52 : 0.0);
+                const ts = foc ? foc.s : (isHovering ? 1.02 : 1.0);
+                const tGlareOp = (focusedSide === side || isDragging) ? 1.0 : (isHovering ? 0.62 : 0.14);
 
                 stepSpring(cs.x, tx, spec.k, spec.d, dt);
                 stepSpring(cs.y, ty, spec.k, spec.d, dt);
@@ -1860,16 +1921,27 @@
                 slot.style.setProperty('--hs-rz', `${cs.rz.v.toFixed(2)}deg`);
                 slot.style.setProperty('--hs-s', `${cs.s.v.toFixed(4)}`);
 
-                // Individueller holografischer Lichtglanz pro Karte aus realem Neigungswinkel
+                // Individueller prismatischer Hologramm-Foil-Glanz & 3D-Kanten-Glow aus Drehwinkel
                 const totalRx = gRx + cs.rx.v;
                 const totalRy = gRy + cs.ry.v;
-                const gx = Math.max(8, Math.min(92, 50 + (totalRy + 24) * 1.35 + ptrX * 14));
-                const gy = Math.max(8, Math.min(92, 50 - (totalRx - 22) * 1.45 + ptrY * 14));
+                const tiltMag = Math.min(1, Math.hypot(totalRx - 22, totalRy + 24) / 42);
+                const spinEnergy = Math.min(1, groupAngularVel / 180 + shuffleFlash * 0.85);
+                const gx = Math.max(6, Math.min(94, 50 + (totalRy + 24) * 1.45 + ptrX * 16));
+                const gy = Math.max(6, Math.min(94, 50 - (totalRx - 22) * 1.5 + ptrY * 16));
+                const holoAngle = (118 + (totalRy + 24) * 2.2 - (totalRx - 22) * 1.6).toFixed(1);
+                const holoShift = (50 + (totalRy + 24) * 1.85 + (totalRx - 22) * 1.1).toFixed(1);
+                const holoOp = Math.min(1, Math.max(0.08, cs.glareOp.v * 0.65 + tiltMag * 0.55 + spinEnergy * 0.5));
+                const edgeGlow = Math.min(1, tiltMag * 0.72 + spinEnergy * 0.95);
+
                 card.style.setProperty('--glare-x', `${gx.toFixed(1)}%`);
                 card.style.setProperty('--glare-y', `${gy.toFixed(1)}%`);
                 card.style.setProperty('--glare-bg-x', `${(100 - gx).toFixed(1)}%`);
                 card.style.setProperty('--glare-bg-y', `${(100 - gy).toFixed(1)}%`);
-                card.style.setProperty('--glare-opacity', `${Math.max(0, Math.min(1, cs.glareOp.v)).toFixed(3)}`);
+                card.style.setProperty('--glare-opacity', `${Math.max(0, Math.min(1, cs.glareOp.v + spinEnergy * 0.35)).toFixed(3)}`);
+                card.style.setProperty('--holo-angle', `${holoAngle}deg`);
+                card.style.setProperty('--holo-shift', `${holoShift}%`);
+                card.style.setProperty('--holo-opacity', `${holoOp.toFixed(3)}`);
+                card.style.setProperty('--edge-glow', `${edgeGlow.toFixed(3)}`);
 
                 // Dynamischer direkter Kartenschatten abhängig von Neigung & Höhe
                 const liftFactor = Math.max(0, (34 - cs.y.v) * 0.25 + (cs.z.v + 34) * 0.08);

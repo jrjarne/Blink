@@ -153,8 +153,8 @@
                     </div>
 
                     <!-- Rechte Spalte: 3D Floating Cards -->
-                    <div id="hero-3d-wrapper" onclick="shuffleHeroCluster()" title="Klicken für ein neues SKT"
-                        class="lg:col-span-5 hero-3d-container z-10 relative group cursor-pointer">
+                    <div id="hero-3d-wrapper" onclick="shuffleHeroCluster()" title="Klicken für ein neues SKT · Ziehen zum Drehen"
+                        class="lg:col-span-5 hero-3d-container z-10 relative group cursor-grab">
                         <div class="hero-card-group pointer-events-none">
                             <div class="hero-slot left">
                                 <div id="hero-flipper-left" class="hero-card-flipper">
@@ -4100,6 +4100,43 @@
             </div>
         </div>
     </div>
+    <!-- MODAL: EINHEITLICHE SICHERHEITSABFRAGE (APPLE LIQUID-GLASS SHEET) -->
+    <div id="blink-confirm-modal" onclick="if(event.target === this) closeBlinkConfirm(false)"
+        class="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-[70] hidden items-center justify-center p-4 transition-opacity duration-200 opacity-0"
+        role="dialog" aria-modal="true" aria-labelledby="blink-confirm-title">
+        <div
+            class="apple-settings-sheet fu-card rounded-[28px] max-w-[420px] w-full p-6 shadow-2xl space-y-5 transition-transform duration-200 scale-95">
+            <div class="flex items-start gap-3.5">
+                <span id="blink-confirm-icon" class="apple-set-title-badge shrink-0" aria-hidden="true">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                </span>
+                <div class="min-w-0 space-y-1">
+                    <h2 id="blink-confirm-title"
+                        class="text-base font-extrabold text-white heading-font leading-snug">Partie beenden?</h2>
+                    <p id="blink-confirm-msg" class="text-xs text-slate-400 leading-relaxed">
+                        Dein aktueller Fortschritt geht dabei verloren.
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2.5 pt-1">
+                <button type="button" id="blink-confirm-cancel" onclick="closeBlinkConfirm(false)"
+                    class="apple-set-test-btn px-4 py-2 rounded-full font-bold text-xs transition">
+                    Weiterspielen
+                </button>
+                <button type="button" id="blink-confirm-ok" onclick="closeBlinkConfirm(true)"
+                    class="blink-confirm-danger-btn px-4 py-2 rounded-full font-bold text-xs tracking-wide transition">
+                    Beenden
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- SONNER TOAST CONTAINER -->
     <div id="sonner-toaster"></div>
 

@@ -1614,8 +1614,33 @@
             applyRouteFromHash(false);
         });
 
+        function isAnyBlinkGameRunning() {
+            const arenaRunning = typeof gameState !== 'undefined' && Boolean(gameState.isRunning);
+            const hubFocus = Boolean(window.BlinkGameHub && typeof window.BlinkGameHub.isAnyModeInFocus === 'function' && window.BlinkGameHub.isAnyModeInFocus());
+            return arenaRunning || hubFocus;
+        }
+
         function navigateTo(pageId) {
-    const prevPage = state.currentPage;
+            const prevPage = state.currentPage;
+            if (!navigateTo._bypassGuard && prevPage === 'game' && pageId !== 'game' && isAnyBlinkGameRunning() && typeof showBlinkConfirm === 'function') {
+                showBlinkConfirm({
+                    title: 'Spielbereich verlassen?',
+                    message: 'Du hast noch eine laufende Partie. Möchtest du sie beenden und den Bereich wechseln?',
+                    confirmLabel: 'Beenden & wechseln',
+                    cancelLabel: 'Bleiben',
+                    danger: true,
+                    onConfirm: () => {
+                        if (window.BlinkGameHub && typeof window.BlinkGameHub.exitFocusMode === 'function') {
+                            window.BlinkGameHub.exitFocusMode(true);
+                        } else if (typeof abortCurrentBlinkGame === 'function') {
+                            abortCurrentBlinkGame(true);
+                        }
+                        navigateTo._bypassGuard = true;
+                        try { navigateTo(pageId); } finally { navigateTo._bypassGuard = false; }
+                    }
+                });
+                return;
+            }
             const isModelSubSwitch = (prevPage === 'basic-model' || prevPage === 'advanced-model') && (pageId === 'basic-model' || pageId === 'advanced-model');
             const skipPageEnter = (prevPage === pageId) || isModelSubSwitch;
             state.currentPage = pageId;
@@ -2709,5 +2734,79 @@
 
             setTimeout(() => { resize3DCanvas(); setCameraView('iso'); }, 40);
         }
+
+        // ============================================================================
+        // EINHEITLICHE SICHERHEITSABFRAGE & ERSTBESUCHER-ONBOARDING
+        // ============================================================================
+        const blinkConfirmState = { onConfirm: null, onCancel: null, open: false };
+
+        window.showBlinkConfirm = function ({
+            title = 'Aktion bestätigen?',
+            message = '',
+            confirmLabel = 'Bestätigen',
+            cancelLabel = 'Abbrechen',
+            danger = true,
+            onConfirm = null,
+            onCancel = null
+        } = {}) {
+            const modal = document.getElementById('blink-confirm-modal');
+            if (!modal) {
+                if (typeof onConfirm === 'function') onConfirm();
+                return;
+            }
+            blinkConfirmState.onConfirm = onConfirm;
+            blinkConfirmState.onCancel = onCancel;
+            blinkConfirmState.open = true;
+
+            const tEl = document.getElementById('blink-confirm-title');
+            const mEl = document.getElementById('blink-confirm-msg');
+            const okBtn = document.getElementById('blink-confirm-ok');
+            const cancelBtn = document.getElementById('blink-confirm-cancel');
+            if (tEl) tEl.textContent = title;
+            if (mEl) mEl.textContent = message;
+            if (cancelBtn) cancelBtn.textContent = cancelLabel;
+            if (okBtn) {
+                okBtn.textContent = confirmLabel;
+                okBtn.className = `${danger ? 'blink-confirm-danger-btn' : 'modal-pill-cta'} px-4 py-2 rounded-full font-bold text-xs tracking-wide transition`;
+            }
+
+            if (typeof playSound === 'function') playSound('tick');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            requestAnimationFrame(() => {
+                modal.classList.remove('opacity-0');
+                const sheet = modal.firstElementChild;
+                if (sheet) sheet.classList.remove('scale-95');
+            });
+            if (cancelBtn) setTimeout(() => cancelBtn.focus(), 40);
+        };
+
+        window.closeBlinkConfirm = function (confirmed = false) {
+            const modal = document.getElementById('blink-confirm-modal');
+            if (!modal || !blinkConfirmState.open) return;
+            blinkConfirmState.open = false;
+            const cbConfirm = blinkConfirmState.onConfirm;
+            const cbCancel = blinkConfirmState.onCancel;
+            blinkConfirmState.onConfirm = null;
+            blinkConfirmState.onCancel = null;
+
+            modal.classList.add('opacity-0');
+            const sheet = modal.firstElementChild;
+            if (sheet) sheet.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 180);
+
+            if (confirmed && typeof cbConfirm === 'function') cbConfirm();
+            else if (!confirmed && typeof cbCancel === 'function') cbCancel();
+        };
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && blinkConfirmState.open) {
+                e.stopImmediatePropagation();
+                closeBlinkConfirm(false);
+            }
+        }, true);
 
         // ============================================================================

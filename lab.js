@@ -656,16 +656,27 @@
             if (brainState.roster.length === 0) return;
             const target = brainState.roster[brainState.activeIdx];
             if (!target) return;
-            if (!confirm(`Möchtest du „${target.name}“ (${target.elo} Elo) wirklich dauerhaft freilassen?`)) {
-                return;
+            const doRelease = () => {
+                const removed = brainState.roster.splice(brainState.activeIdx, 1)[0];
+                brainState.activeIdx = Math.max(0, brainState.activeIdx - 1);
+                brainState.logoPickerOpen = false;
+                saveAIRosterState();
+                playSound('tick');
+                renderBrainLabUI();
+                showSonnerToast(`„${removed.name}“ wurde freigelassen.`, 'neutral');
+            };
+            if (typeof window.showBlinkConfirm === 'function') {
+                window.showBlinkConfirm({
+                    title: 'KI dauerhaft freilassen?',
+                    message: `Möchtest du „${target.name}“ (${target.elo} Elo) wirklich dauerhaft freilassen?`,
+                    confirmLabel: 'Freilassen',
+                    cancelLabel: 'Behalten',
+                    danger: true,
+                    onConfirm: doRelease
+                });
+            } else if (confirm(`Möchtest du „${target.name}“ (${target.elo} Elo) wirklich dauerhaft freilassen?`)) {
+                doRelease();
             }
-            const removed = brainState.roster.splice(brainState.activeIdx, 1)[0];
-            brainState.activeIdx = Math.max(0, brainState.activeIdx - 1);
-            brainState.logoPickerOpen = false;
-            saveAIRosterState();
-            playSound('tick');
-            renderBrainLabUI();
-            showSonnerToast(`„${removed.name}“ wurde freigelassen.`, 'neutral');
         }
 
         function setBrainRuleMode(mode) {
@@ -1353,8 +1364,19 @@
             renderVerhoerStandaloneUI();
         }
 
-        function vhAbortGame() {
+        function vhAbortGame(skipConfirm = false) {
             if (!vhState.isRunning) return;
+            if (!skipConfirm && typeof window.showBlinkConfirm === 'function') {
+                window.showBlinkConfirm({
+                    title: 'Laufende Partie beenden?',
+                    message: 'Dein aktueller Fortschritt in „Das Verhör“ geht dabei verloren.',
+                    confirmLabel: 'Beenden',
+                    cancelLabel: 'Weiterspielen',
+                    danger: true,
+                    onConfirm: () => vhAbortGame(true)
+                });
+                return;
+            }
             if (vhState.botTimer) {
                 clearTimeout(vhState.botTimer);
                 vhState.botTimer = null;
@@ -4685,6 +4707,7 @@ let heroSpinCount = 0;
         let heroBadgeTimer = null;
 
         window.shuffleHeroCluster = function(isInitial = false) {
+            if (!isInitial && window.__heroSuppressNextClick) return;
             const sides = ['left', 'center', 'right'];
             const badge = document.getElementById('hero-cluster-badge');
 
@@ -4730,7 +4753,7 @@ let heroSpinCount = 0;
                 badge.classList.remove('text-slate-300', 'text-cyan-400');
                 badge.classList.add('text-emerald-400');
                 heroBadgeTimer = setTimeout(() => {
-                    badge.textContent = `Klicken für ein neues SKT`;
+                    badge.textContent = `Klicken für ein neues SKT · Ziehen zum Drehen`;
                     badge.classList.remove('text-emerald-400');
                     badge.classList.add('text-slate-300');
                 }, 1200);
@@ -4738,11 +4761,18 @@ let heroSpinCount = 0;
 
             sides.forEach((side, i) => {
                 const flipper = document.getElementById(`hero-flipper-${side}`);
+                const slotEl = flipper ? flipper.closest('.hero-slot') : null;
                 const faceEl = document.getElementById(`hero-card-${side}-${targetSide}`);
                 if (faceEl) faceEl.innerHTML = renderLargePlayingCardInner(trio[i], true);
 
                 const applySpin = () => {
                     if (!flipper) return;
+                    if (slotEl) {
+                        slotEl.classList.remove('is-hero-flipping');
+                        void slotEl.offsetWidth;
+                        slotEl.classList.add('is-hero-flipping');
+                        heroFlipTimers.push(setTimeout(() => slotEl.classList.remove('is-hero-flipping'), Math.round(durationSec * 1000) + 60));
+                    }
                     flipper.style.transitionDuration = `${durationSec.toFixed(2)}s`;
                     flipper.style.transform = `rotateY(${deg}deg)`;
                 };

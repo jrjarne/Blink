@@ -1570,8 +1570,22 @@ function syncAbortButtonUI() {
     if (btn) btn.classList.toggle('hidden', !gameState.isRunning);
 }
 
-function abortCurrentBlinkGame() {
+function abortCurrentBlinkGame(skipConfirm = false) {
     if (!gameState.isRunning) return;
+    if (!skipConfirm && typeof window.showBlinkConfirm === 'function') {
+        const isOnline = gameState.mode === 'online';
+        window.showBlinkConfirm({
+            title: 'Laufende Partie beenden?',
+            message: isOnline
+                ? 'Das laufende Online-Duell wird abgebrochen.'
+                : 'Dein aktueller Fortschritt in „Blink-Arena“ geht dabei verloren.',
+            confirmLabel: 'Beenden',
+            cancelLabel: 'Weiterspielen',
+            danger: true,
+            onConfirm: () => abortCurrentBlinkGame(true)
+        });
+        return;
+    }
     if (gameState.mode === 'online' && p2pState.role === 'guest') {
         p2pSend({ type: 'ABORT_REQ' });
     }
@@ -2801,7 +2815,7 @@ function p2pHandleMessage(msg) {
                         p2pSendStateSync('Zu spät — Stapel hat sich gerade geändert!', 'warn');
                     }
                 } else if (msg.type === 'ABORT_REQ' && gameState.isRunning) {
-                    abortCurrentBlinkGame();
+                    abortCurrentBlinkGame(true);
                 } else if (msg.type === 'RESTOCK_REQ' && gameState.isRunning) {
                     resolveDeadlockStocken();
                 } else if (msg.type === 'REMATCH_REQ') {
