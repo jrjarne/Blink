@@ -4582,6 +4582,7 @@ body[data-page="advanced-model"] { --ambient-c1: rgba(168, 85, 247, 0.14); --amb
 #page-game > div.overflow-y-auto {
   min-height: 0 !important;
   overflow-y: auto !important;
+  padding: 0 !important;
 }
 .g3-shell {
   width: 100%;
@@ -8108,4 +8109,96 @@ body[data-page="game"] #nav-indicator {
 [data-theme="academic-light"] .ms-elo-rail,
 [data-theme="arrakis-dune"] .ms-elo-rail {
   background: rgba(44, 30, 56, 0.10);
+}
+
+/* ============================================================================
+   EIGENER HEADER-REITER: KI-TRAINING (#page-ai · IDENTISCHE WORKSPACE-GEOMETRIE)
+   ============================================================================ */
+body[data-page="ai"] {
+  --ambient-c1: rgba(16, 185, 129, 0.12);
+  --ambient-c2: rgba(34, 211, 238, 0.08);
+}
+.ws-shell.ws-shell-ai {
+  max-width: 1640px !important;
+  padding: 6px 20px 18px !important;
+  display: block !important;
+}
+.ws-ai-layout {
+  display: grid;
+  grid-template-columns: 316px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.ws-ai-sidebar {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.ws-ai-sidebar > * {
+  margin-top: 0 !important;
+}
+.ws-ai-main {
+  min-width: 0;
+}
+@media (max-width: 1179px) {
+  .ws-shell.ws-shell-ai {
+    padding: 10px 14px 24px !important;
+  }
+  .ws-ai-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+}
+
+/* ============================================================================
+   120 Hz HIGH-REFRESH-RATE GPU COMPOSITOR OPTIMIERUNG (<= 8.33 ms FRAME-BUDGET)
+   ============================================================================ */
+.ui27-grain-layer {
+  display: none !important;
+}
+.aceternity-bento-card {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.hdr-nav-dock {
+  backdrop-filter: blur(14px) saturate(165%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(165%) !important;
+}
+#settings-modal > div,
+#mapping-modal > div,
+#game-info-modal > div,
+#elo-overview-modal > div,
+#match-analysis-modal > div {
+  backdrop-filter: blur(16px) saturate(165%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(165%) !important;
+}
+.hdr-nav-dock #nav-indicator,
+.rankup-crest {
+  will-change: transform;
+}
+
+/* Exakte Oberkanten-Ausrichtung aller 3 Spalten im Spielen-Modus (Desktop >= 1180px) */
+@media (min-width: 1180px) {
+  #g3-shell {
+    align-items: start !important;
+  }
+  #g3-shell > .g3-left,
+  #g3-shell > .g3-center,
+  #g3-shell > .g3-right {
+    position: static !important;
+    top: auto !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+  #g3-center-stage > div,
+  #g3-center-stage > div > div,
+  #g3-center-stage section:not(.hidden),
+  #g3-left-modes > *,
+  #g3-right-panel > * {
+    margin-top: 0 !important;
+  }
+  #g3-center-stage > div {
+    padding: 0 !important;
+  }
 }

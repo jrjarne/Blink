@@ -70,6 +70,10 @@
                         class="nav-item-clean text-slate-300 hover:text-white">
                         Labor
                     </button>
+                    <button onclick="navigateTo('ai')" id="nav-btn-ai"
+                        class="nav-item-clean text-slate-300 hover:text-white">
+                        KI-Training
+                    </button>
                     <button onclick="openLessonPage(state.currentLesson || 1)" id="nav-btn-lessons"
                         class="nav-item-clean text-slate-300 hover:text-white">
                         Kurs
@@ -2324,8 +2328,6 @@
                     class="relative z-10 px-3.5 py-1 rounded-full text-xs transition-colors pill-btn-active">Monte-Carlo-Engine</button>
                 <button onclick="setLabSubTab('phase')" id="lab-tab-phase"
                     class="relative z-10 px-3.5 py-1 rounded-full text-xs transition-colors pill-btn-idle">Clusterdichte-Vergleich</button>
-                <button onclick="setLabSubTab('brain')" id="lab-tab-brain"
-                    class="relative z-10 px-3.5 py-1 rounded-full text-xs transition-colors pill-btn-idle">KI-Training</button>
             </div>
             <div class="hidden sm:flex items-center gap-2 text-[11px] mono text-slate-400">
                 <span id="lab-meta-dot" class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
@@ -2556,11 +2558,19 @@
                         </div>
                     </div>
                 </section>
+            </div>
+        </div>
+    </main>
 
-                <!-- SUB-TAB 3: KI-TRAINER (ERSTELLER, LOGO-WAHL, SPARRING & ELO) -->
-                <section id="lab-view-brain" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <!-- ============================================================================ -->
+    <!-- PAGE 7: KI-TRAINING (EIGENER HEADER-REITER · KADER, ERSTELLER & SCRIMS)      -->
+    <!-- ============================================================================ -->
+    <main id="page-ai" class="hidden flex-1 min-h-0 flex flex-col overflow-hidden aceternity-grid-bg">
+        <div class="flex-1 min-h-0 overflow-y-auto ws-scroll-host">
+            <div class="ws-shell ws-shell-ai">
+                <section id="lab-view-brain" class="ws-ai-layout">
                     <!-- Linke Spalte: Spieler-Elo & KI-Box -->
-                    <div class="lg:col-span-4 space-y-5">
+                    <div class="ws-ai-sidebar space-y-4">
                         <!-- Dein eigenes Spieler-Elo (Klick öffnet die Elo-Rangliste) -->
                         <div onclick="toggleEloOverviewModal()" title="Klicken für die Elo-Rangliste"
                             class="aceternity-bento-card p-5 space-y-3.5 cursor-pointer group">
@@ -2643,7 +2653,7 @@
                     </div>
 
                     <!-- Rechte Spalte: Entweder Leer-Zustand / Ersteller ODER KI-Profil -->
-                    <div class="lg:col-span-8">
+                    <div class="ws-ai-main min-w-0">
 
                         <!-- ANSICHT A: LEER-ZUSTAND (WENN NOCH KEINE KI EXISTIERT) -->
                         <div id="ai-empty-state" class="aceternity-bento-card p-8 sm:p-12 text-center space-y-5">

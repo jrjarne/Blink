@@ -120,10 +120,13 @@
         };
 
         function setLabSubTab(tabName) {
+            if (tabName === 'brain') {
+                if (typeof navigateTo === 'function') navigateTo('ai');
+                return;
+            }
             if (phaseState.activeTab !== tabName) playSound('tick');
             phaseState.activeTab = tabName;
-            if (tabName !== 'brain' && brainState.isTraining) stopBrainTraining();
-            ['montecarlo', 'phase', 'brain'].forEach(t => {
+            ['montecarlo', 'phase'].forEach(t => {
                 const btn = document.getElementById(`lab-tab-${t}`);
                 const view = document.getElementById(`lab-view-${t}`);
                 if (btn) btn.className = `relative z-10 px-3.5 py-1 rounded-full text-xs transition-colors ${t === tabName ? 'pill-btn-active' : 'pill-btn-idle'}`;
@@ -135,8 +138,7 @@
             const metaText = document.getElementById('lab-meta-text');
             const labMeta = {
                 montecarlo: { dot: 'bg-cyan-400', text: 'Monte-Carlo-Engine · 180 & 125 Karten' },
-                phase:      { dot: 'bg-purple-400', text: 'Clusterdichte · Hyper-Cluster vs. Vollraum' },
-                brain:      { dot: 'bg-emerald-400', text: 'KI-Training · Live-Scrims & Elo-System' }
+                phase:      { dot: 'bg-purple-400', text: 'Clusterdichte · Hyper-Cluster vs. Vollraum' }
             }[tabName];
             if (labMeta && metaDot && metaText) {
                 metaDot.className = `w-1.5 h-1.5 rounded-full ${labMeta.dot}`;
@@ -786,8 +788,7 @@
             document.getElementById('ai-training-pause-overlay')?.classList.add('hidden');
             document.getElementById('ai-training-summary-overlay')?.classList.add('hidden');
             syncGameConfigUI();
-            navigateTo('lab');
-            setLabSubTab('brain');
+            navigateTo('ai');
             renderBrainLabUI();
         }
 
@@ -1297,12 +1298,15 @@
             if (typeof startGameMusic !== 'function' || typeof stopGameMusic !== 'function') return;
             if (state.currentPage !== 'game') { stopGameMusic(); return; }
             const t = labState.activeGameTab;
+            const isPuzzleActive = (id) => Boolean(
+                window.BlinkGameHub && typeof window.BlinkGameHub.isPuzzleActive === 'function' && window.BlinkGameHub.isPuzzleActive(id)
+            );
             if (t === 'arena' && gameState.isRunning) startGameMusic('arena');
             else if (t === 'verhoer' && vhState.isRunning) startGameMusic('verhoer');
-            else if (t === 'daily' && dailyState.solutions.length > 0 && dailyState.foundKeys.size < dailyState.solutions.length) startGameMusic('daily');
-            else if (t === 'sudoku' && !sudokuState.solved) startGameMusic('sudoku');
-            else if (t === 'endgame' && endgameState.status === 'playing') startGameMusic('endgame');
-            else if (t === 'cascade' && !cascadeState.gameOver) startGameMusic('cascade');
+            else if (t === 'daily' && isPuzzleActive('daily') && dailyState.solutions.length > 0 && dailyState.foundKeys.size < dailyState.solutions.length) startGameMusic('daily');
+            else if (t === 'sudoku' && isPuzzleActive('sudoku') && !sudokuState.solved) startGameMusic('sudoku');
+            else if (t === 'endgame' && isPuzzleActive('endgame') && endgameState.status === 'playing') startGameMusic('endgame');
+            else if (t === 'cascade' && isPuzzleActive('cascade') && !cascadeState.gameOver) startGameMusic('cascade');
             else stopGameMusic();
         }
 
@@ -4827,22 +4831,32 @@ let heroSpinCount = 0;
                 });
             }
             
-            function animate() {
+            let _lastAnimTs = performance.now();
+            function animate(now) {
                 requestAnimationFrame(animate);
+                if (document.hidden) { _lastAnimTs = now || performance.now(); return; }
+                const ts = now || performance.now();
+                const step60 = Math.min(2.5, Math.max(0.1, (ts - _lastAnimTs) / 16.6667));
+                _lastAnimTs = ts;
+
                 if (state.currentPage === 'basic-model') {
+                    const pane = document.getElementById('ws-basic-pane');
+                    if (pane && !pane.classList.contains('ws-mview-3d')) return;
                     controls.update();
                     highlight3DGroup.children.forEach(child => {
                         if (child.userData.isRotatingHalo) {
-                            child.rotation.y += 0.025;
-                            child.rotation.x += 0.015;
+                            child.rotation.y += 0.025 * step60;
+                            child.rotation.x += 0.015 * step60;
                         }
                     });
                     renderer.render(scene, camera);
                 } else if (state.currentPage === 'advanced-model' && advState.initialized) {
+                    const pane = document.getElementById('ws-adv-pane');
+                    if (pane && !pane.classList.contains('ws-mview-3d')) return;
                     advState.controls.update();
                     advState.renderer.render(advState.scene, advState.camera);
                 }
             }
-            animate();
+            requestAnimationFrame(animate);
         };
     

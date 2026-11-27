@@ -1539,9 +1539,10 @@
             if (p === 'basic-model') return '#/modelle/grundlegend';
             if (p === 'advanced-model') return '#/modelle/erweitert';
             if (p === 'lesson') return `#/kurs/${state.currentLesson || 1}`;
+            if (p === 'ai') return '#/ki';
             if (p === 'lab') {
                 const sub = (typeof phaseState !== 'undefined' && phaseState.activeTab) ? phaseState.activeTab : 'montecarlo';
-                const labMap = { montecarlo: 'montecarlo', phase: 'clusterdichte', brain: 'ki' };
+                const labMap = { montecarlo: 'montecarlo', phase: 'clusterdichte' };
                 return `#/labor/${labMap[sub] || 'montecarlo'}`;
             }
             if (p === 'game') {
@@ -1584,10 +1585,16 @@
             try {
                 if (main === 'modelle' || main === 'models') {
                     navigateTo(sub === 'erweitert' || sub === 'advanced' ? 'advanced-model' : 'basic-model');
+                } else if (main === 'ki' || main === 'ai' || main === 'brain') {
+                    navigateTo('ai');
                 } else if (main === 'labor' || main === 'lab') {
-                    navigateTo('lab');
-                    const subMap = { montecarlo: 'montecarlo', clusterdichte: 'phase', phase: 'phase', ki: 'brain', brain: 'brain' };
-                    if (typeof setLabSubTab === 'function') setLabSubTab(subMap[sub] || 'montecarlo');
+                    if (sub === 'ki' || sub === 'brain') {
+                        navigateTo('ai');
+                    } else {
+                        navigateTo('lab');
+                        const subMap = { montecarlo: 'montecarlo', clusterdichte: 'phase', phase: 'phase' };
+                        if (typeof setLabSubTab === 'function') setLabSubTab(subMap[sub] || 'montecarlo');
+                    }
                 } else if (main === 'kurs' || main === 'lesson') {
                     const num = Math.max(1, Math.min(8, parseInt(sub, 10) || 1));
                     openLessonPage(num);
@@ -1621,11 +1628,12 @@
             state.currentPage = pageId;
             syncUrlHash();
     if (pageId !== 'game' && typeof stopGameMusic === 'function') stopGameMusic();
+    if (pageId !== 'ai' && typeof brainState !== 'undefined' && brainState.isTraining && typeof stopBrainTraining === 'function') stopBrainTraining();
     if (navigateTo._ready) playSound('tick');
     navigateTo._ready = true;
 
     // 1. Seiten ein-/ausblenden mit sanfter Transition
-    ['home', 'basic-model', 'advanced-model', 'lab', 'game', 'lesson'].forEach(p => {
+    ['home', 'basic-model', 'advanced-model', 'lab', 'ai', 'game', 'lesson'].forEach(p => {
         const el = document.getElementById(`page-${p}`);
         if (!el) return;
         const isTarget = (p === pageId);
@@ -1661,6 +1669,7 @@
         'home': 'nav-btn-home',
         'models': 'nav-btn-models',
         'lab': 'nav-btn-lab',
+        'ai': 'nav-btn-ai',
         'lesson': 'nav-btn-lessons',
         'game': 'nav-btn-game'
     };
@@ -1720,6 +1729,8 @@
         });
     } else if (pageId === 'lab') {
         initStochastikLabIfNeeded();
+    } else if (pageId === 'ai') {
+        if (typeof renderBrainLabUI === 'function') renderBrainLabUI();
     } else if (pageId === 'game') {
                 if (!gameState.initialized) initBlinkGameLobby();
                 initGameModesIfNeeded();
@@ -1878,7 +1889,7 @@
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         container.appendChild(renderer.domElement);
 

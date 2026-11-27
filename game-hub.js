@@ -1927,9 +1927,9 @@
                     `));
                 } else {
                     blocks.push(renderSettingBlock('Gegner-KI', `
-                        <button type="button" onclick="navigateTo('lab'); setLabSubTab('brain'); openAICreator();"
+                        <button type="button" onclick="navigateTo('ai'); openAICreator();"
                             class="w-full py-2 px-3 rounded-xl border border-emerald-400/40 bg-emerald-500/10 text-emerald-300 text-xs font-bold transition">
-                            + KI im Labor erstellen
+                            + Neue KI erstellen
                         </button>
                     `));
                 }
@@ -2173,6 +2173,7 @@
         }
         if (id === 'verhoer') {
             if (typeof vhStartNewGame === 'function') vhStartNewGame();
+            if (typeof syncActiveGameModeMusic === 'function') syncActiveGameModeMusic();
             renderWorkspaceSidebars();
             return;
         }
@@ -2188,6 +2189,7 @@
                 startPracticeDaily();
             }
             if (typeof playSound === 'function') playSound('play');
+            if (typeof syncActiveGameModeMusic === 'function') syncActiveGameModeMusic();
             renderWorkspaceSidebars();
             return;
         }
@@ -2198,6 +2200,7 @@
             const d = SUDOKU_DIFF_LEVELS.find(x => x.id === hubState.sudokuDiff) || SUDOKU_DIFF_LEVELS[0];
             if (typeof startSudokuGame === 'function') startSudokuGame(d.emptyCount, d.label);
             if (typeof playSound === 'function') playSound('play');
+            if (typeof syncActiveGameModeMusic === 'function') syncActiveGameModeMusic();
             renderWorkspaceSidebars();
             return;
         }
@@ -2209,6 +2212,7 @@
                 nextEndgamePuzzle();
             }
             if (typeof playSound === 'function') playSound('play');
+            if (typeof syncActiveGameModeMusic === 'function') syncActiveGameModeMusic();
             renderWorkspaceSidebars();
             return;
         }
@@ -2218,6 +2222,7 @@
             hubState.puzzleFocus.cascade = true;
             if (typeof initCascadeGame === 'function') initCascadeGame();
             if (typeof playSound === 'function') playSound('play');
+            if (typeof syncActiveGameModeMusic === 'function') syncActiveGameModeMusic();
             renderWorkspaceSidebars();
             return;
         }
@@ -2474,6 +2479,7 @@
         leaveInlineOnline,
         syncOnlineInline,
         handleOnlineDeepLink,
+        isPuzzleActive: (id) => Boolean(isPuzzleInFocus(id)),
         isGalleryOpen: () => false
     };
 
@@ -2512,14 +2518,12 @@
 
     const LAB_ITEMS = [
         { id: 'montecarlo', title: 'Monte-Carlo',   accent: 'cyan',    icon: ICONS.mc },
-        { id: 'phase',      title: 'Clusterdichte', accent: 'purple',  icon: ICONS.phase },
-        { id: 'brain',      title: 'KI-Training',   accent: 'emerald', icon: ICONS.brain }
+        { id: 'phase',      title: 'Clusterdichte', accent: 'purple',  icon: ICONS.phase }
     ];
 
     const LAB_SPLIT_SPECS = [
         { id: 'montecarlo', ctrl: '#mc-exp-deadlock, #mc-custom-slider, #mc-n-5000', main: '#mc-result-title, #mc-bars-container, #mc-kpi-grid' },
-        { id: 'phase',      ctrl: '#phase-m-slider, #phase-met-prob, #phase-met-expected', main: '#phase-curve-svg, #phase-kpi-grid' },
-        { id: 'brain',      ctrl: '#ai-roster-list, #lab-player-elo-val, #brain-rule-normal', main: '#ai-radar-svg, #ai-traits-bars, #ai-avatar-box' }
+        { id: 'phase',      ctrl: '#phase-m-slider, #phase-met-prob, #phase-met-expected', main: '#phase-curve-svg, #phase-kpi-grid' }
     ];
 
     const modelViewState = {

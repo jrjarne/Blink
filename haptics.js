@@ -1122,8 +1122,8 @@
     if (window.__BLINK_2027_READY) return;
     window.__BLINK_2027_READY = true;
 
-    const MODAL_IDS = ['settings-modal', 'profile-modal', 'mapping-modal', 'game-info-modal', 'elo-overview-modal'];
-    const PAGE_IDS = ['home', 'basic-model', 'advanced-model', 'lab', 'game', 'lesson'];
+    const MODAL_IDS = ['settings-modal', 'profile-modal', 'mapping-modal', 'game-info-modal', 'elo-overview-modal', 'match-analysis-modal', 'aivsai-modal'];
+    const PAGE_IDS = ['home', 'basic-model', 'advanced-model', 'lab', 'ai', 'game', 'lesson'];
 
 
     // ------------------------------------------------------------------------
@@ -1159,6 +1159,7 @@
             'basic-model': 'nav-btn-models',
             'advanced-model': 'nav-btn-models',
             'lab': 'nav-btn-lab',
+            'ai': 'nav-btn-ai',
             'lesson': 'nav-btn-lessons',
             'game': 'nav-btn-game'
         };

@@ -932,18 +932,22 @@ function startRankUpSparks(canvas, accentHex = '#22d3ee') {
     spawnBurst(22, 1.2, 3.2);
     rankUpTimers.push(setTimeout(() => spawnBurst(68, 2.8, 8.6), 540));
 
-    const loop = () => {
+    let lastLoopTs = performance.now();
+    const loop = (now) => {
+        const step60 = Math.min(2.5, Math.max(0.1, ((now || performance.now()) - lastLoopTs) / 16.6667));
+        lastLoopTs = now || performance.now();
+        const damp = Math.pow(0.968, step60);
         ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
         let alive = 0;
         for (let i = 0; i < sparks.length; i++) {
             const s = sparks[i];
             if (s.life <= 0) continue;
             alive++;
-            s.x += s.vx;
-            s.y += s.vy;
-            s.vx *= 0.968;
-            s.vy = s.vy * 0.968 + 0.045;
-            s.life -= s.decay;
+            s.x += s.vx * step60;
+            s.y += s.vy * step60;
+            s.vx *= damp;
+            s.vy = s.vy * damp + 0.045 * step60;
+            s.life -= s.decay * step60;
             ctx.globalAlpha = Math.max(0, s.life);
             ctx.fillStyle = s.col;
             ctx.beginPath();
@@ -1384,8 +1388,8 @@ function renderArenaTrainedAIPicker() {
     if (roster.length === 0) {
         listEl.innerHTML = `
                     <div class="text-[11px] text-slate-400 leading-snug py-1">Noch keine eigene KI erstellt.</div>
-                    <button type="button" onclick="navigateTo('lab'); setLabSubTab('brain'); openAICreator();" class="w-full py-2 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs transition">
-                        + KI im Labor erstellen
+                    <button type="button" onclick="navigateTo('ai'); openAICreator();" class="w-full py-2 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs transition">
+                        + Neue KI erstellen
                     </button>
                 `;
         return;

@@ -155,7 +155,7 @@ function initAdvancedModel() {
     if (!advContainer) return;
     advState.scene = new THREE.Scene();
     advState.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
-    advState.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    advState.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
     advState.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     advContainer.appendChild(advState.renderer.domElement);
 
