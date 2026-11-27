@@ -355,79 +355,42 @@
     // ------------------------------------------------------------------------
     function updateHeaderCloudDot() {
         const btn = document.getElementById('header-profile-btn');
-        if (!btn) return;
-        btn.style.position = 'relative';
-        btn.style.overflow = 'visible';
-        let dot = document.getElementById('header-cloud-dot');
-        if (!dot) {
-            dot = document.createElement('span');
-            dot.id = 'header-cloud-dot';
-            dot.className = 'cloud-status-dot';
-            btn.appendChild(dot);
+        if (btn) {
+            btn.style.position = 'relative';
+            btn.style.overflow = 'visible';
+            let dot = document.getElementById('header-cloud-dot');
+            if (!dot) {
+                dot = document.createElement('span');
+                dot.id = 'header-cloud-dot';
+                dot.className = 'cloud-status-dot';
+                btn.appendChild(dot);
+            }
+            dot.classList.toggle('is-online', Boolean(cloudState.user));
+            dot.title = cloudState.user ? `Cloud aktiv (${cloudState.username})` : 'Nicht angemeldet (nur lokal)';
         }
-        dot.classList.toggle('is-online', Boolean(cloudState.user));
-        dot.title = cloudState.user ? `Cloud aktiv (${cloudState.username})` : 'Nicht angemeldet (nur lokal)';
+
+        const sideDot = document.getElementById('ios-sidebar-cloud-dot');
+        if (sideDot) {
+            sideDot.classList.toggle('is-online', Boolean(cloudState.user));
+            sideDot.title = cloudState.user ? `Angemeldet: ${cloudState.username}` : 'Nur lokal gespeichert';
+        }
+        const sideTxt = document.getElementById('ios-sidebar-cloud-text');
+        if (sideTxt) {
+            sideTxt.textContent = cloudState.user ? `Cloud · ${cloudState.username}` : 'Lokal';
+        }
     }
 
     function setProfileSheetTab(tab = 'avatar', silent = false) {
         cloudState.activeTab = tab === 'account' ? 'account' : 'avatar';
-        if (!silent && typeof playSound === 'function') playSound('tick');
-
-        const avatarBody = document.getElementById('profile-avatar-editor-body');
-        const cloudBody = document.getElementById('profile-cloud-account-body');
-        if (avatarBody) avatarBody.classList.toggle('hidden', cloudState.activeTab !== 'avatar');
-        if (cloudBody) cloudBody.classList.toggle('hidden', cloudState.activeTab !== 'account');
-
-        ['avatar', 'account'].forEach(t => {
-            const b = document.getElementById(`profile-sheet-tab-${t}`);
-            if (b) b.className = `relative z-10 px-3.5 py-1 rounded-full text-[11px] transition-colors ${t === cloudState.activeTab ? 'pill-btn-active' : 'pill-btn-idle'}`;
-        });
-
-        if (typeof moveSlidingPill === 'function') {
-            requestAnimationFrame(() => moveSlidingPill('profile-sheet-tabs', `profile-sheet-tab-${cloudState.activeTab}`));
+        if (typeof setSettingsSection === 'function') {
+            setSettingsSection(cloudState.activeTab === 'account' ? 'cloud' : 'profile', silent);
         }
         if (cloudState.activeTab === 'account') renderCloudAccountView();
     }
 
     function injectProfileSheetTabs() {
-        const modal = document.getElementById('profile-modal');
-        if (!modal || document.getElementById('profile-sheet-tabs')) return;
-
-        const sheet = modal.querySelector('.apple-profile-sheet');
-        const header = sheet ? sheet.querySelector('.apple-set-header') : null;
-        const editorGrid = sheet ? sheet.querySelector('.grid.grid-cols-1') : null;
-        if (!sheet || !header || !editorGrid) return;
-
-        editorGrid.id = 'profile-avatar-editor-body';
-
-        const tabWrap = document.createElement('div');
-        tabWrap.className = 'flex items-center justify-between gap-2 flex-wrap';
-        tabWrap.innerHTML = `
-            <div id="profile-sheet-tabs" class="relative inline-flex items-center bg-slate-950/85 p-1 rounded-full border border-white/10 gap-1">
-                <div class="sliding-pill-bg sliding-pill-cyan"></div>
-                <button type="button" id="profile-sheet-tab-avatar" onclick="window.BlinkCloudAuth.setTab('avatar')" class="relative z-10 px-3.5 py-1 rounded-full text-[11px] transition-colors pill-btn-active">Charakter &amp; Name</button>
-                <button type="button" id="profile-sheet-tab-account" onclick="window.BlinkCloudAuth.setTab('account')" class="relative z-10 px-3.5 py-1 rounded-full text-[11px] transition-colors pill-btn-idle">Cloud-Konto</button>
-            </div>
-            <span id="profile-cloud-pill-badge" class="text-[10.5px] mono text-slate-400"></span>
-        `;
-
-        const cloudBody = document.createElement('div');
-        cloudBody.id = 'profile-cloud-account-body';
-        cloudBody.className = 'hidden space-y-4';
-
-        header.insertAdjacentElement('afterend', tabWrap);
-        editorGrid.insertAdjacentElement('afterend', cloudBody);
-
-        // Beim Öffnen des Profil-Modals Pill-Position sauber synchronisieren
-        if (typeof window.toggleProfileModal === 'function' && !window.toggleProfileModal.__cloudWrapped) {
-            const origToggle = window.toggleProfileModal;
-            const wrapped = function () {
-                origToggle();
-                requestAnimationFrame(() => setProfileSheetTab(cloudState.activeTab, true));
-            };
-            wrapped.__cloudWrapped = true;
-            window.toggleProfileModal = wrapped;
-        }
+        // Im vereinheitlichten iOS-Einstellungsfenster existiert #profile-cloud-account-body bereits direkt im DOM
+        renderCloudAccountView();
     }
 
     function renderCloudAccountView() {
@@ -607,6 +570,7 @@
 
     window.BlinkCloudAuth = {
         setTab: setProfileSheetTab,
+        render: renderCloudAccountView,
         login: handleLogin,
         register: handleRegister,
         syncNow: () => pushToCloud(false),

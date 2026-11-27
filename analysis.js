@@ -266,6 +266,8 @@ function buildMatchAnalysisReport(meta) {
   }
 
   matchAnalysisState.lastReport = {
+    id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    playedAt: Date.now(),
     meta: meta || {},
     didWin,
     ruleMode: matchAnalysisState.ruleMode,
@@ -285,7 +287,232 @@ function buildMatchAnalysisReport(meta) {
     timeline: [...matchAnalysisState.timeline],
     events: [...matchAnalysisState.events]
   };
+  saveMatchToHistory(matchAnalysisState.lastReport);
   return matchAnalysisState.lastReport;
+}
+
+const MATCH_HISTORY_KEY = 'blink_match_history_v1';
+const MAX_MATCH_HISTORY = 10;
+
+function loadMatchHistory() {
+  try {
+    const raw = localStorage.getItem(MATCH_HISTORY_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.slice(0, MAX_MATCH_HISTORY) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveMatchToHistory(report) {
+  if (!report) return;
+  try {
+    const list = loadMatchHistory().filter(item => item && item.id !== report.id);
+    list.unshift(report);
+    localStorage.setItem(MATCH_HISTORY_KEY, JSON.stringify(list.slice(0, MAX_MATCH_HISTORY)));
+    if (typeof renderPersonalStatsDashboard === 'function') {
+      const pane = document.getElementById('ios-pane-stats');
+      if (pane && !pane.classList.contains('hidden')) renderPersonalStatsDashboard();
+    }
+  } catch (e) {}
+}
+
+function clearMatchHistory() {
+  try {
+    localStorage.removeItem(MATCH_HISTORY_KEY);
+  } catch (e) {}
+  renderPersonalStatsDashboard();
+  if (typeof showSonnerToast === 'function') showSonnerToast('Match-Verlauf geleert.', 'neutral');
+}
+
+function formatHistoryDate(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const now = new Date();
+  const sameDay = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  if (sameDay) return `Heute, ${hh}:${mm}`;
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mo = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dd}.${mo}. · ${hh}:${mm}`;
+}
+
+function openHistoryMatchAnalysis(index) {
+  const list = loadMatchHistory();
+  const report = list[index];
+  if (!report) {
+    if (typeof showSonnerToast === 'function') showSonnerToast('Partie nicht gefunden.', 'neutral');
+    return;
+  }
+  const setModal = document.getElementById('settings-modal');
+  if (setModal && !setModal.classList.contains('hidden') && typeof toggleModalState === 'function') {
+    toggleModalState('settings-modal');
+  }
+  openMatchAnalysisModal(report);
+}
+
+function renderStatsSparklineSVG(history) {
+  const ordered = [...history].reverse(); // älteste links → neueste rechts
+  if (ordered.length < 2) return '';
+  const W = 560, H = 84, padL = 36, padR = 14, padT = 12, padB = 18;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+  const elos = ordered.map(m => Number(m.perfElo) || 700);
+  const minE = Math.min(...elos) - 60;
+  const maxE = Math.max(...elos) + 60;
+  const span = Math.max(120, maxE - minE);
+
+  const xOf = (i) => padL + (i / (ordered.length - 1)) * plotW;
+  const yOf = (e) => padT + plotH - ((e - minE) / span) * plotH;
+
+  const pts = ordered.map((m, i) => `${xOf(i).toFixed(1)},${yOf(elos[i]).toFixed(1)}`).join(' ');
+  const area = `${xOf(0).toFixed(1)},${(H - padB).toFixed(1)} ${pts} ${xOf(ordered.length - 1).toFixed(1)},${(H - padB).toFixed(1)}`;
+  const dots = ordered.map((m, i) => {
+    const cx = xOf(i).toFixed(1);
+    const cy = yOf(elos[i]).toFixed(1);
+    const fill = m.didWin ? '#34d399' : '#fb7185';
+    return `<circle cx="${cx}" cy="${cy}" r="3.8" fill="${fill}" stroke="#0f172a" stroke-width="1.3"><title>${m.didWin ? 'Sieg' : 'Niederlage'} · Rating ${m.perfElo}</title></circle>`;
+  }).join('');
+
+  return `
+    <svg viewBox="0 0 ${W} ${H}" class="w-full h-auto block select-none">
+      <defs>
+        <linearGradient id="stats-spark-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.32"/>
+          <stop offset="100%" stop-color="#22d3ee" stop-opacity="0.0"/>
+        </linearGradient>
+      </defs>
+      <line x1="${padL}" y1="${padT}" x2="${W - padR}" y2="${padT}" stroke="currentColor" opacity="0.08"/>
+      <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="currentColor" opacity="0.10"/>
+      <polygon points="${area}" fill="url(#stats-spark-grad)"/>
+      <polyline points="${pts}" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${dots}
+      <text x="${padL - 6}" y="${padT + 4}" text-anchor="end" font-size="9" fill="#94a3b8" font-family="JetBrains Mono, monospace">${Math.round(maxE - 60)}</text>
+      <text x="${padL - 6}" y="${H - padB + 3}" text-anchor="end" font-size="9" fill="#94a3b8" font-family="JetBrains Mono, monospace">${Math.round(minE + 60)}</text>
+    </svg>
+  `;
+}
+
+function renderPersonalStatsDashboard() {
+  const kpiEl = document.getElementById('stats-kpi-grid');
+  const sparkWrap = document.getElementById('stats-spark-wrap');
+  const sparkEl = document.getElementById('stats-spark-svg');
+  const histEl = document.getElementById('stats-match-history');
+  const clearBtn = document.getElementById('stats-clear-history-btn');
+  const countBadge = document.getElementById('stats-history-count');
+  if (!kpiEl || !histEl) return;
+
+  // 1. Spieler-Elo & Bilanz aus localStorage / playerEloState
+  let elo = 700, wins = 0, losses = 0;
+  try {
+    const rawElo = localStorage.getItem('blink_player_elo_v1');
+    if (rawElo) {
+      const p = JSON.parse(rawElo);
+      if (typeof p.elo === 'number') elo = Math.round(p.elo);
+      if (typeof p.wins === 'number') wins = p.wins;
+      if (typeof p.losses === 'number') losses = p.losses;
+    } else if (typeof playerEloState !== 'undefined') {
+      elo = Math.round(playerEloState.elo || 700);
+      wins = playerEloState.wins || 0;
+      losses = playerEloState.losses || 0;
+    }
+  } catch (e) {}
+  const rank = (typeof getEloRankInfo === 'function') ? getEloRankInfo(elo) : { name: 'Bronze' };
+  const totalGames = wins + losses;
+  const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
+
+  // 2. Rekorde aus anderen Spielmodi
+  let dailyStreak = 0, cascadeHs = 0, endgamesSolved = 0;
+  try {
+    const dRaw = localStorage.getItem('blink_daily_streak_v1');
+    if (dRaw) dailyStreak = JSON.parse(dRaw).streak || 0;
+    cascadeHs = parseInt(localStorage.getItem('blink_cascade_hs_v1') || '0', 10) || 0;
+    const egRaw = localStorage.getItem('blink_endgame_solved_v1');
+    if (egRaw) {
+      const arr = JSON.parse(egRaw);
+      if (Array.isArray(arr)) endgamesSolved = arr.length;
+    }
+  } catch (e) {}
+
+  // 3. Match History (letzte 10 Spiele)
+  const history = loadMatchHistory();
+  const avgAcc = history.length > 0
+    ? (history.reduce((s, m) => s + (Number(m.accuracy) || 0), 0) / history.length)
+    : null;
+  const avgReact = history.length > 0
+    ? (history.reduce((s, m) => s + (Number(m.avgReactionMs) || 0), 0) / history.length)
+    : null;
+
+  kpiEl.innerHTML = `
+    <button type="button" onclick="toggleSettingsModal(); toggleEloOverviewModal();" class="stats-kpi-card text-left cursor-pointer" title="Elo-Rangliste öffnen">
+      <div class="text-[9.5px] uppercase tracking-wider text-slate-400 mono">Spieler-Elo</div>
+      <div class="text-xl font-extrabold text-white mono leading-tight mt-0.5">${elo}</div>
+      <div class="text-[10px] text-cyan-300 mono mt-0.5 truncate">${rank.name} ↗</div>
+    </button>
+    <div class="stats-kpi-card">
+      <div class="text-[9.5px] uppercase tracking-wider text-slate-400 mono">Bilanz</div>
+      <div class="text-xl font-extrabold text-emerald-300 mono leading-tight mt-0.5">${totalGames > 0 ? `${winRate} %` : '—'}</div>
+      <div class="text-[10px] text-slate-400 mono mt-0.5">${wins}S · ${losses}N (${totalGames})</div>
+    </div>
+    <div class="stats-kpi-card">
+      <div class="text-[9.5px] uppercase tracking-wider text-slate-400 mono">Ø Genauigkeit</div>
+      <div class="text-xl font-extrabold text-cyan-300 mono leading-tight mt-0.5">${avgAcc !== null ? `${avgAcc.toFixed(1)} %` : '—'}</div>
+      <div class="text-[10px] text-slate-400 mono mt-0.5">${avgReact !== null ? `Ø ${(avgReact / 1000).toFixed(2)}s / Zug` : 'Keine Daten'}</div>
+    </div>
+    <div class="stats-kpi-card">
+      <div class="text-[9.5px] uppercase tracking-wider text-slate-400 mono">Rekorde</div>
+      <div class="text-xl font-extrabold text-amber-300 mono leading-tight mt-0.5">${dailyStreak}d</div>
+      <div class="text-[10px] text-slate-400 mono mt-0.5 truncate">Cas: ${cascadeHs} · End: ${endgamesSolved}</div>
+    </div>
+  `;
+
+  if (sparkWrap && sparkEl) {
+    const showSpark = history.length >= 2;
+    sparkWrap.classList.toggle('hidden', !showSpark);
+    if (showSpark) sparkEl.innerHTML = renderStatsSparklineSVG(history);
+  }
+
+  if (countBadge) countBadge.textContent = `${history.length} / ${MAX_MATCH_HISTORY}`;
+  if (clearBtn) clearBtn.classList.toggle('hidden', history.length === 0);
+
+  if (history.length === 0) {
+    histEl.innerHTML = `
+      <div class="px-4 py-7 text-center space-y-1.5">
+        <div class="text-xs font-bold text-slate-300">Noch keine Partien im Verlauf</div>
+        <p class="text-[11px] text-slate-500 max-w-sm mx-auto leading-relaxed">
+          Sobald du eine Partie in der Blink-Arena abschließt, wird sie hier automatisch gespeichert und kann jederzeit nachträglich analysiert werden.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  histEl.innerHTML = history.map((m, idx) => {
+    const ruleTag = m.ruleMode === 'cluster' ? 'Cluster' : 'Standard';
+    const dur = (typeof formatElapsedTime === 'function') ? formatElapsedTime(m.durationSec || 0) : `${Math.round(m.durationSec || 0)}s`;
+    const acc = typeof m.accuracy === 'number' ? `${m.accuracy.toFixed(0)} %` : '—';
+    const opp = String(m.oppLabel || 'Gegner').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    return `
+      <div class="stats-history-row">
+        <span class="stats-res-badge ${m.didWin ? 'is-win' : 'is-loss'}" title="${m.didWin ? 'Sieg' : 'Niederlage'}">${m.didWin ? 'S' : 'N'}</span>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span class="text-xs font-bold text-white truncate">vs. ${opp}</span>
+            <span class="text-[9.5px] mono px-1.5 py-0.5 rounded-full bg-white/[0.06] text-slate-400 shrink-0">${ruleTag}</span>
+          </div>
+          <div class="text-[10px] mono text-slate-400 truncate mt-0.5">
+            ${formatHistoryDate(m.playedAt)} · ${dur} · Rating <strong class="text-slate-200">${m.perfElo || '—'}</strong> · ${acc}
+          </div>
+        </div>
+        <button type="button" onclick="openHistoryMatchAnalysis(${idx})" class="stats-analyze-btn shrink-0">
+          <span>Analysieren</span>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
+    `;
+  }).join('');
 }
 
 function renderEvalChartSVG(report) {
@@ -294,7 +521,7 @@ function renderEvalChartSVG(report) {
     return '<div class="text-xs text-slate-500 py-8 text-center mono">Zu wenig Daten für einen Verlaufsgraphen.</div>';
   }
 
-  const W = 640, H = 190, padL = 36, padR = 16, padT = 18, padB = 26;
+  const W = 640, H = 148, padL = 34, padR = 14, padT = 14, padB = 22;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
   const maxT = Math.max(1, pts[pts.length - 1].t, report.durationSec);
@@ -372,15 +599,16 @@ function renderEvalChartSVG(report) {
   `;
 }
 
-function openMatchAnalysisModal() {
-  const report = matchAnalysisState.lastReport;
+function openMatchAnalysisModal(reportOverride = null) {
+  const report = reportOverride || matchAnalysisState.lastReport;
   if (!report) {
     showSonnerToast('Spiele zuerst eine Partie in der Blink-Arena, um sie zu analysieren.', 'neutral');
     return;
   }
 
-  closeMatchSummaryOverlay();
+  if (typeof closeMatchSummaryOverlay === 'function') closeMatchSummaryOverlay();
   renderMatchAnalysisModal(report);
+  if (typeof safeRenderMathJax === 'function') safeRenderMathJax();
   if (typeof toggleModalState === 'function') {
     const m = document.getElementById('match-analysis-modal');
     if (m && m.classList.contains('hidden')) toggleModalState('match-analysis-modal');
@@ -412,25 +640,25 @@ function renderMatchAnalysisModal(report) {
   const perfRank = getEloRankInfo(report.perfElo);
   if (kpiEl) {
     kpiEl.innerHTML = `
-      <div class="rounded-2xl bg-slate-950/80 border border-white/[0.08] p-3">
+      <div class="apple-analysis-kpi">
         <div class="text-[9.5px] uppercase tracking-wider text-slate-500 mono">Genauigkeit</div>
-        <div class="text-xl font-extrabold text-cyan-300 mono mt-0.5">${report.accuracy.toFixed(1)} %</div>
-        <div class="text-[10px] text-slate-400 mono">${report.playerMoves} Treffer · ${report.counts.mistake} Fehler</div>
+        <div class="text-lg sm:text-xl font-extrabold text-cyan-300 mono leading-tight mt-0.5">${report.accuracy.toFixed(1)} %</div>
+        <div class="text-[10px] text-slate-400 mono mt-0.5">${report.playerMoves} Treffer · ${report.counts.mistake} Fehler</div>
       </div>
-      <div class="rounded-2xl bg-slate-950/80 border border-white/[0.08] p-3">
+      <div class="apple-analysis-kpi">
         <div class="text-[9.5px] uppercase tracking-wider text-slate-500 mono">Spiel-Rating</div>
-        <div class="text-xl font-extrabold text-white mono mt-0.5">${report.perfElo}</div>
-        <div class="text-[10px] text-slate-400 mono">${perfRank.name}-Niveau</div>
+        <div class="text-lg sm:text-xl font-extrabold text-white mono leading-tight mt-0.5">${report.perfElo}</div>
+        <div class="text-[10px] text-slate-400 mono mt-0.5">${perfRank.name}-Niveau</div>
       </div>
-      <div class="rounded-2xl bg-slate-950/80 border border-white/[0.08] p-3">
+      <div class="apple-analysis-kpi">
         <div class="text-[9.5px] uppercase tracking-wider text-slate-500 mono">Ø Tempo</div>
-        <div class="text-xl font-extrabold text-emerald-300 mono mt-0.5">${(report.avgReactionMs / 1000).toFixed(2)}s</div>
-        <div class="text-[10px] text-slate-400 mono">Best: ${(report.bestReactionMs / 1000).toFixed(2)}s</div>
+        <div class="text-lg sm:text-xl font-extrabold text-emerald-300 mono leading-tight mt-0.5">${(report.avgReactionMs / 1000).toFixed(2)}s</div>
+        <div class="text-[10px] text-slate-400 mono mt-0.5">Best: ${(report.bestReactionMs / 1000).toFixed(2)}s</div>
       </div>
-      <div class="rounded-2xl bg-slate-950/80 border border-white/[0.08] p-3">
+      <div class="apple-analysis-kpi">
         <div class="text-[9.5px] uppercase tracking-wider text-slate-500 mono">Max. Flow</div>
-        <div class="text-xl font-extrabold text-purple-300 mono mt-0.5">${report.maxStreak}×</div>
-        <div class="text-[10px] text-slate-400 mono">${report.restocks}× Restock</div>
+        <div class="text-lg sm:text-xl font-extrabold text-purple-300 mono leading-tight mt-0.5">${report.maxStreak}×</div>
+        <div class="text-[10px] text-slate-400 mono mt-0.5">${report.restocks}× Restock</div>
       </div>
     `;
   }
@@ -447,16 +675,16 @@ function renderMatchAnalysisModal(report) {
       { sym: '✕',  label: 'Fehler',   val: report.counts.mistake,   cls: 'text-rose-300 border-rose-400/30 bg-rose-500/10' }
     ];
     qualEl.innerHTML = items.map(it => `
-      <div class="rounded-xl border px-2.5 py-2 text-center ${it.cls}">
-        <div class="text-sm font-extrabold mono">${it.val}</div>
-        <div class="text-[9.5px] mono opacity-85">${it.sym} ${it.label}</div>
+      <div class="rounded-xl border px-2 py-2 text-center flex flex-col items-center justify-center gap-1 ${it.cls}">
+        <div class="text-base font-extrabold mono leading-none">${it.val}</div>
+        <div class="text-[10px] mono font-semibold whitespace-nowrap leading-none opacity-90">${it.sym} ${it.label}</div>
       </div>
     `).join('');
   }
 
   if (propEl) {
     if (report.ruleMode === 'cluster') {
-      propEl.innerHTML = `<div class="text-xs text-slate-400">Im Cluster-Modus wurden <strong class="text-purple-300">${report.props.cluster} gültige Cluster-Trios</strong> ($d_H = 3$) gespielt.</div>`;
+      propEl.innerHTML = `<div class="sm:col-span-3 text-xs text-slate-400">Im Cluster-Modus wurden <strong class="text-purple-300">${report.props.cluster} gültige Cluster-Trios</strong> ($d_H = 3$) gespielt.</div>`;
     } else {
       const sum = Math.max(1, report.props.x + report.props.y + report.props.z);
       const rows = [
@@ -467,10 +695,10 @@ function renderMatchAnalysisModal(report) {
       propEl.innerHTML = rows.map(r => {
         const pct = Math.round((r.val / sum) * 100);
         return `
-          <div class="space-y-1">
-            <div class="flex justify-between text-[11px] mono">
-              <span class="text-slate-300">${r.lbl}</span>
-              <span class="text-slate-400">${r.val}× (${pct} %)</span>
+          <div class="space-y-1.5">
+            <div class="flex justify-between gap-1 text-[10.5px] mono whitespace-nowrap">
+              <span class="text-slate-300 font-semibold">${r.lbl}</span>
+              <span class="text-slate-400">${r.val}× (${pct}%)</span>
             </div>
             <div class="w-full h-1.5 rounded-full bg-white/[0.07] overflow-hidden">
               <div class="h-full ${r.color} rounded-full" style="width:${pct}%"></div>

@@ -1219,8 +1219,78 @@
             safeRenderMathJax();
         }
 
-        function toggleSettingsModal() {
+        const SETTINGS_SECTIONS = {
+            appearance: { title: 'Design & Ansicht', sub: 'Farbschema und visuelle Hilfen' },
+            profile:    { title: 'Charakter & Profil', sub: 'Erstelle deinen Avatar für Arena, Verhör & Online-1v1' },
+            stats:      { title: 'Statistik & Verlauf', sub: 'Deine Leistung, Rekorde und die letzten 10 Partien' },
+            cloud:      { title: 'Cloud-Konto', sub: 'Spielstand, Charakter & Elo geräteübergreifend synchronisieren' },
+            audio:      { title: 'Audio & Sound', sub: 'Klick-Akustik, Spielmusik & Master-Lautstärke' },
+            mapping:    { title: 'Codierung', sub: 'Zuordnung von Anzahl (X), Farbe (Y) und Symbol (Z)' }
+        };
+        let activeSettingsSection = 'appearance';
+
+        function setSettingsSection(sectionId = 'appearance', silent = false) {
+            const sec = SETTINGS_SECTIONS[sectionId] ? sectionId : 'appearance';
+            if (!silent && activeSettingsSection !== sec && typeof playSound === 'function') playSound('tick');
+            activeSettingsSection = sec;
+
+            Object.keys(SETTINGS_SECTIONS).forEach(key => {
+                const pane = document.getElementById(`ios-pane-${key}`);
+                const nav = document.getElementById(`ios-nav-${key}`);
+                if (pane) pane.classList.toggle('hidden', key !== sec);
+                if (nav) nav.classList.toggle('is-active', key === sec);
+            });
+
+            const profileCard = document.getElementById('ios-nav-profile-card');
+            if (profileCard) profileCard.classList.toggle('is-active', sec === 'profile');
+
+            const titleEl = document.getElementById('ios-detail-title');
+            const subEl = document.getElementById('ios-detail-subtitle');
+            if (titleEl) titleEl.textContent = SETTINGS_SECTIONS[sec].title;
+            if (subEl) subEl.textContent = SETTINGS_SECTIONS[sec].sub;
+
+            // Kontext-Controls in der Kopfzeile umschalten
+            const randBtn = document.getElementById('profile-randomize-btn');
+            const cloudBadge = document.getElementById('profile-cloud-pill-badge');
+            const mapTabs = document.getElementById('mapping-mode-tabs');
+            if (randBtn) randBtn.classList.toggle('hidden', sec !== 'profile');
+            if (cloudBadge) cloudBadge.classList.toggle('hidden', sec !== 'cloud');
+            if (mapTabs) mapTabs.classList.toggle('hidden', sec !== 'mapping');
+
+            if (sec === 'profile' && typeof renderProfileModalUI === 'function') {
+                renderProfileModalUI();
+            } else if (sec === 'stats' && typeof renderPersonalStatsDashboard === 'function') {
+                renderPersonalStatsDashboard();
+            } else if (sec === 'cloud' && window.BlinkCloudAuth && typeof window.BlinkCloudAuth.render === 'function') {
+                window.BlinkCloudAuth.render();
+            } else if (sec === 'audio' && window.BlinkHaptics && typeof window.BlinkHaptics.syncRanges === 'function') {
+                requestAnimationFrame(() => window.BlinkHaptics.syncRanges());
+            } else if (sec === 'mapping') {
+                const defaultMode = (state.currentPage === 'advanced-model') ? 'advanced' : 'basic';
+                setMappingModalMode(defaultMode, true);
+            }
+        }
+
+        function toggleSettingsModal(preferredSection = null) {
+            const modal = document.getElementById('settings-modal');
+            if (!modal) return;
+            const isOpen = !modal.classList.contains('hidden');
+            if (isOpen && preferredSection && SETTINGS_SECTIONS[preferredSection] && preferredSection !== activeSettingsSection) {
+                setSettingsSection(preferredSection, false);
+                return;
+            }
+            if (!isOpen) {
+                const target = (preferredSection && SETTINGS_SECTIONS[preferredSection]) ? preferredSection : activeSettingsSection;
+                setSettingsSection(target, true);
+                if (typeof playSound === 'function') playSound('tick');
+            }
             toggleModalState('settings-modal');
+            if (!isOpen && activeSettingsSection === 'mapping') {
+                requestAnimationFrame(() => {
+                    const defaultMode = (state.currentPage === 'advanced-model') ? 'advanced' : 'basic';
+                    setMappingModalMode(defaultMode, true);
+                });
+            }
         }
 
         function applyTheme(themeId) {
@@ -1257,12 +1327,12 @@
             for (let i = 1; i <= 8; i++) {
                 const num = String(i).padStart(2, '0');
                 gridHtml += `
-                    <button onclick="openLessonPage(${i})" class="group text-left rounded-2xl border border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.05] hover:border-cyan-400/40 px-4 py-3.5 transition-all duration-200 flex items-center justify-between gap-3">
+                    <button onclick="openLessonPage(${i})" class="home-lesson-chip group text-left rounded-2xl px-4 py-3.5 transition-all duration-200 flex items-center justify-between gap-3">
                         <div class="flex items-center gap-3">
-                            <span class="mono text-xs font-bold text-slate-500 group-hover:text-cyan-400 transition-colors">${num}</span>
-                            <span class="text-xs sm:text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">Sitzung ${i}</span>
+                            <span class="home-lesson-num mono text-xs font-bold transition-colors">${num}</span>
+                            <span class="home-lesson-label text-xs sm:text-sm font-semibold transition-colors">Sitzung ${i}</span>
                         </div>
-                        <svg class="w-3.5 h-3.5 text-slate-600 group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                        <svg class="home-lesson-arrow w-3.5 h-3.5 group-hover:translate-x-0.5 transition-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
                 `;
             }
@@ -1697,13 +1767,7 @@
         }
 
         function toggleMappingModal() {
-            const modal = document.getElementById('mapping-modal');
-            const isOpening = modal && modal.classList.contains('hidden');
-            toggleModalState('mapping-modal');
-            if (isOpening) {
-                const defaultMode = (state.currentPage === 'advanced-model') ? 'advanced' : 'basic';
-                setMappingModalMode(defaultMode, true);
-            }
+            toggleSettingsModal('mapping');
         }
 
         function setupDraggableResizer(resizerId, workspaceId, badgeId, onPercentChange) {
@@ -2431,25 +2495,39 @@
             titleEl.textContent = layer === 5 ? `6×6 Komplement-Matrix (X=5*)` : `6×6 Schicht-Matrix X=${layer} (${PALETTE_X[layer].word})`;
             const grid = Array.from({ length: 6 }, () => Array(6).fill(null));
             layerCards.forEach(([x, y, z]) => grid[y][z] = [x, y, z]);
+            const pal = get2DSvgPalette();
 
-            let html = `<table class="w-full text-center mono text-[11px] border-separate border-spacing-1.5"><thead><tr><th class="text-[10px] text-slate-500">Y \\ Z</th>`;
-            for (let z = 0; z < 6; z++) html += `<th class="text-slate-200 pb-1"><span class="text-[10px]">Z=${z} (${PALETTE_Z[z].name})</span></th>`;
-            html += `<th class="text-[10px] text-slate-400">∑</th></tr></thead><tbody>`;
+            let html = `<table class="apple-mat-table w-full text-center mono text-[11px] border-separate">
+                <colgroup>
+                    <col class="apple-mat-col-y">
+                    <col><col><col><col><col><col>
+                    <col class="apple-mat-col-sum">
+                </colgroup>
+                <thead><tr><th class="apple-mat-corner">Y \\ Z</th>`;
+            for (let z = 0; z < 6; z++) {
+                html += `<th class="apple-mat-col-hdr">
+                    <div class="apple-mat-col-hdr-inner">
+                        <span class="apple-mat-hdr-top">${getSymbolSVG(z, pal.symFill, 13, pal.symStroke, 1.1)}<span>Z=${z}</span></span>
+                        <span class="apple-mat-hdr-sub">${PALETTE_Z[z].name}</span>
+                    </div>
+                </th>`;
+            }
+            html += `<th class="apple-mat-sum-hdr">∑</th></tr></thead><tbody>`;
 
             for (let y = 0; y < 6; y++) {
-                html += `<tr><td class="text-left pr-1.5 text-[10px] text-slate-200 font-semibold whitespace-nowrap"><span class="inline-block w-2.5 h-2.5 rounded-full mr-1.5 align-middle" style="background:${PALETTE_Y[y].hex}"></span>Y=${y} (${PALETTE_Y[y].name})</td>`;
+                html += `<tr><th scope="row" class="apple-mat-row-hdr"><span class="apple-mat-dot" style="background:${PALETTE_Y[y].hex}"></span><span class="apple-mat-row-code">Y=${y}</span><span class="apple-mat-row-name">${PALETTE_Y[y].name}</span></th>`;
                 for (let z = 0; z < 6; z++) {
                     const card = grid[y][z];
                     if (card) {
                         const [kx, ky, kz] = card;
                         const active = isCardHighlighted(kx, ky, kz);
                         const lbl = kx === 5 ? `*${ky},${kz}` : `${kx},${ky},${kz}`;
-                        html += `<td><button onclick="highlightCardAcrossViews(${kx},${ky},${kz}, true)" class="apple-mat-cell ${active ? 'is-active' : ''}">${getSymbolSVG(kz, PALETTE_Y[ky].hex, 13, '#0f172a', 1.2)}<span>(${lbl})</span></button></td>`;
+                        html += `<td class="apple-mat-td"><button type="button" onclick="highlightCardAcrossViews(${kx},${ky},${kz}, true)" class="apple-mat-cell ${active ? 'is-active' : ''}">${getSymbolSVG(kz, PALETTE_Y[ky].hex, 15, '#0f172a', 1.2)}<span>(${lbl})</span></button></td>`;
                     } else {
-                        html += `<td class="apple-mat-empty">·</td>`;
+                        html += `<td class="apple-mat-td"><div class="apple-mat-empty" aria-hidden="true">·</div></td>`;
                     }
                 }
-                html += `<td class="text-emerald-400 font-bold">2</td></tr>`;
+                html += `<td class="apple-mat-sum">2</td></tr>`;
             }
             html += `</tbody></table>`;
             matEl.innerHTML = html;

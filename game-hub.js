@@ -465,15 +465,11 @@
                 ov.id = `g3-lobby-overlay-${spec.id}`;
                 ov.className = `g3-puzzle-lobby-overlay g3-accent-${meta.accent}`;
                 ov.innerHTML = `
-                    <div class="max-w-sm space-y-3.5 text-center">
-                        <div class="g3-lobby-icon-badge mx-auto">${meta.icon}</div>
-                        <h3 class="text-xl sm:text-2xl font-extrabold text-white heading-font">Bereit für ${meta.title}?</h3>
-                        <p class="text-xs sm:text-[13px] text-slate-300 leading-relaxed">${meta.lobbyText}</p>
-                        <div class="pt-1">
-                            <button type="button" onclick="window.BlinkGameHub.launchOfflineGame()"
-                                class="px-7 py-3 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-sm transition shadow-xl">
-                                ▶ Jetzt spielen
-                            </button>
+                    <div class="w-full max-w-[540px] flex flex-col items-center gap-3.5 text-center">
+                        <div id="g3-demo-stage-${spec.id}" class="arena-demo-stage is-${meta.accent} w-full" aria-hidden="true"></div>
+                        <div class="space-y-1 max-w-md">
+                            <h3 class="text-lg sm:text-xl font-extrabold text-white heading-font leading-tight">${meta.title}</h3>
+                            <p class="text-[11.5px] sm:text-xs text-slate-300 leading-relaxed">${meta.lobbyText}</p>
                         </div>
                     </div>
                 `;
@@ -506,6 +502,962 @@
     }
 
     // ------------------------------------------------------------------------
+    // 2B. LIVE-VORSCHAU-ANIMATIONEN FÜR ALLE 6 SPIELMODI (VOR SPIELSTART)
+    // ------------------------------------------------------------------------
+    const ARENA_DEMO_SCENARIOS = {
+        normal: {
+            badge: 'Standard · 2 Stapel',
+            descHtml: 'Lege schneller als dein Gegner passende Karten nach <strong>Farbe</strong>, <strong>Symbol</strong> oder <strong>Anzahl</strong> ab.',
+            initialPiles: [[3, 1, 0], [2, 3, 1]],
+            initialHand: [[1, 1, 2], [4, 2, 3], [2, 4, 3]],
+            initialBotCount: 29,
+            initialPlayerCount: 29,
+            steps: [
+                { actor: 'player', slot: 0, pile: 0, card: [1, 1, 2], refill: [3, 2, 2], reason: '✓ Gleiche Farbe · Rot', tone: 'cyan' },
+                { actor: 'bot',    slot: 1, pile: 1, card: [2, 2, 4], refill: null,      reason: 'Bot · Gleiche Anzahl (2×)', tone: 'rose' },
+                { actor: 'player', slot: 0, pile: 0, card: [3, 2, 2], refill: [4, 4, 3], reason: '✓ Gleiches Symbol · Tropfen', tone: 'cyan' },
+                { actor: 'player', slot: 1, pile: 1, card: [4, 2, 3], refill: [1, 3, 4], reason: '⚡ Kombo! Farbe · Grün', tone: 'emerald' }
+            ]
+        },
+        cluster: {
+            badge: 'Cluster · 3 Stapel',
+            descHtml: 'Alle <strong>3 Mittelkarten</strong> müssen in Anzahl, Farbe und Symbol <strong>paarweise komplett verschieden</strong> sein.',
+            initialPiles: [[1, 1, 1], [2, 2, 4], [3, 3, 3]],
+            initialHand: [[4, 4, 0], [0, 1, 3], [1, 5, 2]],
+            initialBotCount: 28,
+            initialPlayerCount: 28,
+            steps: [
+                { actor: 'player', slot: 0, pile: 0, card: [4, 4, 0], refill: [0, 0, 5], reason: '✦ Cluster · Alle 3 verschieden!', tone: 'purple' },
+                { actor: 'bot',    slot: 1, pile: 1, card: [1, 1, 2], refill: null,      reason: 'Bot · Neues Cluster auf M₂', tone: 'rose' },
+                { actor: 'player', slot: 0, pile: 2, card: [0, 0, 5], refill: [2, 3, 1], reason: '✦ Cluster-Treffer auf M₃!', tone: 'purple' }
+            ]
+        }
+    };
+
+    const lobbyDemo = {
+        running: false,
+        mode: null,
+        variant: null,
+        runToken: 0,
+        timers: [],
+        observersBound: false
+    };
+
+    function renderDemoCardHTML(card, showBadge = true) {
+        if (!card) return '';
+        const [x, y, z] = card;
+        const count = (typeof PALETTE_X !== 'undefined' && PALETTE_X[x]) ? PALETTE_X[x].count : (x === 0 ? 5 : x);
+        const symbols = typeof renderCardSymbolsHTML === 'function' ? renderCardSymbolsHTML(x, y, z) : '';
+        return `
+            ${showBadge ? `<div class="arena-demo-card-top"><span class="arena-demo-card-badge">${count}×</span></div>` : ''}
+            <div class="arena-demo-card-art">${symbols}</div>
+        `;
+    }
+
+    function clearLobbyDemoTimers() {
+        lobbyDemo.timers.forEach(id => clearTimeout(id));
+        lobbyDemo.timers = [];
+        document.querySelectorAll('.arena-demo-flyer').forEach(el => el.remove());
+    }
+
+    function scheduleDemo(fn, ms, token) {
+        const id = setTimeout(() => {
+            if (!lobbyDemo.running || lobbyDemo.runToken !== token) return;
+            fn();
+        }, ms);
+        lobbyDemo.timers.push(id);
+        return id;
+    }
+
+    function stopArenaLobbyDemo() {
+        lobbyDemo.running = false;
+        lobbyDemo.mode = null;
+        lobbyDemo.variant = null;
+        lobbyDemo.runToken += 1;
+        clearLobbyDemoTimers();
+    }
+
+    function getDemoStageEl(modeId) {
+        return document.getElementById(`g3-demo-stage-${modeId}`);
+    }
+
+    function getOverlayElForMode(modeId) {
+        if (modeId === 'arena') return document.getElementById('game-lobby-overlay');
+        if (modeId === 'verhoer') return document.getElementById('vh-lobby-overlay');
+        return document.getElementById(`g3-lobby-overlay-${modeId}`);
+    }
+
+    function getActiveDemoTarget() {
+        if (document.hidden) return null;
+        const pageGame = document.getElementById('page-game');
+        if (!pageGame || pageGame.classList.contains('hidden')) return null;
+
+        const mode = hubState.activeGame;
+        if (!GAME_IDS.includes(mode)) return null;
+        if (isCurrentModeInFocus()) return null;
+
+        const overlay = getOverlayElForMode(mode);
+        if (!overlay || overlay.classList.contains('hidden')) return null;
+        const stage = getDemoStageEl(mode);
+        if (!stage) return null;
+
+        const variant = mode === 'arena' ? (hubState.arenaRule === 'cluster' ? 'cluster' : 'normal') : 'default';
+        return { mode, variant, stage };
+    }
+
+    function setDemoReason(stage, text, tone = 'cyan') {
+        const el = stage ? stage.querySelector('[data-demo-reason]') : null;
+        if (!el) return;
+        if (!text) {
+            el.classList.remove('is-visible');
+            return;
+        }
+        el.className = `arena-demo-reason is-visible is-tone-${tone}`;
+        el.textContent = text;
+    }
+
+    function setDemoDots(stage, activeIdx) {
+        if (!stage) return;
+        stage.querySelectorAll('.arena-demo-dot').forEach((d, i) => {
+            d.classList.toggle('is-active', i === activeIdx);
+            d.classList.toggle('is-done', i < activeIdx);
+        });
+    }
+
+    function animateDemoCardFlight(stage, srcEl, dstEl, card, opts, token, onLand) {
+        const stageRect = stage.getBoundingClientRect();
+        const srcRect = srcEl.getBoundingClientRect();
+        const dstRect = dstEl.getBoundingClientRect();
+        if (dstRect.width < 8 || srcRect.width < 8) {
+            onLand();
+            return;
+        }
+        const flyer = document.createElement('div');
+        flyer.className = `arena-demo-card arena-demo-flyer card-63-88 ${opts.extraClass || ''}`;
+        flyer.innerHTML = renderDemoCardHTML(card, opts.showBadge !== false);
+        flyer.style.width = `${dstRect.width}px`;
+        flyer.style.height = `${dstRect.height}px`;
+        flyer.style.left = `${srcRect.left - stageRect.left + (srcRect.width - dstRect.width) / 2}px`;
+        flyer.style.top = `${srcRect.top - stageRect.top + (srcRect.height - dstRect.height) / 2}px`;
+        stage.appendChild(flyer);
+
+        const dx = (dstRect.left + dstRect.width / 2) - (srcRect.left + srcRect.width / 2);
+        const dy = (dstRect.top + dstRect.height / 2) - (srcRect.top + srcRect.height / 2);
+        const tilt = opts.noTilt ? 0 : (dx >= 0 ? 7 : -7);
+        const arcY = opts.arcY != null ? opts.arcY : -14;
+        const scaleFrom = Math.max(0.55, srcRect.width / Math.max(1, dstRect.width));
+
+        const anim = flyer.animate([
+            { transform: `translate(0px, 0px) scale(${scaleFrom}) rotate(0deg)`, opacity: 0.96 },
+            { transform: `translate(${dx * 0.52}px, ${dy * 0.52 + arcY}px) scale(${opts.midScale || 1.07}) rotate(${tilt}deg)`, opacity: 1, offset: 0.52 },
+            { transform: `translate(${dx}px, ${dy}px) scale(1) rotate(0deg)`, opacity: 1 }
+        ], {
+            duration: opts.duration || 460,
+            easing: opts.easing || 'cubic-bezier(0.22, 1, 0.36, 1)',
+            fill: 'forwards'
+        });
+
+        anim.onfinish = () => {
+            flyer.remove();
+            if (!lobbyDemo.running || lobbyDemo.runToken !== token) return;
+            onLand();
+        };
+    }
+
+    function scheduleDemoReset(stage, restartFn, token, holdMs = 1550) {
+        scheduleDemo(() => {
+            stage.classList.add('is-resetting');
+            scheduleDemo(() => {
+                stage.classList.remove('is-resetting');
+                restartFn();
+            }, 260, token);
+        }, holdMs, token);
+    }
+
+    // --- 1. BLINK-ARENA DEMO (STANDARD 2 STAPEL & CLUSTER 3 STAPEL) ---
+    function runArenaDemo(stage, ruleKey, token) {
+        const spec = ARENA_DEMO_SCENARIOS[ruleKey] || ARENA_DEMO_SCENARIOS.normal;
+        const isCluster = ruleKey === 'cluster';
+        const piles = spec.initialPiles.map(c => [...c]);
+        const hand = spec.initialHand.map(c => [...c]);
+        let botCount = spec.initialBotCount;
+        let playerCount = spec.initialPlayerCount;
+
+        const descEl = document.getElementById('arena-lobby-rule-desc');
+        if (descEl) descEl.innerHTML = spec.descHtml;
+
+        const pileLabels = ['M₁', 'M₂', 'M₃'];
+        stage.className = `arena-demo-stage w-full ${isCluster ? 'is-cluster' : ''}`;
+        stage.innerHTML = `
+            <div class="arena-demo-topbar">
+                <span class="arena-demo-live-pill">
+                    <span class="arena-demo-live-dot"></span>
+                    <span>Vorschau · ${spec.badge}</span>
+                </span>
+                <div class="arena-demo-topbar-right">
+                    <span class="arena-demo-score-pill">
+                        <span class="text-rose-300">Bot <strong data-demo-bot-cnt>${botCount}</strong></span>
+                        <span class="opacity-35">·</span>
+                        <span class="text-cyan-300">Du <strong data-demo-player-cnt>${playerCount}</strong></span>
+                    </span>
+                    <div class="arena-demo-dots" aria-hidden="true">
+                        ${spec.steps.map(() => `<span class="arena-demo-dot"></span>`).join('')}
+                    </div>
+                </div>
+            </div>
+            <div class="arena-demo-bot-row">
+                <span class="arena-demo-side-tag is-bot">Bot</span>
+                <div class="arena-demo-bot-hand">
+                    ${[0, 1, 2].map(i => `<div class="arena-demo-bot-card card-63-88" data-demo-bot="${i}"><span></span></div>`).join('')}
+                </div>
+            </div>
+            <div class="arena-demo-center-zone">
+                <div data-demo-reason class="arena-demo-reason"></div>
+                <div class="arena-demo-piles">
+                    ${piles.map((card, i) => `
+                        <div class="arena-demo-pile-slot">
+                            <span class="arena-demo-pile-lbl ${i === 2 ? 'text-purple-300' : ''}">${pileLabels[i]}</span>
+                            <div class="arena-demo-card is-pile card-63-88" data-demo-pile="${i}">${renderDemoCardHTML(card)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            <div class="arena-demo-player-row">
+                <span class="arena-demo-side-tag is-player">Du</span>
+                <div class="arena-demo-player-hand">
+                    ${hand.map((card, i) => `
+                        <div class="arena-demo-card is-hand card-63-88" data-demo-hand="${i}">${renderDemoCardHTML(card)}</div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            setDemoReason(stage, spec.steps[0].reason, spec.steps[0].tone);
+            return;
+        }
+
+        const runStep = (idx) => {
+            if (idx >= spec.steps.length) {
+                scheduleDemoReset(stage, () => runArenaDemo(stage, ruleKey, token), token);
+                return;
+            }
+            const step = spec.steps[idx];
+            setDemoDots(stage, idx);
+
+            const srcEl = step.actor === 'player'
+                ? stage.querySelector(`[data-demo-hand="${step.slot}"]`)
+                : stage.querySelector(`[data-demo-bot="${step.slot}"]`);
+            const dstEl = stage.querySelector(`[data-demo-pile="${step.pile}"]`);
+            if (!srcEl || !dstEl) return;
+
+            srcEl.classList.add(step.actor === 'player' ? 'is-demo-pick-player' : 'is-demo-pick-bot');
+            dstEl.classList.add(step.actor === 'player' ? 'is-demo-target-player' : 'is-demo-target-bot');
+
+            scheduleDemo(() => {
+                srcEl.classList.remove('is-demo-pick-player', 'is-demo-pick-bot');
+                dstEl.classList.remove('is-demo-target-player', 'is-demo-target-bot');
+                srcEl.classList.add('is-demo-ghost');
+
+                animateDemoCardFlight(stage, srcEl, dstEl, step.card, {
+                    extraClass: step.actor === 'bot' ? 'is-bot-flyer' : ''
+                }, token, () => {
+                    piles[step.pile] = [...step.card];
+                    dstEl.innerHTML = renderDemoCardHTML(step.card);
+                    dstEl.classList.remove('is-demo-hit-cyan', 'is-demo-hit-rose', 'is-demo-hit-purple', 'is-demo-hit-emerald');
+                    void dstEl.offsetWidth;
+                    dstEl.classList.add(`is-demo-hit-${step.tone}`);
+                    setDemoReason(stage, step.reason, step.tone);
+
+                    if (step.actor === 'player') {
+                        playerCount = Math.max(0, playerCount - 1);
+                        const el = stage.querySelector('[data-demo-player-cnt]');
+                        if (el) el.textContent = playerCount;
+                        if (step.refill) {
+                            hand[step.slot] = [...step.refill];
+                            srcEl.innerHTML = renderDemoCardHTML(step.refill);
+                        }
+                    } else {
+                        botCount = Math.max(0, botCount - 1);
+                        const el = stage.querySelector('[data-demo-bot-cnt]');
+                        if (el) el.textContent = botCount;
+                    }
+
+                    srcEl.classList.remove('is-demo-ghost', 'is-demo-deal');
+                    void srcEl.offsetWidth;
+                    srcEl.classList.add('is-demo-deal');
+                    scheduleDemo(() => runStep(idx + 1), 1250, token);
+                });
+            }, 400, token);
+        };
+
+        scheduleDemo(() => runStep(0), 600, token);
+    }
+
+    // --- 2. DAS VERHÖR DEMO (ABWURF → VERHÖR → 5ER-CLUSTER) ---
+    function runVerhoerDemo(stage, token) {
+        const hand = [[0, 0, 0], [1, 1, 1], [2, 2, 2], [1, 3, 4]];
+        const discardStart = [1, 2, 4];
+        const botSecretCard = [3, 3, 3];
+        const finalCard = [4, 4, 4];
+
+        stage.className = 'arena-demo-stage is-amber w-full';
+        stage.innerHTML = `
+            <div class="arena-demo-topbar">
+                <span class="arena-demo-live-pill">
+                    <span class="arena-demo-live-dot"></span>
+                    <span>Vorschau · 125 Karten (𝔽₅³)</span>
+                </span>
+                <div class="arena-demo-topbar-right">
+                    <span class="arena-demo-score-pill">
+                        <span class="text-amber-300">Cluster <strong data-vh-prog>3 / 5</strong></span>
+                    </span>
+                    <div class="arena-demo-dots" aria-hidden="true">
+                        <span class="arena-demo-dot"></span>
+                        <span class="arena-demo-dot"></span>
+                        <span class="arena-demo-dot"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="arena-demo-bot-row">
+                <span class="arena-demo-side-tag is-bot">Bot</span>
+                <div class="arena-demo-bot-hand">
+                    <div class="arena-demo-bot-card card-63-88" data-vh-bot="0"><span></span></div>
+                    <div class="arena-demo-bot-card card-63-88" data-vh-bot="1"><span></span></div>
+                    <div class="arena-demo-bot-card card-63-88" data-vh-bot="2"><span></span></div>
+                </div>
+            </div>
+            <div class="arena-demo-center-zone">
+                <div data-demo-reason class="arena-demo-reason"></div>
+                <div class="arena-demo-piles">
+                    <div class="arena-demo-pile-slot">
+                        <span class="arena-demo-pile-lbl text-amber-300">Abwurf M₁</span>
+                        <div class="arena-demo-card is-pile card-63-88" data-vh-discard>${renderDemoCardHTML(discardStart)}</div>
+                    </div>
+                    <div class="arena-demo-pile-slot">
+                        <span class="arena-demo-pile-lbl">Nachziehen</span>
+                        <div class="arena-demo-deck-card card-63-88" data-vh-deck>
+                            <span class="text-[11px] font-extrabold mono">𝔽₅³</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="arena-demo-player-row">
+                <span class="arena-demo-side-tag is-player">Du</span>
+                <div class="arena-demo-player-hand is-compact">
+                    ${hand.map((c, i) => `<div class="arena-demo-card is-hand-sm card-63-88" data-vh-hand="${i}">${renderDemoCardHTML(c)}</div>`).join('')}
+                    <div class="arena-demo-card is-hand-sm is-slot-empty card-63-88" data-vh-hand="4"></div>
+                </div>
+            </div>
+        `;
+
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            setDemoReason(stage, '🔍 Abwurf löst Verhör aus · Ziel: 5er-Cluster', 'amber');
+            return;
+        }
+
+        // Schritt 1: Abwurf mit 2 Gemeinsamkeiten → Verhör ausgelöst
+        scheduleDemo(() => {
+            setDemoDots(stage, 0);
+            const src = stage.querySelector('[data-vh-hand="3"]');
+            const dst = stage.querySelector('[data-vh-discard]');
+            if (!src || !dst) return;
+            src.classList.add('is-demo-pick-amber');
+            dst.classList.add('is-demo-target-amber');
+
+            scheduleDemo(() => {
+                src.classList.remove('is-demo-pick-amber');
+                dst.classList.remove('is-demo-target-amber');
+                src.classList.add('is-demo-ghost');
+                animateDemoCardFlight(stage, src, dst, hand[3], { extraClass: 'is-amber-flyer' }, token, () => {
+                    dst.innerHTML = renderDemoCardHTML(hand[3]);
+                    dst.classList.add('is-demo-hit-amber');
+                    setDemoReason(stage, '🔍 2 Gemeinsamkeiten · Verhör!', 'amber');
+
+                    // Schritt 2: Gegner-Karte wird aufgedeckt & getauscht
+                    scheduleDemo(() => {
+                        setDemoDots(stage, 1);
+                        const botCard = stage.querySelector('[data-vh-bot="1"]');
+                        if (!botCard) return;
+                        botCard.className = 'arena-demo-card is-hand-sm card-63-88 is-demo-pick-amber';
+                        botCard.innerHTML = renderDemoCardHTML(botSecretCard);
+
+                        scheduleDemo(() => {
+                            botCard.classList.add('is-demo-ghost');
+                            animateDemoCardFlight(stage, botCard, src, botSecretCard, { extraClass: 'is-amber-flyer' }, token, () => {
+                                src.classList.remove('is-demo-ghost');
+                                src.innerHTML = renderDemoCardHTML(botSecretCard);
+                                src.classList.add('is-demo-deal', 'is-demo-hit-cyan');
+                                const prog = stage.querySelector('[data-vh-prog]');
+                                if (prog) prog.textContent = '4 / 5';
+                                setDemoReason(stage, '✓ Karte ertauscht · 4/5 Cluster', 'cyan');
+
+                                // Schritt 3: 5. Karte ziehen → 5er-Cluster komplett!
+                                scheduleDemo(() => {
+                                    setDemoDots(stage, 2);
+                                    const deck = stage.querySelector('[data-vh-deck]');
+                                    const slot4 = stage.querySelector('[data-vh-hand="4"]');
+                                    if (!deck || !slot4) return;
+                                    animateDemoCardFlight(stage, deck, slot4, finalCard, { extraClass: 'is-emerald-flyer' }, token, () => {
+                                        slot4.classList.remove('is-slot-empty');
+                                        slot4.innerHTML = renderDemoCardHTML(finalCard);
+                                        if (prog) prog.textContent = '5 / 5';
+                                        stage.querySelectorAll('[data-vh-hand]').forEach(el => el.classList.add('is-demo-cluster-win'));
+                                        setDemoReason(stage, '★ 5er-Cluster komplett · Sieg!', 'emerald');
+                                        scheduleDemoReset(stage, () => runVerhoerDemo(stage, token), token, 1700);
+                                    });
+                                }, 1150, token);
+                            });
+                        }, 520, token);
+                    }, 1150, token);
+                });
+            }, 400, token);
+        }, 600, token);
+    }
+
+    // --- 3. DAILY CHALLENGE DEMO (4×3-FELD · 5ER-CLUSTER FINDEN) ---
+    function runDailyDemo(stage, token) {
+        const cards = [
+            [0, 0, 0], [1, 0, 3], [1, 1, 1], [3, 1, 4],
+            [0, 2, 1], [2, 2, 2], [4, 3, 0], [2, 4, 1],
+            [3, 3, 3], [1, 2, 0], [3, 0, 2], [4, 4, 4]
+        ];
+        const clusterIdxs = [0, 2, 5, 8, 11];
+
+        stage.className = 'arena-demo-stage is-emerald w-full';
+        stage.innerHTML = `
+            <div class="arena-demo-topbar">
+                <span class="arena-demo-live-pill">
+                    <span class="arena-demo-live-dot"></span>
+                    <span>Vorschau · 4×3 Cluster-Suche</span>
+                </span>
+                <div class="arena-demo-topbar-right">
+                    <span class="arena-demo-score-pill">
+                        <span class="text-emerald-300">Gefunden <strong data-daily-cnt>0 / 2</strong></span>
+                    </span>
+                    <div class="arena-demo-dots" aria-hidden="true">
+                        <span class="arena-demo-dot"></span>
+                        <span class="arena-demo-dot"></span>
+                        <span class="arena-demo-dot"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="arena-demo-center-zone">
+                <div data-demo-reason class="arena-demo-reason"></div>
+                <div class="demo-daily-grid">
+                    ${cards.map((c, i) => `
+                        <div class="arena-demo-card is-mini-tile card-63-88" data-daily-cell="${i}">
+                            ${renderDemoCardHTML(c, false)}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            clusterIdxs.forEach(i => stage.querySelector(`[data-daily-cell="${i}"]`)?.classList.add('is-demo-cluster-win'));
+            setDemoReason(stage, '✦ 5 paarweise verschiedene Karten = 1 Cluster', 'emerald');
+            return;
+        }
+
+        const pickCell = (idx) => {
+            const el = stage.querySelector(`[data-daily-cell="${idx}"]`);
+            if (el) el.classList.add('is-demo-selected-emerald');
+        };
+
+        scheduleDemo(() => {
+            setDemoDots(stage, 0);
+            pickCell(clusterIdxs[0]);
+            setDemoReason(stage, '1 / 5 · Alle Eigenschaften verschieden halten', 'cyan');
+            scheduleDemo(() => {
+                pickCell(clusterIdxs[1]);
+                setDemoReason(stage, '2 / 5 · Keine doppelte Zahl, Farbe oder Form', 'cyan');
+
+                scheduleDemo(() => {
+                    setDemoDots(stage, 1);
+                    pickCell(clusterIdxs[2]);
+                    setDemoReason(stage, '3 / 5 · Cluster wächst…', 'cyan');
+                    scheduleDemo(() => {
+                        pickCell(clusterIdxs[3]);
+                        setDemoReason(stage, '4 / 5 · Noch 1 passende Karte!', 'emerald');
+
+                        scheduleDemo(() => {
+                            setDemoDots(stage, 2);
+                            pickCell(clusterIdxs[4]);
+                            stage.querySelectorAll('[data-daily-cell]').forEach((el, i) => {
+                                if (clusterIdxs.includes(i)) {
+                                    el.classList.add('is-demo-cluster-win');
+                                } else {
+                                    el.classList.add('is-demo-dimmed');
+                                }
+                            });
+                            const cnt = stage.querySelector('[data-daily-cnt]');
+                            if (cnt) cnt.textContent = '1 / 2';
+                            setDemoReason(stage, '✦ 5er-Cluster gefunden! (+100)', 'emerald');
+                            scheduleDemoReset(stage, () => runDailyDemo(stage, token), token, 1750);
+                        }, 800, token);
+                    }, 550, token);
+                }, 750, token);
+            }, 550, token);
+        }, 550, token);
+    }
+
+    // --- 4. BLINK-SUDOKU DEMO (5×5 MAGISCHES QUADRAT IM 𝔽₅³) ---
+    function runSudokuDemo(stage, token) {
+        // Exaktes 5×5 MDS-Quadrat: x=(r+c)%5, y=(r+2c)%5, z=(r+3c)%5
+        const cellCard = (r, c) => [(r + c) % 5, (r + 2 * c) % 5, (r + 3 * c) % 5];
+        const holes = [
+            { r: 1, c: 2, card: cellCard(1, 2), label: '✓ (3, 0, 2) · 3× Braun Tropfen' },
+            { r: 3, c: 4, card: cellCard(3, 4), label: '✦ Magisches Quadrat komplett!' }
+        ];
+        const isHole = (r, c) => holes.some(h => h.r === r && h.c === c);
+
+        let gridHtml = '';
+        for (let r = 0; r < 5; r++) {
+            for (let c = 0; c < 5; c++) {
+                const empty = isHole(r, c);
+                gridHtml += `
+                    <div class="demo-sdk-cell ${empty ? 'is-empty' : ''}" data-sdk-r="${r}" data-sdk-c="${c}">
+                        ${empty ? '<span class="demo-sdk-q">?</span>' : renderDemoCardHTML(cellCard(r, c), false)}
+                    </div>
+                `;
+            }
+        }
+
+        stage.className = 'arena-demo-stage is-purple w-full';
+        stage.innerHTML = `
+            <div class="arena-demo-topbar">
+                <span class="arena-demo-live-pill">
+                    <span class="arena-demo-live-dot"></span>
+                    <span>Vorschau · 5×5 Magisches Quadrat</span>
+                </span>
+                <div class="arena-demo-topbar-right">
+                    <span class="arena-demo-score-pill">
+                        <span class="text-purple-300">Offen <strong data-sdk-open>2</strong></span>
+                    </span>
+                    <div class="arena-demo-dots" aria-hidden="true">
+                        <span class="arena-demo-dot"></span>
+                        <span class="arena-demo-dot"></span>
+                        <span class="arena-demo-dot"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="arena-demo-center-zone">
+                <div data-demo-reason class="arena-demo-reason"></div>
+                <div class="demo-sdk-layout">
+                    <div class="demo-sdk-grid">${gridHtml}</div>
+                    <div class="demo-sdk-builder">
+                        <span class="arena-demo-pile-lbl text-purple-300">Baukasten</span>
+                        <div class="arena-demo-card is-hand-sm card-63-88" data-sdk-next>
+                            ${renderDemoCardHTML(holes[0].card, true)}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            setDemoReason(stage, 'Jede Zeile & Spalte bildet ein 5er-Cluster', 'purple');
+            return;
+        }
+
+        const highlightCross = (r, c, on) => {
+            stage.querySelectorAll('.demo-sdk-cell').forEach(el => {
+                const er = Number(el.dataset.sdkR);
+                const ec = Number(el.dataset.sdkC);
+                el.classList.toggle('is-guide', on && (er === r || ec === c) && !(er === r && ec === c));
+                el.classList.toggle('is-focus-hole', on && er === r && ec === c);
+            });
+        };
+
+        // Schritt 1: Zeile & Spalte für Lücke 1 prüfen
+        scheduleDemo(() => {
+            setDemoDots(stage, 0);
+            highlightCross(holes[0].r, holes[0].c, true);
+            setDemoReason(stage, 'Zeile & Spalte prüfen · Fehlende Karte bauen', 'purple');
+
+            // Schritt 2: Karte 1 einsetzen
+            scheduleDemo(() => {
+                setDemoDots(stage, 1);
+                const src = stage.querySelector('[data-sdk-next]');
+                const dst = stage.querySelector(`[data-sdk-r="${holes[0].r}"][data-sdk-c="${holes[0].c}"]`);
+                if (!src || !dst) return;
+                animateDemoCardFlight(stage, src, dst, holes[0].card, { showBadge: false, extraClass: 'is-purple-flyer' }, token, () => {
+                    highlightCross(holes[0].r, holes[0].c, false);
+                    dst.classList.remove('is-empty');
+                    dst.classList.add('is-placed');
+                    dst.innerHTML = renderDemoCardHTML(holes[0].card, false);
+                    const openEl = stage.querySelector('[data-sdk-open]');
+                    if (openEl) openEl.textContent = '1';
+                    setDemoReason(stage, holes[0].label, 'cyan');
+
+                    // Schritt 3: Lücke 2 füllen → Gelöst!
+                    src.innerHTML = renderDemoCardHTML(holes[1].card, true);
+                    src.classList.remove('is-demo-deal');
+                    void src.offsetWidth;
+                    src.classList.add('is-demo-deal');
+
+                    scheduleDemo(() => {
+                        setDemoDots(stage, 2);
+                        highlightCross(holes[1].r, holes[1].c, true);
+                        const dst2 = stage.querySelector(`[data-sdk-r="${holes[1].r}"][data-sdk-c="${holes[1].c}"]`);
+                        if (!dst2) return;
+                        scheduleDemo(() => {
+                            animateDemoCardFlight(stage, src, dst2, holes[1].card, { showBadge: false, extraClass: 'is-emerald-flyer' }, token, () => {
+                                highlightCross(holes[1].r, holes[1].c, false);
+                                dst2.classList.remove('is-empty');
+                                dst2.classList.add('is-placed');
+                                dst2.innerHTML = renderDemoCardHTML(holes[1].card, false);
+                                if (openEl) openEl.textContent = '0';
+                                stage.querySelectorAll('.demo-sdk-cell').forEach(el => el.classList.add('is-solved-glow'));
+                                setDemoReason(stage, holes[1].label, 'emerald');
+                                scheduleDemoReset(stage, () => runSudokuDemo(stage, token), token, 1750);
+                            });
+                        }, 420, token);
+                    }, 950, token);
+                });
+            }, 900, token);
+        }, 550, token);
+    }
+
+    // --- 5. ENDGAME-PUZZLES DEMO (EXAKTE 3-ZUG-BRÜCKENFOLGE OHNE DEADLOCK) ---
+    function runEndgameDemo(stage, token) {
+        const piles = [[1, 1, 0], [2, 3, 1]];
+        const hand = [[4, 1, 4], [3, 2, 4], [3, 4, 5]];
+        const steps = [
+            { slot: 0, pile: 0, card: [4, 1, 4], reason: '1/3 · Rot öffnet Blume-Brücke', tone: 'cyan' },
+            { slot: 1, pile: 0, card: [3, 2, 4], reason: '2/3 · Blume öffnet 3×-Anschluss', tone: 'cyan' },
+            { slot: 2, pile: 0, card: [3, 4, 5], reason: '★ Gelöst! Alle 3 Karten ohne Stocken', tone: 'emerald' }
+        ];
+
+        stage.className = 'arena-demo-stage is-sky w-full';
+        stage.innerHTML = `
+            <div class="arena-demo-topbar">
+                <span class="arena-demo-live-pill">
+                    <span class="arena-demo-live-dot"></span>
+                    <span>Vorschau · Brücken-Zugfolge</span>
+                </span>
+                <div class="arena-demo-topbar-right">
+                    <span class="arena-demo-score-pill">
+                        <span class="text-sky-300">Zug <strong data-eg-cnt>0 / 3</strong></span>
+                    </span>
+                    <div class="arena-demo-dots" aria-hidden="true">
+                        <span class="arena-demo-dot"></span>
+                        <span class="arena-demo-dot"></span>
+                        <span class="arena-demo-dot"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="arena-demo-center-zone">
+                <div data-demo-reason class="arena-demo-reason"></div>
+                <div class="arena-demo-piles">
+                    <div class="arena-demo-pile-slot">
+                        <span class="arena-demo-pile-lbl">M₁</span>
+                        <div class="arena-demo-card is-pile card-63-88" data-eg-pile="0">${renderDemoCardHTML(piles[0])}</div>
+                    </div>
+                    <div class="arena-demo-pile-slot">
+                        <span class="arena-demo-pile-lbl">M₂</span>
+                        <div class="arena-demo-card is-pile card-63-88" data-eg-pile="1">${renderDemoCardHTML(piles[1])}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="arena-demo-player-row">
+                <span class="arena-demo-side-tag is-player">Hand</span>
+                <div class="arena-demo-player-hand">
+                    ${hand.map((c, i) => `
+                        <div class="arena-demo-card is-hand card-63-88" data-eg-hand="${i}">${renderDemoCardHTML(c)}</div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            setDemoReason(stage, 'Lege alle 3 Karten in der exakten Reihenfolge ab', 'cyan');
+            return;
+        }
+
+        const runStep = (idx) => {
+            if (idx >= steps.length) {
+                scheduleDemoReset(stage, () => runEndgameDemo(stage, token), token, 1750);
+                return;
+            }
+            const step = steps[idx];
+            setDemoDots(stage, idx);
+            const src = stage.querySelector(`[data-eg-hand="${step.slot}"]`);
+            const dst = stage.querySelector(`[data-eg-pile="${step.pile}"]`);
+            if (!src || !dst) return;
+
+            src.classList.add('is-demo-pick-player');
+            dst.classList.add('is-demo-target-player');
+
+            scheduleDemo(() => {
+                src.classList.remove('is-demo-pick-player');
+                dst.classList.remove('is-demo-target-player');
+                src.classList.add('is-slot-empty');
+                src.innerHTML = '';
+
+                animateDemoCardFlight(stage, src, dst, step.card, {}, token, () => {
+                    dst.innerHTML = renderDemoCardHTML(step.card);
+                    dst.classList.remove('is-demo-hit-cyan', 'is-demo-hit-emerald');
+                    void dst.offsetWidth;
+                    dst.classList.add(`is-demo-hit-${step.tone}`);
+                    const cnt = stage.querySelector('[data-eg-cnt]');
+                    if (cnt) cnt.textContent = `${idx + 1} / 3`;
+                    setDemoReason(stage, step.reason, step.tone);
+                    scheduleDemo(() => runStep(idx + 1), 1200, token);
+                });
+            }, 420, token);
+        };
+
+        scheduleDemo(() => runStep(0), 600, token);
+    }
+
+    // --- 6. CLUSTER-CASCADE DEMO (5-SPALTEN-FALLSPIEL & CLUSTER-KETTENREAKTION) ---
+    function runCascadeDemo(stage, token) {
+        // 3 sichtbare Zeilen × 5 Spalten (Zeile 2 = Boden)
+        const board = [
+            [null, null, null, null, null],
+            [[1, 3, 2], null, null, [4, 0, 1], null],
+            [[0, 0, 0], [1, 1, 1], null, [3, 3, 3], null]
+        ];
+        const drop1 = { col: 2, row: 2, card: [2, 2, 2] };
+        const drop2 = { col: 4, row: 2, card: [4, 4, 4] };
+
+        const renderCells = () => {
+            let html = '';
+            for (let r = 0; r < 3; r++) {
+                for (let c = 0; c < 5; c++) {
+                    const card = board[r][c];
+                    html += `
+                        <div class="demo-cas-cell ${card ? 'has-card' : ''}" data-cas-r="${r}" data-cas-c="${c}">
+                            ${card ? renderDemoCardHTML(card, false) : ''}
+                        </div>
+                    `;
+                }
+            }
+            return html;
+        };
+
+        stage.className = 'arena-demo-stage is-rose w-full';
+        stage.innerHTML = `
+            <div class="arena-demo-topbar">
+                <span class="arena-demo-live-pill">
+                    <span class="arena-demo-live-dot"></span>
+                    <span>Vorschau · 5×5 Fallspiel</span>
+                </span>
+                <div class="arena-demo-topbar-right">
+                    <span class="arena-demo-score-pill">
+                        <span class="text-rose-300">Punkte <strong data-cas-pts>0</strong></span>
+                    </span>
+                    <div class="arena-demo-dots" aria-hidden="true">
+                        <span class="arena-demo-dot"></span>
+                        <span class="arena-demo-dot"></span>
+                        <span class="arena-demo-dot"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="arena-demo-center-zone">
+                <div data-demo-reason class="arena-demo-reason"></div>
+                <div class="demo-cas-triggers">
+                    ${[0, 1, 2, 3, 4].map(c => `<div class="demo-cas-trig" data-cas-trig="${c}">↓</div>`).join('')}
+                </div>
+                <div class="demo-cas-grid" data-cas-grid>${renderCells()}</div>
+            </div>
+        `;
+
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            setDemoReason(stage, 'Wirf Karten ein & löse 5er-Cluster auf!', 'rose');
+            return;
+        }
+
+        const doDrop = (drop, onDone) => {
+            const trig = stage.querySelector(`[data-cas-trig="${drop.col}"]`);
+            const dst = stage.querySelector(`[data-cas-r="${drop.row}"][data-cas-c="${drop.col}"]`);
+            if (!trig || !dst) return;
+            trig.classList.add('is-active');
+            scheduleDemo(() => {
+                trig.classList.remove('is-active');
+                animateDemoCardFlight(stage, trig, dst, drop.card, {
+                    showBadge: false,
+                    noTilt: true,
+                    arcY: 0,
+                    midScale: 1.02,
+                    duration: 420,
+                    easing: 'cubic-bezier(0.32, 0, 0.25, 1)',
+                    extraClass: 'is-bot-flyer'
+                }, token, () => {
+                    board[drop.row][drop.col] = [...drop.card];
+                    dst.classList.add('has-card', 'is-demo-hit-rose');
+                    dst.innerHTML = renderDemoCardHTML(drop.card, false);
+                    onDone();
+                });
+            }, 340, token);
+        };
+
+        // Schritt 1: Drop in Spalte 3
+        scheduleDemo(() => {
+            setDemoDots(stage, 0);
+            setDemoReason(stage, '↓ Einwurf in Spalte 3 · 4/5 Cluster', 'rose');
+            doDrop(drop1, () => {
+                // Schritt 2: Drop in Spalte 5 → 5er-Cluster voll!
+                scheduleDemo(() => {
+                    setDemoDots(stage, 1);
+                    setDemoReason(stage, '↓ Einwurf in Spalte 5 · Zeile komplett!', 'rose');
+                    doDrop(drop2, () => {
+                        // Schritt 3: Cluster-Burst & Gravitation!
+                        scheduleDemo(() => {
+                            setDemoDots(stage, 2);
+                            for (let c = 0; c < 5; c++) {
+                                stage.querySelector(`[data-cas-r="2"][data-cas-c="${c}"]`)?.classList.add('is-cascade-burst');
+                            }
+                            const pts = stage.querySelector('[data-cas-pts]');
+                            if (pts) pts.textContent = '+250';
+                            setDemoReason(stage, '✦ 5er-Cluster aufgelöst! +250 Pkt.', 'emerald');
+
+                            scheduleDemo(() => {
+                                // Obere Karten fallen 1 Zeile nach unten
+                                board[2] = board[1].map(x => (x ? [...x] : null));
+                                board[1] = [null, null, null, null, null];
+                                const grid = stage.querySelector('[data-cas-grid]');
+                                if (grid) {
+                                    grid.innerHTML = renderCells();
+                                    grid.querySelectorAll('.demo-cas-cell.has-card').forEach(el => el.classList.add('is-demo-deal'));
+                                }
+                                scheduleDemoReset(stage, () => runCascadeDemo(stage, token), token, 1400);
+                            }, 620, token);
+                        }, 480, token);
+                    });
+                }, 850, token);
+            });
+        }, 550, token);
+    }
+
+    function getVerhoerLayoutParts() {
+        const vhView = document.getElementById('game-view-verhoer');
+        if (!vhView) return null;
+        const topHud = vhView.firstElementChild;
+        const grid = vhView.querySelector(':scope > div.grid');
+        const leftSkt = document.getElementById('vh-player-skt-box');
+        const vhLobbyOv = document.getElementById('vh-lobby-overlay');
+        const centerCard = vhLobbyOv ? vhLobbyOv.parentElement : null;
+        const rightSkt = grid ? Array.from(grid.children).find(el => el.tagName === 'ASIDE' && el !== leftSkt) : null;
+        return { vhView, topHud, grid, leftSkt, centerCard, rightSkt, vhLobbyOv };
+    }
+
+    function animateVerhoerFocusTransition(parts, entering, beforeRect) {
+        if (!parts || !parts.centerCard) return;
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        if (typeof parts.centerCard.animate !== 'function') return;
+
+        const spring = 'cubic-bezier(0.22, 1, 0.36, 1)';
+        const { topHud, leftSkt, centerCard, rightSkt, vhLobbyOv } = parts;
+
+        if (beforeRect && beforeRect.width > 40 && beforeRect.height > 40) {
+            const afterRect = centerCard.getBoundingClientRect();
+            if (afterRect.width > 40 && afterRect.height > 40) {
+                const dx = (beforeRect.left + beforeRect.width / 2) - (afterRect.left + afterRect.width / 2);
+                const dy = (beforeRect.top + beforeRect.height / 2) - (afterRect.top + afterRect.height / 2);
+                const sx = Math.max(0.45, Math.min(1.65, beforeRect.width / afterRect.width));
+                const sy = Math.max(0.55, Math.min(1.45, beforeRect.height / afterRect.height));
+                centerCard.animate([
+                    { transform: `translate3d(${dx.toFixed(1)}px, ${dy.toFixed(1)}px, 0) scale(${sx.toFixed(3)}, ${sy.toFixed(3)})` },
+                    { transform: 'translate3d(0, 0, 0) scale(1, 1)' }
+                ], {
+                    duration: entering ? 420 : 340,
+                    easing: spring
+                });
+            }
+        }
+
+        if (entering) {
+            if (topHud) {
+                topHud.animate([
+                    { opacity: 0, transform: 'translate3d(0, -14px, 0) scale(0.985)' },
+                    { opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)' }
+                ], { duration: 360, delay: 35, easing: spring, fill: 'backwards' });
+            }
+            if (leftSkt) {
+                leftSkt.animate([
+                    { opacity: 0, transform: 'translate3d(-34px, 0, 0) scale(0.96)' },
+                    { opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)' }
+                ], { duration: 430, delay: 75, easing: spring, fill: 'backwards' });
+            }
+            if (rightSkt) {
+                rightSkt.animate([
+                    { opacity: 0, transform: 'translate3d(34px, 0, 0) scale(0.96)' },
+                    { opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)' }
+                ], { duration: 430, delay: 75, easing: spring, fill: 'backwards' });
+            }
+            const upperZone = document.getElementById('vh-upper-table-zone');
+            const handZone = document.getElementById('vh-player-hand');
+            [upperZone, handZone].forEach((el, idx) => {
+                if (!el) return;
+                el.animate([
+                    { opacity: 0, transform: 'translate3d(0, 10px, 0)' },
+                    { opacity: 1, transform: 'translate3d(0, 0, 0)' }
+                ], { duration: 320, delay: 80 + idx * 45, easing: spring, fill: 'backwards' });
+            });
+        } else if (vhLobbyOv && !vhLobbyOv.classList.contains('hidden')) {
+            vhLobbyOv.animate([
+                { opacity: 0 },
+                { opacity: 1 }
+            ], { duration: 260, delay: 40, easing: 'ease-out', fill: 'backwards' });
+        }
+    }
+
+    function syncVerhoerLobbyLayout(allowAnimate = true) {
+        const parts = getVerhoerLayoutParts();
+        if (!parts) return;
+        const { vhView, centerCard, vhLobbyOv } = parts;
+        const isLobby = !isVerhoerRunning() && Boolean(vhLobbyOv && !vhLobbyOv.classList.contains('hidden'));
+        const wasLobby = vhView.classList.contains('is-vh-lobby');
+        if (wasLobby === isLobby) return;
+
+        const visible = !vhView.classList.contains('hidden');
+        const beforeRect = (allowAnimate && visible && centerCard) ? centerCard.getBoundingClientRect() : null;
+        vhView.classList.toggle('is-vh-lobby', isLobby);
+        if (allowAnimate && visible) {
+            animateVerhoerFocusTransition(parts, !isLobby, beforeRect);
+        }
+    }
+
+    function syncArenaLobbyDemo(forceRestart = false) {
+        syncVerhoerLobbyLayout();
+        if (!lobbyDemo.observersBound && typeof MutationObserver !== 'undefined') {
+            lobbyDemo.observersBound = true;
+            const obs = new MutationObserver(() => syncArenaLobbyDemo(false));
+            ['page-game', 'game-lobby-overlay', 'vh-lobby-overlay', 'g3-lobby-overlay-daily', 'g3-lobby-overlay-sudoku', 'g3-lobby-overlay-endgame', 'g3-lobby-overlay-cascade'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+            });
+            document.addEventListener('visibilitychange', () => syncArenaLobbyDemo(false));
+        }
+
+        const target = getActiveDemoTarget();
+        if (!target) {
+            if (lobbyDemo.running) stopArenaLobbyDemo();
+            return;
+        }
+
+        if (lobbyDemo.running && lobbyDemo.mode === target.mode && lobbyDemo.variant === target.variant && !forceRestart) {
+            return;
+        }
+
+        stopArenaLobbyDemo();
+        lobbyDemo.running = true;
+        lobbyDemo.mode = target.mode;
+        lobbyDemo.variant = target.variant;
+        const token = ++lobbyDemo.runToken;
+
+        if (target.mode === 'arena') runArenaDemo(target.stage, target.variant, token);
+        else if (target.mode === 'verhoer') runVerhoerDemo(target.stage, token);
+        else if (target.mode === 'daily') runDailyDemo(target.stage, token);
+        else if (target.mode === 'sudoku') runSudokuDemo(target.stage, token);
+        else if (target.mode === 'endgame') runEndgameDemo(target.stage, token);
+        else if (target.mode === 'cascade') runCascadeDemo(target.stage, token);
+    }
+
+    // ------------------------------------------------------------------------
     // 2. FOKUSMODUS-STEUERUNG (ALLE 6 SPIELMODI · WERKZEUGE ERST IM FOKUSMODUS)
     // ------------------------------------------------------------------------
     function syncFocusModeClasses() {
@@ -517,11 +1469,25 @@
         const inFocus = !isSparring && isCurrentModeInFocus();
         const isPuzzleFocus = inFocus && PUZZLE_MODES.has(id);
 
+        // Für „Das Verhör“: Ausgangsposition VOR dem Verbreitern / Aufklappen der SKT-Spalten messen (FLIP)
+        const vhParts = id === 'verhoer' ? getVerhoerLayoutParts() : null;
+        const vhVisible = Boolean(vhParts && !vhParts.vhView.classList.contains('hidden'));
+        const vhNextLobby = vhParts ? (!isVerhoerRunning() && Boolean(vhParts.vhLobbyOv && !vhParts.vhLobbyOv.classList.contains('hidden'))) : false;
+        const vhStateChanged = Boolean(vhParts && vhVisible && vhParts.vhView.classList.contains('is-vh-lobby') !== vhNextLobby);
+        const vhBeforeRect = (vhStateChanged && vhParts.centerCard) ? vhParts.centerCard.getBoundingClientRect() : null;
+
         shell.classList.toggle('is-sparring', isSparring);
         shell.classList.toggle('is-focus-mode', inFocus);
         shell.classList.toggle('is-focus-arena', inFocus && id === 'arena');
         shell.classList.toggle('is-focus-verhoer', inFocus && id === 'verhoer');
         shell.classList.toggle('is-focus-puzzle', isPuzzleFocus);
+
+        if (vhParts) {
+            vhParts.vhView.classList.toggle('is-vh-lobby', vhNextLobby);
+            if (vhStateChanged) {
+                animateVerhoerFocusTransition(vhParts, !vhNextLobby, vhBeforeRect);
+            }
+        }
 
         // Kartenfortschritt in der Arena nur während laufender Partie zeigen
         const arenaProgEl = document.getElementById('g3-right-arena-progress');
@@ -578,6 +1544,7 @@
         updateDockVisibility();
         hideArenaPlayerAndBotSublines();
         unifyAbortButtons();
+        syncArenaLobbyDemo();
     }
 
     // Werkzeug-Blöcke (Tagesstatus, Karten-Baukasten, Endgame-Info, Nächste Karte) NUR im Fokusmodus anzeigen!
@@ -1134,6 +2101,7 @@
         }
         if (typeof playSound === 'function') playSound('tick');
         renderRightPanel();
+        syncArenaLobbyDemo(true);
     }
 
     function setArenaDiff(diffId) {
@@ -1385,6 +2353,9 @@
                     hubState.puzzleFocus[m] = false;
                 });
                 syncFocusModeClasses();
+                stopArenaLobbyDemo();
+            } else {
+                requestAnimationFrame(() => syncArenaLobbyDemo(false));
             }
         });
 
@@ -1554,10 +2525,10 @@
     const modelViewState = {
         basicView: '3d',   // '3d' | 'ring' | 'bipartite' | 'matrix' | 'matrices'
         basicCam: 'iso',
-        basicOptsOpen: false,
+        basicOptsOpen: true,
         advView: '3d',     // '3d' | 'theory'
         advCam: 'iso',
-        advOptsOpen: false
+        advOptsOpen: true
     };
 
     function escHtml(str) {
@@ -1640,22 +2611,21 @@
         rightCol.id = 'ws-right-basic-model';
         rightCol.className = 'g3-right ws-model-right';
         rightCol.innerHTML = `
-            <div class="aceternity-bento-card g3-right-card g3-accent-cyan p-4 space-y-3.5 ws-inspector-card">
-                <div id="ws-basic-ins-head"></div>
-                <div id="ws-basic-ins-views"></div>
-                <div id="ws-basic-ins-layers"></div>
-                <div id="ws-basic-ins-cam"></div>
-                <div id="ws-basic-ins-anim" class="hidden space-y-1.5"></div>
-                <div id="ws-basic-ins-opts-wrap" class="space-y-1.5">
-                    <button type="button" id="ws-basic-opts-toggle" onclick="window.BlinkWorkspaceRails.toggleModelOpts('basic')" class="ws-collapse-btn">
-                        <span>3D-Optionen</span>
-                        <svg class="ws-collapse-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </button>
-                    <div id="ws-basic-ins-opts-dock" class="hidden ws-docked-opts"></div>
+            <div class="aceternity-bento-card g3-right-card g3-accent-cyan ws-inspector-card">
+                <div id="ws-basic-ins-head" class="ws-ins-head"></div>
+                <div class="ws-ins-scroll">
+                    <div id="ws-basic-ins-views"></div>
+                    <div id="ws-basic-ins-layers"></div>
+                    <div id="ws-basic-ins-cam"></div>
+                    <div id="ws-basic-ins-anim" class="hidden space-y-1"></div>
+                    <div id="ws-basic-ins-opts-wrap" class="ws-ins-section">
+                        <div class="g3-setting-label !m-0">3D-Optionen</div>
+                        <div id="ws-basic-ins-opts-dock" class="ws-docked-opts"></div>
+                    </div>
                 </div>
                 <div id="ws-basic-ins-card-wrap" class="ws-docked-active-card">
-                    <div class="g3-setting-label mb-1.5">Aktive Karte</div>
-                    <div id="ws-basic-ins-card-dock"></div>
+                    <div class="g3-setting-label mb-1">Aktive Karte</div>
+                    <div id="ws-basic-ins-card-dock" class="ws-active-card-box"></div>
                 </div>
             </div>
         `;
@@ -1762,22 +2732,21 @@
         rightCol.id = 'ws-right-advanced-model';
         rightCol.className = 'g3-right ws-model-right';
         rightCol.innerHTML = `
-            <div class="aceternity-bento-card g3-right-card g3-accent-purple p-4 space-y-3.5 ws-inspector-card">
-                <div id="ws-adv-ins-head"></div>
-                <div id="ws-adv-ins-views"></div>
-                <div id="ws-adv-ins-layers"></div>
-                <div id="ws-adv-ins-cam"></div>
-                <div id="ws-adv-ins-cube-dock"></div>
-                <div id="ws-adv-ins-opts-wrap" class="space-y-1.5">
-                    <button type="button" id="ws-adv-opts-toggle" onclick="window.BlinkWorkspaceRails.toggleModelOpts('adv')" class="ws-collapse-btn">
-                        <span>3D-Optionen</span>
-                        <svg class="ws-collapse-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </button>
-                    <div id="ws-adv-ins-opts-dock" class="hidden ws-docked-opts"></div>
+            <div class="aceternity-bento-card g3-right-card g3-accent-purple ws-inspector-card">
+                <div id="ws-adv-ins-head" class="ws-ins-head"></div>
+                <div class="ws-ins-scroll">
+                    <div id="ws-adv-ins-views"></div>
+                    <div id="ws-adv-ins-layers"></div>
+                    <div id="ws-adv-ins-cam"></div>
+                    <div id="ws-adv-ins-cube-dock"></div>
+                    <div id="ws-adv-ins-opts-wrap" class="ws-ins-section">
+                        <div class="g3-setting-label !m-0">3D-Optionen</div>
+                        <div id="ws-adv-ins-opts-dock" class="ws-docked-opts"></div>
+                    </div>
                 </div>
                 <div id="ws-adv-ins-card-wrap" class="ws-docked-active-card">
-                    <div class="g3-setting-label mb-1.5">Aktiver Vektor · 𝔽₅³</div>
-                    <div id="ws-adv-ins-card-dock"></div>
+                    <div class="g3-setting-label mb-1">Aktiver Vektor · 𝔽₅³</div>
+                    <div id="ws-adv-ins-card-dock" class="ws-active-card-box"></div>
                 </div>
             </div>
         `;
@@ -1931,6 +2900,59 @@
         `;
     }
 
+    function renderLayerPickerHTML(which, layerBtns) {
+        if (!layerBtns || layerBtns.length === 0) return '';
+        const activeBtn = layerBtns.find(b => isOrigBtnActive(b));
+        const activeTitle = activeBtn ? (activeBtn.title || (activeBtn.textContent || '').trim()) : 'Alle';
+        const allBtn = layerBtns[0];
+        const numBtns = layerBtns.slice(1);
+        const railClass = numBtns.length <= 5 ? 'ws-layer-rail ws-layer-rail-5' : 'ws-layer-rail ws-layer-rail-6';
+
+        return `
+            <div class="g3-setting-block ws-ins-block">
+                <div class="ws-sec-row">
+                    <span class="g3-setting-label !m-0">Schicht X</span>
+                    <span class="ws-sec-hint truncate" title="${escHtml(activeTitle)}">${escHtml(activeTitle)}</span>
+                </div>
+                <div class="${railClass}">
+                    ${allBtn ? `
+                        <button type="button" title="${escHtml(allBtn.title || 'Alle Schichten')}"
+                            onclick="window.BlinkWorkspaceRails.clickLayerBtn('${which}', ${allBtn.id ? `'${allBtn.id}'` : 0})"
+                            class="g3-seg-btn ws-layer-all-pill ${isOrigBtnActive(allBtn) ? 'is-active' : ''}">Alle</button>
+                    ` : ''}
+                    ${numBtns.map((b, idx) => `
+                        <button type="button" title="${escHtml(b.title || '')}"
+                            onclick="window.BlinkWorkspaceRails.clickLayerBtn('${which}', ${b.id ? `'${b.id}'` : (idx + 1)})"
+                            class="g3-seg-btn ws-layer-pill ${isOrigBtnActive(b) ? 'is-active' : ''}">${escHtml((b.textContent || '').trim())}</button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    function renderCameraPickerHTML(which, activeCam) {
+        const cams = [
+            { id: 'iso', label: 'Iso',   title: 'Isometrische Standardansicht (Reset)', reset: true },
+            { id: 'xy',  label: '(X,Y)', title: 'Draufsicht X–Y Ebene' },
+            { id: 'xz',  label: '(X,Z)', title: 'Seitenansicht X–Z Ebene' },
+            { id: 'yz',  label: '(Y,Z)', title: 'Frontansicht Y–Z Ebene' }
+        ];
+        return `
+            <div class="g3-setting-block ws-ins-block">
+                <div class="g3-setting-label !m-0">Kamera</div>
+                <div class="g3-seg-rail ws-cam-rail">
+                    ${cams.map(c => `
+                        <button type="button" title="${c.title}" onclick="window.BlinkWorkspaceRails.setCam('${which}', '${c.id}')"
+                            class="g3-seg-btn ws-cam-pill ${c.reset ? '' : 'mono'} ${activeCam === c.id ? 'is-active' : ''}">
+                            ${c.reset ? `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><path d="M3 3v5h5"></path></svg>` : ''}
+                            <span>${c.label}</span>
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
     function renderBasicRightInspector() {
         const head = document.getElementById('ws-basic-ins-head');
         const views = document.getElementById('ws-basic-ins-views');
@@ -1946,14 +2968,12 @@
         const show2D = v === 'ring' || v === 'bipartite' || v === 'matrix';
 
         head.innerHTML = `
-            <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center justify-between gap-2">
                 <div class="min-w-0">
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <h2 class="text-base font-extrabold text-white heading-font leading-tight">Grundmodell</h2>
-                        <span id="ws-basic-counter-mirror" class="g3-stat-pill">${escHtml(curCount)}</span>
-                    </div>
-                    <p class="text-[11px] text-slate-400 mt-0.5">5×6×6 Raum · 60 Karten</p>
+                    <h2 class="text-[14px] font-extrabold text-white heading-font leading-tight">Grundmodell</h2>
+                    <p class="text-[10px] text-slate-400 leading-tight mt-0.5">5×6×6 Raum · 60 Spielkarten</p>
                 </div>
+                <span id="ws-basic-counter-mirror" class="g3-stat-pill shrink-0">${escHtml(curCount)}</span>
             </div>
         `;
 
@@ -1965,8 +2985,8 @@
             { id: 'matrices',  label: '60er-Galerie', full: false }
         ];
         views.innerHTML = `
-            <div class="g3-setting-block">
-                <div class="g3-setting-label">Ansicht</div>
+            <div class="g3-setting-block ws-ins-block">
+                <div class="g3-setting-label !m-0">Ansicht</div>
                 <div class="ws-view-grid">
                     ${viewItems.map(it => `
                         <button type="button" onclick="window.BlinkWorkspaceRails.setBasicView('${it.id}')"
@@ -1978,40 +2998,13 @@
 
         const { buttons: layerBtns } = getSourceTabButtons('basic-layer-tabs', 'basic-x-all');
         if (layers && layerBtns.length > 0) {
-            layers.innerHTML = `
-                <div class="g3-setting-block">
-                    <div class="g3-setting-label">Schicht X</div>
-                    <div class="g3-seg-rail">
-                        ${layerBtns.map((b, idx) => `
-                            <button type="button" title="${escHtml(b.title || '')}"
-                                onclick="window.BlinkWorkspaceRails.clickLayerBtn('basic', ${b.id ? `'${b.id}'` : idx})"
-                                class="g3-seg-btn ws-layer-pill ${isOrigBtnActive(b) ? 'is-active' : ''}">${escHtml((b.textContent || '').trim())}</button>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
+            layers.innerHTML = renderLayerPickerHTML('basic', layerBtns);
         }
 
         if (cam) {
             cam.classList.toggle('hidden', !show3D);
             if (show3D) {
-                const cams = [
-                    { id: 'iso', label: 'Reset' },
-                    { id: 'xy',  label: '(X,Y)' },
-                    { id: 'xz',  label: '(X,Z)' },
-                    { id: 'yz',  label: '(Y,Z)' }
-                ];
-                cam.innerHTML = `
-                    <div class="g3-setting-block">
-                        <div class="g3-setting-label">Kamera</div>
-                        <div class="g3-seg-rail">
-                            ${cams.map(c => `
-                                <button type="button" onclick="window.BlinkWorkspaceRails.setCam('basic', '${c.id}')"
-                                    class="g3-seg-btn mono ${modelViewState.basicCam === c.id ? 'is-active' : ''}">${c.label}</button>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
+                cam.innerHTML = renderCameraPickerHTML('basic', modelViewState.basicCam);
             }
         }
 
@@ -2034,14 +3027,12 @@
         const show3D = v === '3d';
 
         head.innerHTML = `
-            <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center justify-between gap-2">
                 <div class="min-w-0">
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <h2 class="text-base font-extrabold text-white heading-font leading-tight">Erweitert · 𝔽₅³</h2>
-                        <span id="ws-adv-counter-mirror" class="g3-stat-pill">${escHtml(curCount)}</span>
-                    </div>
-                    <p class="text-[11px] text-slate-400 mt-0.5">5×5×5 Vektorraum · 125 Karten</p>
+                    <h2 class="text-[14px] font-extrabold text-white heading-font leading-tight">Erweitert · 𝔽₅³</h2>
+                    <p class="text-[10px] text-slate-400 leading-tight mt-0.5">5×5×5 Vektorraum · 125 Karten</p>
                 </div>
+                <span id="ws-adv-counter-mirror" class="g3-stat-pill shrink-0">${escHtml(curCount)}</span>
             </div>
         `;
 
@@ -2052,12 +3043,12 @@
                 { id: 'theory', label: 'Theorie' }
             ];
             views.innerHTML = `
-                <div class="g3-setting-block">
-                    <div class="g3-setting-label">Ansicht</div>
-                    <div class="g3-seg-rail">
+                <div class="g3-setting-block ws-ins-block">
+                    <div class="g3-setting-label !m-0">Ansicht</div>
+                    <div class="g3-seg-rail ws-cam-rail">
                         ${viewItems.map(it => `
                             <button type="button" onclick="window.BlinkWorkspaceRails.setAdvView('${it.id}')"
-                                class="g3-seg-btn ${v === it.id ? 'is-active' : ''}">${it.label}</button>
+                                class="g3-seg-btn ws-cam-pill ${v === it.id ? 'is-active' : ''}">${it.label}</button>
                         `).join('')}
                     </div>
                 </div>
@@ -2068,40 +3059,13 @@
 
         const { buttons: layerBtns } = getSourceTabButtons('adv-layer-tabs', 'adv-x-all');
         if (layers && layerBtns.length > 0) {
-            layers.innerHTML = `
-                <div class="g3-setting-block">
-                    <div class="g3-setting-label">Schicht X</div>
-                    <div class="g3-seg-rail">
-                        ${layerBtns.map((b, idx) => `
-                            <button type="button"
-                                onclick="window.BlinkWorkspaceRails.clickLayerBtn('adv', ${b.id ? `'${b.id}'` : idx})"
-                                class="g3-seg-btn ws-layer-pill ${isOrigBtnActive(b) ? 'is-active' : ''}">${escHtml((b.textContent || '').trim())}</button>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
+            layers.innerHTML = renderLayerPickerHTML('adv', layerBtns);
         }
 
         if (cam) {
             cam.classList.toggle('hidden', !show3D);
             if (show3D) {
-                const cams = [
-                    { id: 'iso', label: 'Reset' },
-                    { id: 'xy',  label: '(X,Y)' },
-                    { id: 'xz',  label: '(X,Z)' },
-                    { id: 'yz',  label: '(Y,Z)' }
-                ];
-                cam.innerHTML = `
-                    <div class="g3-setting-block">
-                        <div class="g3-setting-label">Kamera</div>
-                        <div class="g3-seg-rail">
-                            ${cams.map(c => `
-                                <button type="button" onclick="window.BlinkWorkspaceRails.setCam('adv', '${c.id}')"
-                                    class="g3-seg-btn mono ${modelViewState.advCam === c.id ? 'is-active' : ''}">${c.label}</button>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
+                cam.innerHTML = renderCameraPickerHTML('adv', modelViewState.advCam);
             }
         }
 

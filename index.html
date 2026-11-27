@@ -35,62 +35,60 @@
 <body class="h-screen flex flex-col overflow-hidden select-none">
 
     <!-- ============================================================================ -->
-    <!-- GLOBAL TOP NAVIGATION BAR (FLENSBURG UNITED RESEARCH HEADER)                 -->
+    <!-- GLOBAL TOP NAVIGATION BAR (MINIMALIST SPLIT-HORIZON + CENTER NAV DOCK)       -->
     <!-- ============================================================================ -->
-    <header class="w-full pt-5 pb-3 px-6 sm:px-10 flex justify-center z-40 shrink-0">
-        <div
-            class="floating-nav-pill rounded-full px-5 py-2.5 flex items-center justify-between gap-3 max-w-5xl w-full">
+    <header class="hdr-bar w-full z-40 shrink-0">
+        <div class="hdr-inner">
 
-            <!-- Brand / Titel -->
-            <div onclick="navigateTo('home')" class="flex items-center gap-2.5 cursor-pointer group shrink-0">
-                <span class="w-3 h-3 rounded-full bg-cyan-400/90 group-hover:scale-125 transition-transform"></span>
-                <span
-                    class="text-xs sm:text-sm font-bold tracking-widest uppercase text-slate-200 group-hover:text-white transition-colors">
-                    BLINK <span class="text-slate-500 font-normal hidden 2xl:inline">/ Masterarbeit</span>
+            <!-- Links: Minimalistisches geometrisches Blink-Emblem + Wortmarke -->
+            <button type="button" onclick="navigateTo('home')" class="hdr-brand group justify-self-start"
+                aria-label="Zur Blink-Startseite">
+                <span class="hdr-emblem" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <line x1="4.5" y1="18.5" x2="19.5" y2="5.5" stroke="currentColor" stroke-width="1.4"
+                            stroke-linecap="round" opacity="0.45" />
+                        <circle cx="5.5" cy="17.5" r="2.35" fill="currentColor" opacity="0.55" />
+                        <circle cx="12" cy="12" r="2.7" fill="var(--hdr-accent, #22d3ee)" class="hdr-emblem-mid" />
+                        <circle cx="18.5" cy="6.5" r="2.35" fill="currentColor" opacity="0.92" />
+                    </svg>
                 </span>
+                <span class="hdr-wordmark">Blink</span>
+            </button>
+
+            <!-- Mitte: Kompaktes schwebendes Glas-Dock mit zentrierten Reitern -->
+            <div class="hdr-nav-dock justify-self-center">
+                <nav class="flex flex-nowrap items-center justify-center relative whitespace-nowrap" id="main-nav-bar">
+                    <div id="nav-indicator"></div>
+                    <button onclick="navigateTo('home')" id="nav-btn-home" class="nav-item-clean text-cyan-400 font-bold">
+                        Start
+                    </button>
+                    <button onclick="openModelsPage()" id="nav-btn-models"
+                        class="nav-item-clean text-slate-300 hover:text-white">
+                        Modelle
+                    </button>
+                    <button onclick="navigateTo('lab')" id="nav-btn-lab"
+                        class="nav-item-clean text-slate-300 hover:text-white">
+                        Labor
+                    </button>
+                    <button onclick="openLessonPage(state.currentLesson || 1)" id="nav-btn-lessons"
+                        class="nav-item-clean text-slate-300 hover:text-white">
+                        Kurs
+                    </button>
+                    <button onclick="navigateTo('game')" id="nav-btn-game"
+                        class="nav-item-clean text-slate-300 hover:text-emerald-400">
+                        Spielen
+                    </button>
+                </nav>
             </div>
 
-            <!-- Navigation (Reine Schrift-Reiter ohne Umrandung) -->
-            <nav class="flex flex-nowrap items-center gap-3 lg:gap-5 relative whitespace-nowrap" id="main-nav-bar">
-                <div id="nav-indicator"></div>
-                <button onclick="navigateTo('home')" id="nav-btn-home" class="nav-item-clean text-cyan-400 font-bold">
-                    Start
-                </button>
-                <button onclick="openModelsPage()" id="nav-btn-models"
-                    class="nav-item-clean text-slate-300 hover:text-white">
-                    Modelle
-                </button>
-                <button onclick="navigateTo('lab')" id="nav-btn-lab"
-                    class="nav-item-clean text-slate-300 hover:text-white">
-                    Labor
-                </button>
-
-                <button onclick="openLessonPage(state.currentLesson || 1)" id="nav-btn-lessons"
-                    class="nav-item-clean text-slate-300 hover:text-white">
-                    Kurs
-                </button>
-
-                <button onclick="navigateTo('game')" id="nav-btn-game"
-                    class="nav-item-clean text-slate-300 hover:text-emerald-400">
-                    Spielen
-                </button>
-            </nav>
-
-            <!-- Rechts: Codierung & Einstellungsrad -->
-            <div class="flex items-center gap-3 shrink-0">
-                <button onclick="toggleMappingModal()" class="nav-item-clean text-slate-400 hover:text-white"
-                    title="Codierungstabelle">
-                    Codierung
-                </button>
-                <button type="button" onclick="toggleProfileModal()" id="header-profile-btn"
-                    class="w-8 h-8 rounded-full border border-white/15 bg-white/[0.04] hover:bg-white/[0.12] flex items-center justify-center transition overflow-hidden shrink-0"
-                    title="Dein Profil &amp; Charakter"></button>
-                <button onclick="toggleSettingsModal()" id="settings-gear-btn"
-                    class="w-8 h-8 rounded-full border border-white/10 bg-white/[0.03] hover:bg-white/[0.1] text-slate-400 hover:text-cyan-300 flex items-center justify-center transition group"
-                    title="Einstellungen (Design, Audio & Darstellung)">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            <!-- Rechts: Randloses Einstellungsrad -->
+            <div class="hdr-actions justify-self-end">
+                <button type="button" onclick="toggleSettingsModal()" id="settings-gear-btn"
+                    class="header-unified-settings-pill hdr-gear-btn group"
+                    title="Einstellungen, Profil, Statistik, Cloud &amp; Codierung" aria-label="Einstellungen öffnen">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
                         stroke-linecap="round" stroke-linejoin="round"
-                        class="transition-transform duration-300 group-hover:rotate-45">
+                        class="transition-transform duration-300 group-hover:rotate-45 shrink-0">
                         <circle cx="12" cy="12" r="3"></circle>
                         <path
                             d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z">
@@ -194,7 +192,7 @@
                     class="aceternity-bento-card stagger-item stagger-delay-1 group cursor-pointer p-7 flex flex-col justify-between min-h-[235px]">
                     <div class="space-y-4">
                         <div
-                            class="w-11 h-11 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-slate-200 group-hover:text-cyan-300 group-hover:border-cyan-400/40 transition-colors">
+                            class="home-bento-icon w-11 h-11 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-slate-200 group-hover:text-cyan-300 group-hover:border-cyan-400/40 transition-colors">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                                 <path
@@ -214,9 +212,9 @@
                         </div>
                     </div>
 
-                    <div class="mt-6 pt-4 border-t border-white/[0.06]">
+                    <div class="mt-6 pt-4 border-t border-white/[0.06] home-bento-footer">
                         <span
-                            class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-950 ring-1 ring-black/10 group-hover:bg-cyan-300 font-bold text-xs tracking-wide transition">
+                            class="home-bento-cta home-cta-cyan inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs tracking-wide transition">
                             <span>Modelle erkunden</span>
                             <svg class="transition-transform duration-300 group-hover:translate-x-0.5" width="13"
                                 height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
@@ -233,7 +231,7 @@
                     class="aceternity-bento-card stagger-item stagger-delay-2 group cursor-pointer p-7 flex flex-col justify-between min-h-[235px]">
                     <div class="space-y-4">
                         <div
-                            class="w-11 h-11 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-slate-200 group-hover:text-purple-300 group-hover:border-purple-400/40 transition-colors">
+                            class="home-bento-icon w-11 h-11 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-slate-200 group-hover:text-purple-300 group-hover:border-purple-400/40 transition-colors">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M9 3h6" />
@@ -252,9 +250,9 @@
                         </div>
                     </div>
 
-                    <div class="mt-6 pt-4 border-t border-white/[0.06]">
+                    <div class="mt-6 pt-4 border-t border-white/[0.06] home-bento-footer">
                         <span
-                            class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-950 ring-1 ring-black/10 group-hover:bg-purple-300 font-bold text-xs tracking-wide transition">
+                            class="home-bento-cta home-cta-purple inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs tracking-wide transition">
                             <span>Labor öffnen</span>
                             <svg class="transition-transform duration-300 group-hover:translate-x-0.5" width="13"
                                 height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
@@ -271,7 +269,7 @@
                     class="aceternity-bento-card stagger-item stagger-delay-3 group cursor-pointer p-7 flex flex-col justify-between min-h-[235px]">
                     <div class="space-y-4">
                         <div
-                            class="w-11 h-11 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-slate-200 group-hover:text-emerald-300 group-hover:border-emerald-400/40 transition-colors">
+                            class="home-bento-icon w-11 h-11 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-slate-200 group-hover:text-emerald-300 group-hover:border-emerald-400/40 transition-colors">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="2" y="6" width="20" height="12" rx="2"></rect>
@@ -291,9 +289,9 @@
                         </div>
                     </div>
 
-                    <div class="mt-6 pt-4 border-t border-white/[0.06]">
+                    <div class="mt-6 pt-4 border-t border-white/[0.06] home-bento-footer">
                         <span
-                            class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-950 ring-1 ring-black/10 group-hover:bg-emerald-300 font-bold text-xs tracking-wide transition">
+                            class="home-bento-cta home-cta-emerald inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs tracking-wide transition">
                             <span>Spiel starten</span>
                             <svg class="transition-transform duration-300 group-hover:translate-x-0.5" width="13"
                                 height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
@@ -402,15 +400,14 @@
                     </div>
 
                     <div id="info-box-3d-body" class="hidden px-3 pb-3 pt-2.5 apple-hud-divider space-y-2.5">
-                        <div class="space-y-1">
+                        <div class="ws-color-select-row space-y-1">
                             <label for="select-color-mode"
-                                class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mono pl-1">Kugelfarbe
-                                im 3D-Raum</label>
+                                class="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mono pl-1">Farbe</label>
                             <select id="select-color-mode"
-                                class="fu-select w-full pl-3 py-1.5 text-[11.5px] font-medium text-slate-100">
-                                <option value="y">Nach echter Kartenfarbe Y (Braun..Grau)</option>
-                                <option value="x">Nach Anzahl-Schicht X (Fünf..Vier)</option>
-                                <option value="z">Nach Symbol-Form Z (Stern..Blitz)</option>
+                                class="fu-select w-full pl-2.5 py-1 text-[11px] font-medium text-slate-100">
+                                <option value="y">Kartenfarbe Y (Braun..Grau)</option>
+                                <option value="x">Schicht X (Fünf..Vier)</option>
+                                <option value="z">Symbol-Form Z (Stern..Blitz)</option>
                             </select>
                         </div>
                         <div class="apple-inset-group apple-hud-group text-[11.5px]">
@@ -548,7 +545,7 @@
 
                         <div id="card-2d-matrix"
                             class="hidden bg-slate-950/90 border border-slate-800 rounded-xl p-4 space-y-4">
-                            <div class="flex items-center justify-between">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
                                 <h4 class="text-xs font-bold text-white uppercase tracking-wider"
                                     id="layer-matrix-title">6×6 Schicht-Matrix</h4>
                                 <span
@@ -717,34 +714,22 @@
                         <!-- MITTE: DAS SPIELFELD (MIT LOBBY-OVERLAY VOR DEM START) -->
                         <div
                             class="flex-1 fu-card rounded-3xl p-5 sm:p-7 flex flex-col justify-between gap-4 relative overflow-hidden min-h-[470px]">
-                            <!-- LOBBY-OVERLAY -->
+                            <!-- LOBBY-OVERLAY (MIT LIVE-VORSCHAU-ANIMATION FÜR BLINK-ARENA) -->
                             <div id="game-lobby-overlay"
-                                class="absolute inset-0 bg-slate-950/85 backdrop-blur-md z-20 flex flex-col items-center justify-center p-6 text-center">
-                                <div class="max-w-md space-y-4">
-                                    <div
-                                        class="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-cyan-400 mx-auto">
-                                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
-                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                            stroke-linejoin="round">
-                                            <rect x="2" y="6" width="20" height="12" rx="2"></rect>
-                                            <path d="M6 12h4"></path>
-                                            <path d="M8 10v4"></path>
-                                            <line x1="15" y1="13" x2="15.01" y2="13"></line>
-                                            <line x1="18" y1="11" x2="18.01" y2="11"></line>
-                                        </svg>
-                                    </div>
-                                    <h3 class="text-2xl font-extrabold text-white heading-font">Bereit für eine Partie
-                                        Blink?</h3>
-                                    <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                                        Wähle rechts deinen <strong>Gegner</strong> und die
-                                        <strong>Regelvariante</strong> (Standard oder Cluster) und starte direkt ins
-                                        Duell.
-                                    </p>
-                                    <div class="pt-2">
-                                        <button onclick="startNewBlinkGame()"
-                                            class="px-7 py-3.5 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-sm transition shadow-xl shadow-cyan-500/20">
-                                            ▶ Partie starten
-                                        </button>
+                                class="absolute inset-0 bg-slate-950/85 backdrop-blur-md z-20 flex flex-col items-center justify-center p-4 sm:p-5 text-center">
+                                <div class="w-full max-w-[540px] flex flex-col items-center gap-3.5">
+                                    <!-- Animiertes Mini-Spielfeld (wird dynamisch von game-hub.js bespielt) -->
+                                    <div id="g3-demo-stage-arena" class="arena-demo-stage w-full" aria-hidden="true"></div>
+
+                                    <!-- Titel & Kurzbeschreibung -->
+                                    <div class="space-y-1 max-w-md">
+                                        <h3 class="text-lg sm:text-xl font-extrabold text-white heading-font leading-tight">
+                                            Blink-Arena
+                                        </h3>
+                                        <p id="arena-lobby-rule-desc" class="text-[11.5px] sm:text-xs text-slate-300 leading-relaxed">
+                                            Lege schneller als dein Gegner passende Karten nach <strong>Farbe</strong>,
+                                            <strong>Symbol</strong> oder <strong>Anzahl</strong> ab.
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -824,38 +809,41 @@
 
                             <!-- MATCH-ZUSAMMENFASSUNG (NACH JEDER NORMALEN PARTIE) -->
                             <div id="match-summary-overlay"
-                                class="hidden absolute inset-0 bg-slate-950/92 backdrop-blur-md z-30 flex flex-col items-center justify-center p-4 sm:p-6 overflow-y-auto">
+                                class="hidden absolute inset-0 bg-slate-950/92 backdrop-blur-md z-30 flex flex-col items-center justify-center p-2.5 sm:p-3 overflow-y-auto">
                                 <div
-                                    class="max-w-lg w-full rounded-3xl bg-slate-900/95 border border-cyan-400/45 p-5 sm:p-6 shadow-2xl space-y-4">
-                                    <div class="text-center space-y-1 border-b border-white/[0.07] pb-3.5">
-                                        <span id="match-summary-badge"
-                                            class="inline-block px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-400/35 text-[10px] mono font-bold uppercase tracking-widest text-emerald-300">
-                                            Partie beendet
-                                        </span>
+                                    class="max-w-[540px] w-full rounded-3xl bg-slate-900/95 border border-cyan-400/45 p-4 shadow-2xl space-y-2.5">
+                                    <div class="text-center space-y-0.5 border-b border-white/[0.07] pb-2.5">
+                                        <div class="flex items-center justify-center gap-2">
+                                            <span id="match-summary-badge"
+                                                class="inline-block px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-400/35 text-[10px] mono font-bold uppercase tracking-widest text-emerald-300">
+                                                Partie beendet
+                                            </span>
+                                            <span id="match-summary-subtitle" class="text-[11px] text-slate-400 mono"></span>
+                                        </div>
                                         <h3 id="match-summary-title"
-                                            class="text-xl font-extrabold text-white heading-font">Partie gewonnen!</h3>
-                                        <p id="match-summary-subtitle" class="text-xs text-slate-400 mono"></p>
+                                            class="text-lg font-extrabold text-white heading-font leading-tight pt-0.5">Partie gewonnen!</h3>
                                     </div>
 
                                     <!-- Head-to-Head Serie (nur im Online-1v1 sichtbar) -->
                                     <div id="match-summary-h2h-banner" class="hidden"></div>
 
-                                    <!-- Elo-Veränderung -->
-                                    <div id="match-summary-elo-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <!-- Elo-Veränderung + animierter Tacho-Fortschritt -->
+                                    <div id="match-summary-elo-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                                     </div>
+                                    <div id="match-summary-elo-track" class="hidden"></div>
 
                                     <!-- Aktionen -->
-                                    <div class="flex flex-col sm:flex-row gap-2 pt-1">
+                                    <div class="flex flex-col sm:flex-row gap-2 pt-0.5">
                                         <button type="button" onclick="openMatchAnalysisModal()"
-                                            class="flex-1 py-3 rounded-full bg-white/[0.08] hover:bg-white/[0.16] border border-cyan-400/40 text-cyan-200 font-extrabold text-xs tracking-wide transition">
+                                            class="flex-1 py-2 rounded-full bg-white/[0.08] hover:bg-white/[0.16] border border-cyan-400/40 text-cyan-200 font-extrabold text-xs tracking-wide transition">
                                             Partie analysieren
                                         </button>
                                         <button type="button" onclick="startNewBlinkGame()"
-                                            class="flex-1 py-3 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-xs tracking-wide transition shadow-lg shadow-cyan-500/20">
+                                            class="flex-1 py-2 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-xs tracking-wide transition shadow-lg shadow-cyan-500/20">
                                             ▶ Nochmal spielen
                                         </button>
                                         <button type="button" onclick="closeMatchSummaryOverlay()"
-                                            class="px-4 py-3 rounded-full border border-white/15 bg-white/[0.05] hover:bg-white/[0.12] text-slate-200 font-bold text-xs transition">
+                                            class="px-4 py-2 rounded-full border border-white/15 bg-white/[0.05] hover:bg-white/[0.12] text-slate-200 font-bold text-xs transition">
                                             Schließen
                                         </button>
                                     </div>
@@ -909,38 +897,44 @@
 
 
 
-                            <!-- UNTEN AUF DEM TISCH: DEINE HANDKARTEN & NACHZIEHSTAPEL -->
-                            <div
-                                class="bg-slate-950/85 border border-slate-800 rounded-2xl p-3.5 sm:p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-                                <div class="flex-1 flex flex-col items-center md:items-start gap-2.5 w-full min-w-0">
-                                    <div class="w-full flex items-center justify-between gap-2">
+                            <!-- UNTEN AUF DEM TISCH: DEINE HANDKARTEN (ZENTRIERT UNTER DEN STAPELN) & NACHZIEHSTAPEL -->
+                            <div id="arena-hand-tray"
+                                class="bg-slate-950/85 border border-slate-800 rounded-2xl p-3 sm:p-4 flex flex-col md:grid md:grid-cols-[112px_minmax(0,1fr)_112px] items-center gap-3">
+                                <!-- Leerer symmetrischer Platzhalter links für exakte Zentrierung der Handkarten -->
+                                <div class="hidden md:block" aria-hidden="true"></div>
+
+                                <!-- Mittig direkt unter den Ablagestapeln: Titel + Deine Handkarten -->
+                                <div class="flex flex-col items-center gap-2 w-full min-w-0">
+                                    <div class="flex items-center justify-center gap-2 text-center">
                                         <span id="player-hand-heading"
-                                            class="text-xs sm:text-sm font-bold uppercase tracking-wider text-cyan-400">Deine
+                                            class="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-cyan-400">Deine
                                             Handkarten</span>
+                                        <span class="hidden sm:inline text-slate-600">·</span>
                                         <span id="player-hand-subhint"
-                                            class="text-[11px] text-slate-400 mono hidden sm:inline">Klicken oder auf
+                                            class="text-[10.5px] text-slate-400 mono hidden sm:inline">Klicken oder auf
                                             Stapel ziehen</span>
                                     </div>
                                     <div id="player-hand-container"
-                                        class="flex flex-nowrap items-center justify-center md:justify-start gap-2 sm:gap-2.5 min-h-[175px] py-1 w-full overflow-hidden">
+                                        class="flex flex-nowrap items-center justify-center gap-3 sm:gap-4 py-1 w-full overflow-visible">
                                     </div>
                                 </div>
 
+                                <!-- Rechts angedockt: Nachziehstapel -->
                                 <div
-                                    class="flex flex-col items-center gap-1.5 shrink-0 border-t md:border-t-0 md:border-l border-slate-800 pt-3 md:pt-0 md:pl-4">
+                                    class="flex flex-col items-center justify-center gap-1.5 shrink-0 border-t md:border-t-0 md:border-l border-slate-800 pt-3 md:pt-0 md:pl-3 w-full md:w-auto">
                                     <span
-                                        class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mono">Nachziehstapel</span>
+                                        class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mono">Nachziehen</span>
                                     <button onclick="manualDrawCard()" id="player-draw-pile-btn"
-                                        class="w-24 sm:w-28 card-63-88 rounded-2xl bg-gradient-to-br from-cyan-600 via-blue-700 to-indigo-900 border-2 border-cyan-400/60 shadow-xl flex flex-col items-center justify-center gap-1 hover:scale-105 transition">
-                                        <span class="text-3xl sm:text-4xl font-extrabold text-white mono"
+                                        class="w-20 sm:w-24 card-63-88 rounded-2xl bg-gradient-to-br from-cyan-600 via-blue-700 to-indigo-900 border-2 border-cyan-400/60 shadow-xl flex flex-col items-center justify-center gap-0.5 hover:scale-105 transition">
+                                        <span class="text-2xl sm:text-3xl font-extrabold text-white mono"
                                             id="player-deck-count">26</span>
-                                        <span class="text-[10px] font-semibold text-cyan-100 uppercase">Karten</span>
+                                        <span class="text-[9.5px] font-semibold text-cyan-100 uppercase">Karten</span>
                                     </button>
                                     <label id="auto-draw-label-wrap"
-                                        class="flex items-center gap-1.5 text-[11px] text-slate-300 cursor-pointer mt-1">
+                                        class="flex items-center gap-1.5 text-[10.5px] text-slate-300 cursor-pointer mt-0.5 whitespace-nowrap">
                                         <input type="checkbox" id="chk-auto-draw" checked
                                             class="rounded bg-slate-800 border-slate-600 text-cyan-500">
-                                        <span>Auto-Nachziehen</span>
+                                        <span>Auto-Ziehen</span>
                                     </label>
                                 </div>
                             </div>
@@ -1230,7 +1224,7 @@
             <div class="max-w-[1640px] mx-auto">
 
                 <!-- SUB-TAB: DAS VERHÖR (3-SPALTEN-COCKPIT OHNE SCROLLEN) -->
-                <section id="game-view-verhoer" class="hidden space-y-2.5">
+                <section id="game-view-verhoer" class="hidden space-y-2.5 is-vh-lobby">
 
                     <!-- 1. KOMPAKTE HUD-LEISTE OBEN (SCHRITTE, ANWEISUNG, CLUSTER-BALKEN & CLUSTER-BUTTON) -->
                     <div class="aceternity-bento-card px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
@@ -1451,34 +1445,19 @@
                                 </div>
                             </div>
 
-                            <!-- LOBBY-OVERLAY IM VERHÖR (VOR DEM START / NACH PARTIE BEENDEN) -->
+                            <!-- LOBBY-OVERLAY IM VERHÖR (MIT LIVE-VORSCHAU-ANIMATION) -->
                             <div id="vh-lobby-overlay"
-                                class="absolute inset-0 bg-slate-950/85 backdrop-blur-md z-20 flex flex-col items-center justify-center p-6 text-center">
-                                <div class="max-w-md space-y-4">
-                                    <div
-                                        class="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-amber-300 mx-auto">
-                                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
-                                            stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
-                                            stroke-linejoin="round">
-                                            <circle cx="11" cy="11" r="8"></circle>
-                                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                        </svg>
-                                    </div>
-                                    <h3 class="text-2xl font-extrabold text-white heading-font">Bereit für „Das Verhör“?
-                                    </h3>
-                                    <p id="vh-lobby-desc" class="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                                        Sammle im <strong>$\mathbb{F}_5^3$ (125 Karten)</strong> als Erster ein
-                                        vollständiges <strong>5er-Cluster</strong> aus Hand und SKTs — und setze das
-                                        Verhör taktisch gegen den Bot ein.
-                                    </p>
-                                    <div class="pt-2">
-                                        <button type="button" onclick="vhStartNewGame()"
-                                            class="px-7 py-3.5 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-sm transition shadow-xl shadow-cyan-500/20 inline-flex items-center gap-2">
-                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-                                                <polygon points="6 4 20 12 6 20 6 4"></polygon>
-                                            </svg>
-                                            <span>Spielen</span>
-                                        </button>
+                                class="absolute inset-0 bg-slate-950/85 backdrop-blur-md z-20 flex flex-col items-center justify-center p-5 sm:p-6 text-center overflow-y-auto">
+                                <div class="w-full max-w-[540px] flex flex-col items-center gap-3.5 my-auto">
+                                    <div id="g3-demo-stage-verhoer" class="arena-demo-stage is-amber w-full" aria-hidden="true"></div>
+                                    <div class="space-y-1 max-w-md">
+                                        <h3 class="text-lg sm:text-xl font-extrabold text-white heading-font leading-tight">
+                                            Das Verhör
+                                        </h3>
+                                        <p id="vh-lobby-desc" class="text-[11.5px] sm:text-xs text-slate-300 leading-relaxed">
+                                            Sammle im <strong>$\mathbb{F}_5^3$ (125 Karten)</strong> als Erster ein
+                                            vollständiges <strong>5er-Cluster</strong> und nutze Verhöre taktisch gegen deinen Gegner.
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -2301,10 +2280,10 @@
         <div class="flex-1 overflow-y-auto p-6 sm:p-10">
             <div class="max-w-5xl mx-auto space-y-6">
                 <div class="aceternity-bento-card p-7 sm:p-10 space-y-6">
-                    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.07] pb-5">
+                    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.07] pb-5 lesson-card-header">
                         <div class="flex items-center gap-4">
                             <div id="lesson-badge-number"
-                                class="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-sm font-extrabold text-cyan-300 mono">
+                                class="lesson-num-badge w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-sm font-extrabold text-cyan-300 mono">
                                 01</div>
                             <div>
                                 <span
@@ -2317,10 +2296,10 @@
                         </div>
                         <div class="flex items-center gap-2">
                             <button type="button" onclick="stepLesson(-1)"
-                                class="px-3.5 py-1.5 rounded-full border border-white/10 bg-white/[0.04] hover:bg-white/[0.10] text-xs font-semibold text-slate-300 hover:text-white transition">←
+                                class="g3-action-btn px-3.5 py-1.5 rounded-full text-xs font-semibold transition">←
                                 Zurück</button>
                             <button type="button" onclick="stepLesson(1)"
-                                class="px-3.5 py-1.5 rounded-full border border-white/10 bg-white/[0.04] hover:bg-white/[0.10] text-xs font-semibold text-slate-300 hover:text-white transition">Weiter
+                                class="g3-action-btn px-3.5 py-1.5 rounded-full text-xs font-semibold transition">Weiter
                                 →</button>
                         </div>
                     </div>
@@ -2407,17 +2386,17 @@
 
                                 <div class="space-y-1.5">
                                     <div class="text-[11px] mono text-slate-300">Abstand Mittelstapel</div>
-                                    <div class="grid grid-cols-4 gap-1.5">
+                                    <div class="ws-seg-rail grid grid-cols-4 gap-1">
                                         <button type="button" onclick="setMcDeadlockPileDist('any')" id="mc-dist-any"
-                                            class="py-1.5 rounded-xl text-[11px] mono font-bold bg-white text-slate-950 transition">Zufall</button>
+                                            class="py-1.5 rounded-full text-[11px] mono font-bold bg-white text-slate-950 transition">Zufall</button>
                                         <button type="button" onclick="setMcDeadlockPileDist(1)" id="mc-dist-1"
-                                            class="py-1.5 rounded-xl text-[11px] mono font-semibold border border-white/10 bg-white/[0.03] text-slate-300 hover:text-white transition">d
+                                            class="py-1.5 rounded-full text-[11px] mono font-semibold border border-white/10 bg-white/[0.03] text-slate-300 hover:text-white transition">d
                                             = 1</button>
                                         <button type="button" onclick="setMcDeadlockPileDist(2)" id="mc-dist-2"
-                                            class="py-1.5 rounded-xl text-[11px] mono font-semibold border border-white/10 bg-white/[0.03] text-slate-300 hover:text-white transition">d
+                                            class="py-1.5 rounded-full text-[11px] mono font-semibold border border-white/10 bg-white/[0.03] text-slate-300 hover:text-white transition">d
                                             = 2</button>
                                         <button type="button" onclick="setMcDeadlockPileDist(3)" id="mc-dist-3"
-                                            class="py-1.5 rounded-xl text-[11px] mono font-semibold border border-white/10 bg-white/[0.03] text-slate-300 hover:text-white transition">d
+                                            class="py-1.5 rounded-full text-[11px] mono font-semibold border border-white/10 bg-white/[0.03] text-slate-300 hover:text-white transition">d
                                             = 3</button>
                                     </div>
                                 </div>
@@ -2515,12 +2494,12 @@
                         <div class="space-y-2">
                             <div class="text-[10.5px] font-bold uppercase tracking-wider text-slate-400 mono">1. Y-Achse
                                 wählen</div>
-                            <div class="grid grid-cols-2 gap-2">
+                            <div class="ws-seg-rail grid grid-cols-2 gap-1">
                                 <button onclick="setPhaseMetric('prob')" id="phase-met-prob"
-                                    class="py-2 rounded-full text-xs font-bold bg-white text-slate-950 transition">Chance
+                                    class="py-1.5 rounded-full text-xs font-bold bg-white text-slate-950 transition">Chance
                                     P(X ≥ 1)</button>
                                 <button onclick="setPhaseMetric('expected')" id="phase-met-expected"
-                                    class="py-2 rounded-full text-xs font-semibold border border-white/10 bg-white/[0.03] text-slate-300 hover:text-white transition">Erwartung
+                                    class="py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/[0.03] text-slate-300 hover:text-white transition">Erwartung
                                     E[X]</button>
                             </div>
                         </div>
@@ -2636,12 +2615,12 @@
                             <div class="space-y-1.5 pt-1">
                                 <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mono">
                                     Spielregeln für Training &amp; Elo</div>
-                                <div class="grid grid-cols-2 gap-2">
+                                <div class="ws-seg-rail grid grid-cols-2 gap-1">
                                     <button onclick="setBrainRuleMode('normal')" id="brain-rule-normal"
-                                        class="py-2 px-3 rounded-2xl text-xs font-bold bg-white text-slate-950 transition">Standard
+                                        class="py-1.5 px-3 rounded-full text-xs font-bold bg-white text-slate-950 transition">Standard
                                         (2 Stapel)</button>
                                     <button onclick="setBrainRuleMode('cluster')" id="brain-rule-cluster"
-                                        class="py-2 px-3 rounded-2xl text-xs font-semibold border border-white/10 bg-white/[0.03] text-slate-300 hover:text-white transition">Cluster
+                                        class="py-1.5 px-3 rounded-full text-xs font-semibold border border-white/10 bg-white/[0.03] text-slate-300 hover:text-white transition">Cluster
                                         (3 Stapel)</button>
                                 </div>
                             </div>
@@ -2649,12 +2628,12 @@
                             <!-- Aktionen (nur sichtbar, wenn eine KI existiert) -->
                             <div id="ai-sidebar-actions" class="hidden pt-2 border-t border-white/[0.06] space-y-2">
                                 <button onclick="startAITrainingMatch()"
-                                    class="w-full py-3 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-xs tracking-wide transition shadow-lg shadow-cyan-500/20">
+                                    class="modal-pill-cta w-full py-2.5 rounded-full font-bold text-xs tracking-wide transition">
                                     ▶ KI im Scrim trainieren
                                 </button>
                                 <div class="grid grid-cols-2 gap-2 pt-0.5">
                                     <button onclick="runAIvsAIShowmatch()"
-                                        class="py-2 rounded-full border border-purple-400/35 bg-purple-500/10 hover:bg-purple-500/20 text-purple-200 font-semibold text-[11px] transition">KI
+                                        class="g3-action-btn py-2 rounded-full font-semibold text-[11px] transition">KI
                                         vs. KI</button>
                                     <button onclick="deleteActiveTrainedAI()"
                                         class="py-2 rounded-full border border-rose-500/25 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-semibold text-[11px] transition">Freilassen</button>
@@ -2685,7 +2664,7 @@
                                 </p>
                             </div>
                             <button onclick="openAICreator()"
-                                class="px-6 py-3 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-xs tracking-wide transition shadow-lg shadow-cyan-500/20">
+                                class="modal-pill-cta px-6 py-2.5 rounded-full font-bold text-xs tracking-wide transition">
                                 + Erste KI erschaffen
                             </button>
                         </div>
@@ -2750,7 +2729,7 @@
 
                             <div class="pt-2 flex justify-end">
                                 <button onclick="confirmCreateAI()"
-                                    class="px-6 py-3 rounded-full bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-extrabold text-xs tracking-wide transition shadow-lg shadow-emerald-500/20">
+                                    class="modal-pill-cta px-6 py-2.5 rounded-full font-bold text-xs tracking-wide transition">
                                     ✓ KI erstellen &amp; kalibrieren
                                 </button>
                             </div>
@@ -2843,7 +2822,7 @@
                                     </p>
                                 </div>
                                 <button onclick="startAITrainingMatch()"
-                                    class="px-5 py-2.5 rounded-full bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-xs tracking-wide transition shrink-0 shadow-lg shadow-cyan-500/15">
+                                    class="modal-pill-cta px-5 py-2.5 rounded-full font-bold text-xs tracking-wide transition shrink-0">
                                     ▶ Scrim starten
                                 </button>
                             </div>
@@ -3424,486 +3403,574 @@
         </div>
     </div>
 
-    <!-- MODAL 1: EINSTELLUNGEN (APPLE IPADOS / MACOS LIQUID-GLASS SHEET) -->
+    <!-- MODAL 1: ZENTRALES iOS / iPadOS EINSTELLUNGSFENSTER (PROFIL, CLOUD, DESIGN, AUDIO & CODIERUNG) -->
     <div id="settings-modal" data-inset-upgraded="1" onclick="if(event.target === this) toggleModalState(this.id)"
-        class="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-50 hidden items-center justify-center p-3 sm:p-5 transition-opacity duration-200 opacity-0">
+        class="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-50 hidden items-center justify-center p-2.5 sm:p-5 transition-opacity duration-200 opacity-0">
         <div
-            class="apple-settings-sheet fu-card rounded-[28px] max-w-[760px] w-full p-5 sm:p-6 shadow-2xl space-y-5 max-h-[92dvh] overflow-y-auto transition-transform duration-200 scale-95">
-            <!-- Kopfzeile (Apple Sheet Header) -->
-            <div class="apple-set-header flex items-center justify-between gap-3 pb-3.5">
-                <div class="flex items-center gap-3 min-w-0">
-                    <span class="apple-set-title-badge" aria-hidden="true">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="3"></circle>
-                            <path
-                                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z">
-                            </path>
+            class="apple-settings-sheet ios-set-shell fu-card rounded-[28px] max-w-[960px] w-full shadow-2xl overflow-hidden transition-transform duration-200 scale-95 flex flex-col md:flex-row md:h-[620px] max-h-[90dvh]">
+
+            <!-- LINKE SIDEBAR (iOS / iPadOS EINSTELLUNGS-NAVIGATION) -->
+            <aside class="ios-set-sidebar md:w-[248px] shrink-0 flex flex-col justify-between p-4 gap-3.5">
+                <div class="space-y-3.5">
+                    <div class="flex items-center justify-between px-1">
+                        <h2 class="text-[17px] font-extrabold text-white heading-font tracking-tight">Einstellungen</h2>
+                        <button type="button" onclick="toggleSettingsModal()"
+                            class="md:hidden modal-pill-cta px-3.5 py-1 rounded-full font-bold text-xs transition">Fertig</button>
+                    </div>
+
+                    <!-- Apple-ID-Stil Profilkarte oben -->
+                    <button type="button" onclick="setSettingsSection('profile')" id="ios-nav-profile-card"
+                        class="ios-set-profile-card w-full text-left flex items-center gap-3 p-2.5 rounded-2xl transition">
+                        <div id="ios-sidebar-avatar"
+                            class="w-11 h-11 rounded-full border-2 border-cyan-400/50 bg-cyan-500/15 flex items-center justify-center shrink-0 overflow-hidden">
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div id="ios-sidebar-name" class="text-[13px] font-extrabold text-white truncate leading-tight">
+                                Spieler</div>
+                            <div class="flex items-center gap-1.5 mt-0.5 text-[10.5px] text-slate-400 mono truncate">
+                                <span id="ios-sidebar-elo">700 Elo</span>
+                                <span class="opacity-40">·</span>
+                                <span id="ios-sidebar-cloud-text" class="truncate">Lokal</span>
+                            </div>
+                        </div>
+                        <svg class="w-4 h-4 text-slate-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="9 18 15 12 9 6"></polyline>
                         </svg>
-                    </span>
-                    <div class="min-w-0">
-                        <h2 class="text-base sm:text-[17px] font-extrabold text-white heading-font leading-tight">
-                            Einstellungen</h2>
-                        <p class="text-[11px] text-slate-400 leading-tight mt-0.5">Erscheinungsbild, Audio &amp;
-                            Darstellung</p>
-                    </div>
-                </div>
-                <button type="button" onclick="toggleSettingsModal()"
-                    class="modal-pill-cta px-4 py-1.5 rounded-full font-bold text-xs tracking-wide transition shrink-0">
-                    Fertig
-                </button>
-            </div>
-
-            <!-- 1. ERSCHEINUNGSBILD (3 MINI-VORSCHAU-KARTEN NEBENEINANDER) -->
-            <div class="space-y-2">
-                <div class="apple-set-section-label">Erscheinungsbild</div>
-                <div class="grid grid-cols-3 gap-2.5 sm:gap-3">
-                    <!-- Dark Mode-->
-                    <button type="button" onclick="applyTheme('onyx-oled')" id="theme-btn-onyx-oled"
-                        class="apple-theme-card is-theme-active">
-                        <span class="apple-theme-preview theme-preview-onyx" aria-hidden="true">
-                            <span class="tp-bar"><span class="tp-dot"></span><span class="tp-pill"></span></span>
-                            <span class="tp-grid"><span class="tp-card"></span><span class="tp-card"></span></span>
-                            <span class="apple-theme-check">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
-                            </span>
-                        </span>
-                        <span class="apple-theme-name">Dark Mode</span>
                     </button>
 
-                    <!-- Midnight-->
-                    <button type="button" onclick="applyTheme('foerde-midnight')" id="theme-btn-foerde-midnight"
-                        class="apple-theme-card">
-                        <span class="apple-theme-preview theme-preview-midnight" aria-hidden="true">
-                            <span class="tp-bar"><span class="tp-dot"></span><span class="tp-pill"></span></span>
-                            <span class="tp-grid"><span class="tp-card"></span><span class="tp-card"></span></span>
-                            <span class="apple-theme-check">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="20 6 9 17 4 12"></polyline>
+                    <!-- Navigations-Kategorien -->
+                    <nav class="ios-set-nav-wrap flex md:flex-col gap-1.5 overflow-x-auto md:overflow-visible pb-0.5 md:pb-0"
+                        aria-label="Einstellungsbereiche">
+                        <button type="button" onclick="setSettingsSection('appearance')" id="ios-nav-appearance"
+                            class="ios-set-nav-item is-active">
+                            <span class="ios-set-nav-icon icon-blue" aria-hidden="true">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="5"></circle>
+                                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                                    <line x1="21" y1="12" x2="23" y2="12"></line>
                                 </svg>
                             </span>
-                        </span>
-                        <span class="apple-theme-name">Midnight</span>
-                    </button>
+                            <span class="truncate">Design &amp; Ansicht</span>
+                        </button>
 
-                    <!-- Light Mode -->
-                    <button type="button" onclick="applyTheme('academic-light')" id="theme-btn-academic-light"
-                        class="apple-theme-card">
-                        <span class="apple-theme-preview theme-preview-light" aria-hidden="true">
-                            <span class="tp-bar"><span class="tp-dot"></span><span class="tp-pill"></span></span>
-                            <span class="tp-grid"><span class="tp-card"></span><span class="tp-card"></span></span>
-                            <span class="apple-theme-check">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="20 6 9 17 4 12"></polyline>
+                        <button type="button" onclick="setSettingsSection('profile')" id="ios-nav-profile"
+                            class="ios-set-nav-item">
+                            <span class="ios-set-nav-icon icon-purple" aria-hidden="true">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
                                 </svg>
                             </span>
-                        </span>
-                        <span class="apple-theme-name">Sunrise</span>
-                    </button>
+                            <span class="truncate">Charakter &amp; Profil</span>
+                        </button>
 
-                    <!-- Gargantua · Interstellar -->
-                    <button type="button" onclick="applyTheme('gargantua-interstellar')" id="theme-btn-gargantua-interstellar"
-                        class="apple-theme-card">
-                        <span class="apple-theme-preview theme-preview-gargantua" aria-hidden="true">
-                            <span class="tp-bar"><span class="tp-dot"></span><span class="tp-pill"></span></span>
-                            <span class="tp-grid"><span class="tp-card"></span><span class="tp-card"></span></span>
-                            <span class="apple-theme-check">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="20 6 9 17 4 12"></polyline>
+                        <button type="button" onclick="setSettingsSection('stats')" id="ios-nav-stats"
+                            class="ios-set-nav-item">
+                            <span class="ios-set-nav-icon icon-cyan" aria-hidden="true">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                                    <line x1="6" y1="20" x2="6" y2="14"></line>
                                 </svg>
                             </span>
-                        </span>
-                        <span class="apple-theme-name">Gargantua</span>
-                    </button>
+                            <span class="truncate">Statistik</span>
+                        </button>
 
-                    <!-- Arrakis-->
-                    <button type="button" onclick="applyTheme('arrakis-dune')" id="theme-btn-arrakis-dune"
-                        class="apple-theme-card">
-                        <span class="apple-theme-preview theme-preview-arrakis" aria-hidden="true">
-                            <span class="tp-bar"><span class="tp-dot"></span><span class="tp-pill"></span></span>
-                            <span class="tp-grid"><span class="tp-card"></span><span class="tp-card"></span></span>
-                            <span class="apple-theme-check">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="20 6 9 17 4 12"></polyline>
+                        <button type="button" onclick="setSettingsSection('cloud')" id="ios-nav-cloud"
+                            class="ios-set-nav-item">
+                            <span class="ios-set-nav-icon icon-emerald" aria-hidden="true">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
                                 </svg>
                             </span>
-                        </span>
-                        <span class="apple-theme-name">Arrakis</span>
-                    </button>
+                            <span class="truncate flex-1 text-left">Cloud-Konto</span>
+                            <span id="ios-sidebar-cloud-dot" class="ios-cloud-mini-dot shrink-0"></span>
+                        </button>
 
-                    <!-- Ka-Chow! · Lightning McQueen -->
-                    <button type="button" onclick="applyTheme('kachow-cars')" id="theme-btn-kachow-cars"
-                        class="apple-theme-card">
-                        <span class="apple-theme-preview theme-preview-kachow" aria-hidden="true">
-                            <span class="tp-bar"><span class="tp-dot"></span><span class="tp-pill"></span></span>
-                            <span class="tp-grid"><span class="tp-card"></span><span class="tp-card"></span></span>
-                            <span class="apple-theme-check">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
-                            </span>
-                        </span>
-                        <span class="apple-theme-name">Kachow!</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- 2. ZWEI-SPALTEN-BEREICH: LINKS PROFIL & DARSTELLUNG · RECHTS AUDIO -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                <!-- Linke Spalte: Profil + Darstellung -->
-                <div class="space-y-4">
-                    <div class="space-y-1.5">
-                        <div class="flex items-center justify-between gap-2">
-                            <div class="apple-set-section-label">Profil</div>
-                            <button type="button" onclick="openProfileFromSettings()"
-                                class="text-[10.5px] font-bold text-cyan-400 hover:text-cyan-300 transition pr-1">Charakter
-                                bearbeiten ›</button>
-                        </div>
-                        <div class="apple-inset-group">
-                            <div class="apple-set-row">
-                                <div class="flex items-center gap-2.5 shrink-0">
-                                    <span class="apple-set-icon icon-blue" aria-hidden="true">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                            stroke-linejoin="round">
-                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                            <circle cx="12" cy="7" r="4"></circle>
-                                        </svg>
-                                    </span>
-                                    <label for="settings-player-name-input"
-                                        class="text-[12.5px] font-medium text-slate-200">Anzeigename</label>
-                                </div>
-                                <input id="settings-player-name-input" type="text" maxlength="18"
-                                    onchange="setPlayerName(this.value)" placeholder="Dein Name..."
-                                    class="apple-inset-name-input flex-1 min-w-0 bg-transparent text-right text-[12.5px] font-bold text-white placeholder-slate-500 focus:outline-none">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="space-y-1.5">
-                        <div class="apple-set-section-label">Darstellung</div>
-                        <div class="apple-inset-group">
-                            <label class="apple-set-row cursor-pointer">
-                                <div class="flex items-center gap-2.5 min-w-0">
-                                    <span class="apple-set-icon icon-purple" aria-hidden="true">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                            stroke-linejoin="round">
-                                            <rect x="4" y="3" width="16" height="18" rx="3"></rect>
-                                            <line x1="8" y1="8" x2="16" y2="8"></line>
-                                            <line x1="8" y1="16" x2="12" y2="16"></line>
-                                        </svg>
-                                    </span>
-                                    <div class="min-w-0">
-                                        <div class="text-[12.5px] font-medium text-slate-200 leading-tight">
-                                            Karten-Koordinaten</div>
-                                        <div class="text-[10.5px] text-slate-400 leading-tight mt-0.5"><span
-                                                class="mono">(x, y, z)</span> im Spielmodus</div>
-                                    </div>
-                                </div>
-                                <input type="checkbox" id="chk-game-coords" checked
-                                    onchange="toggleGameCoords(this.checked)">
-                            </label>
-
-                            <label class="apple-set-row cursor-pointer">
-                                <div class="flex items-center gap-2.5 min-w-0">
-                                    <span class="apple-set-icon icon-emerald" aria-hidden="true">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                            stroke-linejoin="round">
-                                            <path
-                                                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
-                                            </path>
-                                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                                            <line x1="12" y1="22.08" x2="12" y2="12"></line>
-                                        </svg>
-                                    </span>
-                                    <div class="min-w-0">
-                                        <div class="text-[12.5px] font-medium text-slate-200 leading-tight">
-                                            3D-Achsenbeschriftung</div>
-                                        <div class="text-[10.5px] text-slate-400 leading-tight mt-0.5">Labels in den
-                                            3D-Räumen</div>
-                                    </div>
-                                </div>
-                                <input type="checkbox" id="chk-3d-labels" checked
-                                    onchange="toggle3DLabels(this.checked)">
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Rechte Spalte: Audio & Sound -->
-                <div class="space-y-1.5">
-                    <div class="apple-set-section-label">Audio &amp; Sound</div>
-                    <div class="apple-inset-group">
-                        <label class="apple-set-row cursor-pointer">
-                            <div class="flex items-center gap-2.5 min-w-0">
-                                <span class="apple-set-icon icon-rose" aria-hidden="true">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
-                                    </svg>
-                                </span>
-                                <div class="min-w-0">
-                                    <div class="text-[12.5px] font-medium text-slate-200 leading-tight">Sound-Effekte
-                                    </div>
-                                    <div class="text-[10.5px] text-slate-400 leading-tight mt-0.5">Klick- &amp;
-                                        Karten-Akustik</div>
-                                </div>
-                            </div>
-                            <input type="checkbox" id="chk-sound-enabled" onchange="setSoundEnabled(this.checked)">
-                        </label>
-
-                        <label class="apple-set-row cursor-pointer">
-                            <div class="flex items-center gap-2.5 min-w-0">
-                                <span class="apple-set-icon icon-amber" aria-hidden="true">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M9 18V5l12-2v13"></path>
-                                        <circle cx="6" cy="18" r="3"></circle>
-                                        <circle cx="18" cy="16" r="3"></circle>
-                                    </svg>
-                                </span>
-                                <div class="min-w-0">
-                                    <div class="text-[12.5px] font-medium text-slate-200 leading-tight">Spielmusik</div>
-                                    <div class="text-[10.5px] text-slate-400 leading-tight mt-0.5">Adaptiver Soundtrack
-                                        im Spiel</div>
-                                </div>
-                            </div>
-                            <input type="checkbox" id="chk-music-enabled" onchange="setMusicEnabled(this.checked)">
-                        </label>
-
-                        <div class="apple-set-volume-row">
-                            <div class="flex items-center justify-between gap-2">
-                                <span class="text-[12px] font-medium text-slate-300">Lautstärke</span>
-                                <div class="flex items-center gap-2">
-                                    <span id="sound-volume-label" class="mono text-[11.5px] font-bold text-cyan-300">20
-                                        %</span>
-                                    <button type="button" onclick="playTestSound()"
-                                        class="apple-set-test-btn px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold transition">Test</button>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2.5 pt-0.5">
-                                <svg class="w-3.5 h-3.5 text-slate-500 shrink-0" viewBox="0 0 24 24" fill="none"
-                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round">
-                                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                                </svg>
-                                <input type="range" id="range-sound-volume" min="0" max="100" step="5" value="20"
-                                    oninput="setSoundVolume(this.value)" class="flex-1 cursor-pointer">
-                                <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none"
-                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round">
+                        <button type="button" onclick="setSettingsSection('audio')" id="ios-nav-audio"
+                            class="ios-set-nav-item">
+                            <span class="ios-set-nav-icon icon-rose" aria-hidden="true">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
                                     <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
                                     <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
                                 </svg>
+                            </span>
+                            <span class="truncate">Audio &amp; Sound</span>
+                        </button>
+
+                        <button type="button" onclick="setSettingsSection('mapping')" id="ios-nav-mapping"
+                            class="ios-set-nav-item">
+                            <span class="ios-set-nav-icon icon-amber" aria-hidden="true">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="3"></rect>
+                                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                                    <line x1="9" y1="21" x2="9" y2="9"></line>
+                                    <line x1="15" y1="21" x2="15" y2="9"></line>
+                                </svg>
+                            </span>
+                            <span class="truncate">Codierung</span>
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Dezente App-Stand-Fußzeile (nur Desktop-Sidebar) -->
+                <div class="hidden md:block pt-3 border-t border-white/[0.07] px-1 text-[10px] mono text-slate-500 leading-relaxed">
+                    <div class="font-semibold text-slate-400">BLINK · Web-App</div>
+                    <div id="settings-last-updated">Stand: 25.11.2026</div>
+                </div>
+            </aside>
+
+            <!-- RECHTER DETAILBEREICH -->
+            <div class="ios-set-detail flex-1 min-w-0 flex flex-col min-h-0">
+                <!-- Kopfzeile des aktiven Bereichs -->
+                <div class="ios-set-detail-head apple-set-header flex flex-wrap items-center justify-between gap-2.5 px-5 py-3.5 shrink-0">
+                    <div class="min-w-0">
+                        <h3 id="ios-detail-title" class="text-[15.5px] font-extrabold text-white heading-font leading-tight">
+                            Design &amp; Ansicht</h3>
+                        <p id="ios-detail-subtitle" class="text-[11px] text-slate-400 leading-tight mt-0.5 truncate">
+                            Farbschema und visuelle Hilfen</p>
+                    </div>
+
+                    <div class="flex items-center gap-2 shrink-0">
+                        <!-- Kontext-Aktion für Profil: Zufall -->
+                        <button type="button" id="profile-randomize-btn" onclick="randomizePlayerProfile()"
+                            class="hidden apple-set-test-btn px-3 py-1.5 rounded-full text-[11px] font-bold transition inline-flex items-center gap-1.5"
+                            title="Zufälligen Charakter würfeln">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="3"></rect>
+                                <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"></circle>
+                                <circle cx="15.5" cy="8.5" r="1.2" fill="currentColor"></circle>
+                                <circle cx="12" cy="12" r="1.2" fill="currentColor"></circle>
+                                <circle cx="8.5" cy="15.5" r="1.2" fill="currentColor"></circle>
+                                <circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"></circle>
+                            </svg>
+                            <span>Zufall</span>
+                        </button>
+
+                        <!-- Kontext-Badge für Cloud -->
+                        <span id="profile-cloud-pill-badge" class="hidden text-[10.5px] mono text-slate-400"></span>
+
+                        <!-- Kontext-Switch für Codierung -->
+                        <div id="mapping-mode-tabs"
+                            class="hidden relative inline-flex items-center bg-slate-950/85 p-1 rounded-full border border-white/10 gap-1">
+                            <div id="mapping-sliding-pill" class="sliding-pill-bg sliding-pill-cyan"></div>
+                            <button type="button" onclick="setMappingModalMode('basic')" id="mapping-tab-basic"
+                                class="relative z-10 px-3 py-1 rounded-full text-[11px] transition-colors pill-btn-active">Grundlegend</button>
+                            <button type="button" onclick="setMappingModalMode('advanced')" id="mapping-tab-advanced"
+                                class="relative z-10 px-3 py-1 rounded-full text-[11px] transition-colors pill-btn-idle">Erweitert</button>
+                        </div>
+
+                        <button type="button" onclick="toggleSettingsModal()"
+                            class="hidden md:inline-flex modal-pill-cta px-4 py-1.5 rounded-full font-bold text-xs tracking-wide transition">
+                            Fertig
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Scrollbarer Inhalt des aktiven Bereichs -->
+                <div class="ios-set-detail-body flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
+
+                    <!-- PANE 1: DESIGN & ANSICHT -->
+                    <div id="ios-pane-appearance" class="space-y-4">
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="apple-set-section-label">Erscheinungsbild</div>
+                                <span class="text-[10px] mono text-slate-400 pr-1">6 Designs</span>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                                <button type="button" onclick="applyTheme('onyx-oled')" id="theme-btn-onyx-oled"
+                                    class="apple-theme-card is-theme-active">
+                                    <span class="apple-theme-preview theme-preview-onyx" aria-hidden="true">
+                                        <span class="tp-bar"><span class="tp-dot"></span><span class="tp-pill"></span></span>
+                                        <span class="tp-grid"><span class="tp-card"></span><span class="tp-card"></span></span>
+                                        <span class="apple-theme-check">
+                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                        </span>
+                                    </span>
+                                    <span class="apple-theme-name">Dark Mode</span>
+                                </button>
+
+                                <button type="button" onclick="applyTheme('foerde-midnight')" id="theme-btn-foerde-midnight"
+                                    class="apple-theme-card">
+                                    <span class="apple-theme-preview theme-preview-midnight" aria-hidden="true">
+                                        <span class="tp-bar"><span class="tp-dot"></span><span class="tp-pill"></span></span>
+                                        <span class="tp-grid"><span class="tp-card"></span><span class="tp-card"></span></span>
+                                        <span class="apple-theme-check">
+                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                        </span>
+                                    </span>
+                                    <span class="apple-theme-name">Midnight</span>
+                                </button>
+
+                                <button type="button" onclick="applyTheme('academic-light')" id="theme-btn-academic-light"
+                                    class="apple-theme-card">
+                                    <span class="apple-theme-preview theme-preview-light" aria-hidden="true">
+                                        <span class="tp-bar"><span class="tp-dot"></span><span class="tp-pill"></span></span>
+                                        <span class="tp-grid"><span class="tp-card"></span><span class="tp-card"></span></span>
+                                        <span class="apple-theme-check">
+                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                        </span>
+                                    </span>
+                                    <span class="apple-theme-name">Sunrise</span>
+                                </button>
+
+                                <button type="button" onclick="applyTheme('gargantua-interstellar')" id="theme-btn-gargantua-interstellar"
+                                    class="apple-theme-card">
+                                    <span class="apple-theme-preview theme-preview-gargantua" aria-hidden="true">
+                                        <span class="tp-bar"><span class="tp-dot"></span><span class="tp-pill"></span></span>
+                                        <span class="tp-grid"><span class="tp-card"></span><span class="tp-card"></span></span>
+                                        <span class="apple-theme-check">
+                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                        </span>
+                                    </span>
+                                    <span class="apple-theme-name">Gargantua</span>
+                                </button>
+
+                                <button type="button" onclick="applyTheme('arrakis-dune')" id="theme-btn-arrakis-dune"
+                                    class="apple-theme-card">
+                                    <span class="apple-theme-preview theme-preview-arrakis" aria-hidden="true">
+                                        <span class="tp-bar"><span class="tp-dot"></span><span class="tp-pill"></span></span>
+                                        <span class="tp-grid"><span class="tp-card"></span><span class="tp-card"></span></span>
+                                        <span class="apple-theme-check">
+                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                        </span>
+                                    </span>
+                                    <span class="apple-theme-name">Arrakis</span>
+                                </button>
+
+                                <button type="button" onclick="applyTheme('kachow-cars')" id="theme-btn-kachow-cars"
+                                    class="apple-theme-card">
+                                    <span class="apple-theme-preview theme-preview-kachow" aria-hidden="true">
+                                        <span class="tp-bar"><span class="tp-dot"></span><span class="tp-pill"></span></span>
+                                        <span class="tp-grid"><span class="tp-card"></span><span class="tp-card"></span></span>
+                                        <span class="apple-theme-check">
+                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                        </span>
+                                    </span>
+                                    <span class="apple-theme-name">Kachow!</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <div class="apple-set-section-label">Darstellung</div>
+                            <div class="apple-inset-group">
+                                <label class="apple-set-row cursor-pointer">
+                                    <div class="flex items-center gap-2.5 min-w-0">
+                                        <span class="apple-set-icon icon-purple" aria-hidden="true">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                stroke-linejoin="round">
+                                                <rect x="4" y="3" width="16" height="18" rx="3"></rect>
+                                                <line x1="8" y1="8" x2="16" y2="8"></line>
+                                                <line x1="8" y1="16" x2="12" y2="16"></line>
+                                            </svg>
+                                        </span>
+                                        <div class="min-w-0">
+                                            <div class="text-[12.5px] font-medium text-slate-200 leading-tight">
+                                                Karten-Koordinaten</div>
+                                            <div class="text-[10.5px] text-slate-400 leading-tight mt-0.5"><span
+                                                    class="mono">(x, y, z)</span> im Spielmodus einblenden</div>
+                                        </div>
+                                    </div>
+                                    <input type="checkbox" id="chk-game-coords" checked
+                                        onchange="toggleGameCoords(this.checked)">
+                                </label>
+
+                                <label class="apple-set-row cursor-pointer">
+                                    <div class="flex items-center gap-2.5 min-w-0">
+                                        <span class="apple-set-icon icon-emerald" aria-hidden="true">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                stroke-linejoin="round">
+                                                <path
+                                                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                                                </path>
+                                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                                            </svg>
+                                        </span>
+                                        <div class="min-w-0">
+                                            <div class="text-[12.5px] font-medium text-slate-200 leading-tight">
+                                                3D-Achsenbeschriftung</div>
+                                            <div class="text-[10.5px] text-slate-400 leading-tight mt-0.5">Labels in den
+                                                3D-Räumen anzeigen</div>
+                                        </div>
+                                    </div>
+                                    <input type="checkbox" id="chk-3d-labels" checked
+                                        onchange="toggle3DLabels(this.checked)">
+                                </label>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- Fußzeile: Letzte Änderung der Website -->
-            <div class="pt-3 border-t border-white/[0.08] flex flex-wrap items-center justify-between gap-2 text-[10.5px] mono text-slate-400">
-                <span>BLINK · Stand der Web-App</span>
-                <span id="settings-last-updated">Zuletzt geändert: 25.11.2026 · 16:46 Uhr</span>
-            </div>
-        </div>
-    </div>
-    <!-- MODAL: SPIELER-PROFIL (MENSCHLICHER CHARAKTER IM POKÉMON-STIL) -->
-    <div id="profile-modal" onclick="if(event.target === this) toggleModalState(this.id)"
-        class="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-50 hidden items-center justify-center p-3 sm:p-5 transition-opacity duration-200 opacity-0">
-        <div
-            class="apple-settings-sheet apple-profile-sheet fu-card rounded-[28px] max-w-[820px] w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92dvh] overflow-y-auto transition-transform duration-200 scale-95">
-            <!-- Kopfzeile -->
-            <div class="apple-set-header flex items-center justify-between gap-3 pb-3.5">
-                <div class="flex items-center gap-3 min-w-0">
-                    <span id="profile-header-badge" class="apple-set-title-badge overflow-hidden"
-                        aria-hidden="true"></span>
-                    <div class="min-w-0">
-                        <h2 class="text-base sm:text-[17px] font-extrabold text-white heading-font leading-tight">Dein
-                            Profil</h2>
-                        <p class="text-[11px] text-slate-400 leading-tight mt-0.5">Erstelle deinen Charakter für Arena,
-                            Verhör &amp; Online-1v1</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2 shrink-0">
-                    <button type="button" onclick="randomizePlayerProfile()"
-                        class="apple-set-test-btn px-3 py-1.5 rounded-full text-[11px] font-bold transition inline-flex items-center gap-1.5"
-                        title="Zufälligen Charakter würfeln">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="3" width="18" height="18" rx="3"></rect>
-                            <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"></circle>
-                            <circle cx="15.5" cy="8.5" r="1.2" fill="currentColor"></circle>
-                            <circle cx="12" cy="12" r="1.2" fill="currentColor"></circle>
-                            <circle cx="8.5" cy="15.5" r="1.2" fill="currentColor"></circle>
-                            <circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"></circle>
-                        </svg>
-                        <span>Zufall</span>
-                    </button>
-                    <button type="button" onclick="toggleProfileModal()"
-                        class="modal-pill-cta px-4 py-1.5 rounded-full font-bold text-xs tracking-wide transition">
-                        Fertig
-                    </button>
-                </div>
-            </div>
+                    <!-- PANE 2: CHARAKTER & PROFIL -->
+                    <div id="ios-pane-profile" class="hidden space-y-4">
+                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+                            <!-- Linke Spalte: Live-Vorschau, Name, Hautton & Ausdruck -->
+                            <div class="lg:col-span-5 flex flex-col justify-between gap-3">
+                                <div class="space-y-3">
+                                    <div class="profile-preview-stage rounded-2xl p-3 flex items-center gap-3">
+                                        <div id="profile-preview-avatar"
+                                            class="w-[82px] h-[82px] rounded-2xl flex items-center justify-center shrink-0 border-2 shadow-inner overflow-hidden">
+                                        </div>
+                                        <div class="min-w-0 space-y-1">
+                                            <div class="text-[9.5px] font-bold uppercase tracking-widest text-slate-400 mono">
+                                                Vorschau</div>
+                                            <div id="profile-preview-name"
+                                                class="text-[15px] font-extrabold text-white truncate leading-tight">Spieler
+                                            </div>
+                                            <span id="profile-preview-elo"
+                                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] mono font-bold">700
+                                                Elo</span>
+                                        </div>
+                                    </div>
 
-            <!-- 2-Spalten-Editor (ohne Scrollen auf iPad & Laptop) -->
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
-                <!-- Linke Spalte: Live-Vorschau, Name, Hautton & Ausdruck -->
-                <div class="md:col-span-5 space-y-3.5">
-                    <!-- Große Live-Vorschau -->
-                    <div class="profile-preview-stage rounded-2xl p-4 flex items-center gap-4">
-                        <div id="profile-preview-avatar"
-                            class="w-24 h-24 rounded-2xl flex items-center justify-center shrink-0 border-2 shadow-inner overflow-hidden">
-                        </div>
-                        <div class="min-w-0 space-y-1.5">
-                            <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mono">Vorschau im
-                                Spiel</div>
-                            <div id="profile-preview-name"
-                                class="text-base font-extrabold text-white truncate leading-tight">Spieler</div>
-                            <span id="profile-preview-elo"
-                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] mono font-bold">700
-                                Elo</span>
-                        </div>
-                    </div>
+                                    <div class="space-y-1.5">
+                                        <div class="apple-set-section-label">Name</div>
+                                        <div class="apple-inset-group">
+                                            <div class="apple-set-row">
+                                                <label for="profile-name-input"
+                                                    class="text-[12px] font-medium text-slate-300 shrink-0">Anzeigename</label>
+                                                <input id="profile-name-input" type="text" maxlength="18"
+                                                    oninput="setPlayerName(this.value)" placeholder="Dein Name..."
+                                                    class="apple-inset-name-input flex-1 min-w-0 bg-transparent text-right text-[12.5px] font-bold text-white placeholder-slate-500 focus:outline-none">
+                                            </div>
+                                        </div>
+                                    </div>
 
-                    <!-- Anzeigename -->
-                    <div class="space-y-1.5">
-                        <div class="apple-set-section-label">Name</div>
-                        <div class="apple-inset-group">
-                            <div class="apple-set-row">
-                                <label for="profile-name-input"
-                                    class="text-[12px] font-medium text-slate-300 shrink-0">Anzeigename</label>
-                                <input id="profile-name-input" type="text" maxlength="18"
-                                    oninput="setPlayerName(this.value)" placeholder="Dein Name..."
-                                    class="apple-inset-name-input flex-1 min-w-0 bg-transparent text-right text-[12.5px] font-bold text-white placeholder-slate-500 focus:outline-none">
+                                    <div class="space-y-1.5">
+                                        <div class="apple-set-section-label">Hautton</div>
+                                        <div id="profile-skin-grid"
+                                            class="apple-profile-well grid grid-cols-6 gap-2 place-items-center py-2.5 px-3 rounded-2xl">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-1.5">
+                                    <div class="apple-set-section-label">Ausdruck</div>
+                                    <div id="profile-expr-grid" class="grid grid-cols-4 gap-1.5"></div>
+                                </div>
+                            </div>
+
+                            <!-- Rechte Spalte: Frisur, Haar-/Outfit-Farbe & Accessoire -->
+                            <div class="lg:col-span-7 flex flex-col justify-between gap-3">
+                                <div class="space-y-3">
+                                    <div class="space-y-1.5">
+                                        <div class="apple-set-section-label">Frisur</div>
+                                        <div id="profile-hair-grid" class="grid grid-cols-4 gap-2"></div>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div class="space-y-1.5">
+                                            <div class="apple-set-section-label">Haarfarbe</div>
+                                            <div id="profile-haircolor-grid"
+                                                class="apple-profile-well grid grid-cols-5 gap-2 place-items-center py-2.5 px-3 rounded-2xl">
+                                            </div>
+                                        </div>
+                                        <div class="space-y-1.5">
+                                            <div class="apple-set-section-label">Outfit-Farbe</div>
+                                            <div id="profile-outfitcolor-grid"
+                                                class="apple-profile-well grid grid-cols-5 gap-2 place-items-center py-2.5 px-3 rounded-2xl">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-1.5">
+                                    <div class="apple-set-section-label">Accessoire</div>
+                                    <div id="profile-acc-grid" class="grid grid-cols-3 sm:grid-cols-6 gap-1.5"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Hautton -->
-                    <div class="space-y-1.5">
-                        <div class="apple-set-section-label">Hautton</div>
-                        <div id="profile-skin-grid"
-                            class="apple-profile-well flex items-center justify-between gap-2 p-2.5 rounded-2xl"></div>
+                    <!-- PANE 3: CLOUD-KONTO -->
+                    <div id="ios-pane-cloud" class="hidden space-y-4">
+                        <div id="profile-cloud-account-body" class="space-y-4"></div>
                     </div>
 
-                    <!-- Gesichtsausdruck -->
-                    <div class="space-y-1.5">
-                        <div class="apple-set-section-label">Ausdruck</div>
-                        <div id="profile-expr-grid" class="grid grid-cols-4 gap-1.5"></div>
-                    </div>
-                </div>
-
-                <!-- Rechte Spalte: Frisuren, Haarfarbe, Outfit-Farbe & Accessoire -->
-                <div class="md:col-span-7 space-y-3.5">
-                    <!-- 8 Frisuren mit Live-Vorschau -->
-                    <div class="space-y-1.5">
-                        <div class="apple-set-section-label">Frisur</div>
-                        <div id="profile-hair-grid" class="grid grid-cols-4 gap-2"></div>
-                    </div>
-
-                    <!-- Haar- & Outfit-Farbe nebeneinander -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- PANE 4: AUDIO & SOUND -->
+                    <div id="ios-pane-audio" class="hidden space-y-4">
                         <div class="space-y-1.5">
-                            <div class="apple-set-section-label">Haarfarbe</div>
-                            <div id="profile-haircolor-grid"
-                                class="apple-profile-well flex flex-wrap items-center gap-1.5 p-2.5 rounded-2xl"></div>
+                            <div class="apple-set-section-label">Akustik</div>
+                            <div class="apple-inset-group">
+                                <label class="apple-set-row cursor-pointer">
+                                    <div class="flex items-center gap-2.5 min-w-0">
+                                        <span class="apple-set-icon icon-rose" aria-hidden="true">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                                                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                                                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                                            </svg>
+                                        </span>
+                                        <div class="min-w-0">
+                                            <div class="text-[12.5px] font-medium text-slate-200 leading-tight">
+                                                Sound-Effekte</div>
+                                            <div class="text-[10.5px] text-slate-400 leading-tight mt-0.5">Klick- &amp;
+                                                Karten-Akustik</div>
+                                        </div>
+                                    </div>
+                                    <input type="checkbox" id="chk-sound-enabled" onchange="setSoundEnabled(this.checked)">
+                                </label>
+
+                                <label class="apple-set-row cursor-pointer">
+                                    <div class="flex items-center gap-2.5 min-w-0">
+                                        <span class="apple-set-icon icon-amber" aria-hidden="true">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M9 18V5l12-2v13"></path>
+                                                <circle cx="6" cy="18" r="3"></circle>
+                                                <circle cx="18" cy="16" r="3"></circle>
+                                            </svg>
+                                        </span>
+                                        <div class="min-w-0">
+                                            <div class="text-[12.5px] font-medium text-slate-200 leading-tight">Spielmusik
+                                            </div>
+                                            <div class="text-[10.5px] text-slate-400 leading-tight mt-0.5">Adaptiver
+                                                Soundtrack im Spiel</div>
+                                        </div>
+                                    </div>
+                                    <input type="checkbox" id="chk-music-enabled" onchange="setMusicEnabled(this.checked)">
+                                </label>
+                            </div>
                         </div>
+
                         <div class="space-y-1.5">
-                            <div class="apple-set-section-label">Outfit-Farbe</div>
-                            <div id="profile-outfitcolor-grid"
-                                class="apple-profile-well flex flex-wrap items-center gap-1.5 p-2.5 rounded-2xl"></div>
+                            <div class="apple-set-section-label">Master-Lautstärke</div>
+                            <div class="apple-inset-group">
+                                <div class="apple-set-volume-row">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <div class="flex items-center gap-2.5 min-w-0">
+                                            <span class="apple-set-icon icon-blue" aria-hidden="true">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                    stroke-linejoin="round">
+                                                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                                                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                                                </svg>
+                                            </span>
+                                            <span class="text-[12.5px] font-medium text-slate-200">Lautstärke</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span id="sound-volume-label"
+                                                class="mono text-[11.5px] font-bold text-cyan-300 tabular-nums">20 %</span>
+                                            <button type="button" onclick="playTestSound()"
+                                                class="apple-set-test-btn px-3 py-0.5 rounded-full text-[10.5px] font-semibold transition">Test</button>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2.5 pt-1">
+                                        <svg class="w-3.5 h-3.5 text-slate-500 shrink-0" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                            stroke-linejoin="round">
+                                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                                        </svg>
+                                        <input type="range" id="range-sound-volume" min="0" max="100" step="5" value="20"
+                                            oninput="setSoundVolume(this.value)" class="flex-1 cursor-pointer">
+                                        <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                            stroke-linejoin="round">
+                                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                                            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Accessoires -->
-                    <div class="space-y-1.5">
-                        <div class="apple-set-section-label">Accessoire</div>
-                        <div id="profile-acc-grid" class="grid grid-cols-3 sm:grid-cols-6 gap-1.5"></div>
+                    <!-- PANE 5: CODIERUNGSTABELLE -->
+                    <div id="ios-pane-mapping" class="hidden space-y-3">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="apple-set-section-label">Zuordnung der Ausprägungen</div>
+                            <span id="mapping-modal-subtitle" class="text-[10.5px] mono text-slate-400 pr-1">Grundlegendes
+                                Modell (180 Karten)</span>
+                        </div>
+                        <div class="apple-inset-group apple-mapping-table-wrap overflow-x-auto">
+                            <table class="apple-mapping-table w-full text-xs border-collapse">
+                                <thead>
+                                    <tr>
+                                        <th class="text-left pl-4">Anzahl</th>
+                                        <th class="apple-map-col-sep mono text-center">Zuordnung (X)</th>
+                                        <th class="text-left pl-4">Farbe</th>
+                                        <th class="apple-map-col-sep mono text-center">Zuordnung (Y)</th>
+                                        <th class="text-left pl-4">Symbol</th>
+                                        <th class="mono text-center pr-3">Zuordnung (Z)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="modal-table-body"></tbody>
+                            </table>
+                        </div>
                     </div>
+
+                    <!-- PANE 6: PERSÖNLICHES STATISTIK-DASHBOARD & MATCH HISTORY (LETZTE 10 SPIELE) -->
+                    <div id="ios-pane-stats" class="hidden space-y-4">
+                        <div id="stats-kpi-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5"></div>
+
+                        <div id="stats-spark-wrap" class="hidden stats-spark-card space-y-1.5">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mono">Spiel-Rating Verlauf (Letzte 10)</span>
+                                <span class="text-[10px] mono text-slate-500">● Sieg · ● Niederlage</span>
+                            </div>
+                            <div id="stats-spark-svg"></div>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="apple-set-section-label !m-0">Match History</span>
+                                    <span id="stats-history-count" class="g3-stat-pill">0 / 10</span>
+                                </div>
+                                <button type="button" id="stats-clear-history-btn" onclick="clearMatchHistory()"
+                                    class="hidden text-[10.5px] mono text-slate-400 hover:text-rose-400 transition">Verlauf leeren</button>
+                            </div>
+                            <div id="stats-match-history" class="apple-inset-group divide-y divide-white/[0.06] overflow-hidden"></div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL 2: MAPPING (APPLE LIQUID-GLASS SHEET) -->
-    <div id="mapping-modal" onclick="if(event.target === this) toggleModalState(this.id)"
-        class="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-50 hidden items-center justify-center p-3 sm:p-5 transition-opacity duration-200 opacity-0">
-        <div
-            class="apple-settings-sheet apple-mapping-sheet fu-card rounded-[28px] max-w-[780px] w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92dvh] overflow-y-auto transition-transform duration-200 scale-95">
-            <!-- Kopfzeile -->
-            <div class="apple-set-header flex flex-wrap items-center justify-between gap-3 pb-3.5">
-                <div class="flex items-center gap-3 min-w-0">
-                    <span class="apple-set-title-badge" aria-hidden="true">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="3" width="18" height="18" rx="3"></rect>
-                            <line x1="3" y1="9" x2="21" y2="9"></line>
-                            <line x1="9" y1="21" x2="9" y2="9"></line>
-                            <line x1="15" y1="21" x2="15" y2="9"></line>
-                        </svg>
-                    </span>
-                    <div class="min-w-0">
-                        <h2 class="text-base sm:text-[17px] font-extrabold text-white heading-font leading-tight">
-                            Zuordnung der Ausprägungen</h2>
-                        <p id="mapping-modal-subtitle" class="text-[11px] text-slate-400 leading-tight mt-0.5">
-                            Grundlegendes Modell (180 Karten)</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2.5 shrink-0">
-                    <div id="mapping-mode-tabs"
-                        class="relative inline-flex items-center bg-slate-950/85 p-1 rounded-full border border-white/10 gap-1">
-                        <div id="mapping-sliding-pill" class="sliding-pill-bg sliding-pill-cyan"></div>
-                        <button type="button" onclick="setMappingModalMode('basic')" id="mapping-tab-basic"
-                            class="relative z-10 px-3 py-1 rounded-full text-[11px] transition-colors pill-btn-active">Grundlegend</button>
-                        <button type="button" onclick="setMappingModalMode('advanced')" id="mapping-tab-advanced"
-                            class="relative z-10 px-3 py-1 rounded-full text-[11px] transition-colors pill-btn-idle">Erweitert</button>
-                    </div>
-                    <button type="button" onclick="toggleMappingModal()"
-                        class="modal-pill-cta px-4 py-1.5 rounded-full font-bold text-xs tracking-wide transition shrink-0">
-                        Fertig
-                    </button>
-                </div>
-            </div>
-
-            <!-- Codierungstabelle als Apple Inset Group (gleiche Höhe für Grundlegend & Erweitert) -->
-            <div class="apple-inset-group apple-mapping-table-wrap overflow-x-auto">
-                <table class="apple-mapping-table w-full text-xs border-collapse">
-                    <thead>
-                        <tr>
-                            <th class="text-left pl-4">Anzahl</th>
-                            <th class="apple-map-col-sep mono text-center">Zuordnung (X)</th>
-                            <th class="text-left pl-4">Farbe</th>
-                            <th class="apple-map-col-sep mono text-center">Zuordnung (Y)</th>
-                            <th class="text-left pl-4">Symbol</th>
-                            <th class="mono text-center pr-3">Zuordnung (Z)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="modal-table-body"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL 4: ELO-RANG-ÜBERSICHT (APPLE LIQUID-GLASS SHEET · 3×3 GRID) -->
+    <!-- MODAL 4: ELO-RANG-ÜBERSICHT (AUFSTEIGENDE HORIZONTALE SKALA VON LINKS NACH RECHTS) -->
     <div id="elo-overview-modal" onclick="if(event.target === this) toggleModalState(this.id)"
         class="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-50 hidden items-center justify-center p-3 sm:p-5 transition-opacity duration-200 opacity-0">
         <div
-            class="apple-settings-sheet apple-elo-sheet fu-card rounded-[28px] max-w-[780px] w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92dvh] overflow-y-auto transition-transform duration-200 scale-95">
+            class="apple-settings-sheet apple-elo-sheet fu-card rounded-[28px] max-w-[1040px] w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92dvh] overflow-y-auto transition-transform duration-200 scale-95">
             <div class="apple-set-header flex items-center justify-between gap-3 pb-3.5">
                 <div class="flex items-center gap-3 min-w-0">
                     <span class="apple-set-title-badge" aria-hidden="true">
@@ -3920,77 +3987,140 @@
                     <div class="min-w-0">
                         <h2 class="text-base sm:text-[17px] font-extrabold text-white heading-font leading-tight">
                             Elo-Rangliste</h2>
-                        <p class="text-[11px] text-slate-400 leading-tight mt-0.5">Alle 9 Ränge von Iron bis Grandmaster
+                        <p class="text-[11px] text-slate-400 leading-tight mt-0.5">Aufsteigende Skala von Iron bis Grandmaster
                         </p>
                     </div>
                 </div>
-                <button type="button" onclick="toggleEloOverviewModal()"
-                    class="modal-pill-cta px-4 py-1.5 rounded-full font-bold text-xs tracking-wide transition shrink-0">
-                    Fertig
-                </button>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button type="button" onclick="previewRankUpChoreography()"
+                        class="g3-action-btn px-3 py-1.5 rounded-full font-bold text-[11px] tracking-wide transition shrink-0"
+                        title="Rangaufstieg-Animation als Vorschau abspielen">
+                        ✨ Aufstieg-Vorschau
+                    </button>
+                    <button type="button" onclick="toggleEloOverviewModal()"
+                        class="modal-pill-cta px-4 py-1.5 rounded-full font-bold text-xs tracking-wide transition shrink-0">
+                        Fertig
+                    </button>
+                </div>
             </div>
-            <div id="elo-overview-list" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5"></div>
+            <div id="elo-overview-list" class="elo-ladder-host space-y-4"></div>
         </div>
     </div>
-    <!-- MODAL 5: MATCH-ANALYSE (CHESS.COM-STYLE GAME REVIEW) -->
+    <!-- CINEMATIC OVERLAY: RANGAUFSTIEG-CHOREOGRAFIE (LICHTRING · PARTIKEL · TACHO-ELO) -->
+    <div id="rankup-cinematic-overlay" onclick="closeRankUpChoreography()"
+        class="rankup-overlay hidden fixed inset-0 z-[95] flex items-center justify-center p-4 select-none">
+        <canvas id="rankup-canvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+        <div class="rankup-stage relative z-10 flex flex-col items-center text-center max-w-md w-full"
+            onclick="event.stopPropagation()">
+            <div class="rankup-eyebrow mono">RANGAUFSTIEG</div>
+
+            <div class="rankup-crest-wrap relative my-4">
+                <div class="rankup-aurora"></div>
+                <div class="rankup-shockwave" id="rankup-shockwave"></div>
+                <svg class="rankup-ring-svg" viewBox="0 0 140 140" aria-hidden="true">
+                    <circle class="rankup-ring-track" cx="70" cy="70" r="62"></circle>
+                    <circle class="rankup-ring-sweep" id="rankup-ring-sweep" cx="70" cy="70" r="62"></circle>
+                </svg>
+                <div id="rankup-old-crest" class="rankup-crest is-old"></div>
+                <div id="rankup-new-crest" class="rankup-crest is-new"></div>
+            </div>
+
+            <div id="rankup-title" class="rankup-title heading-font">Gold</div>
+            <div id="rankup-transition-label" class="rankup-sub mono">Silver → Gold</div>
+
+            <div class="rankup-tacho-pill mono mt-4">
+                <span id="rankup-tacho-val" class="rankup-tacho-num">1000</span>
+                <span class="text-[11px] text-slate-400">Elo</span>
+                <span id="rankup-tacho-delta" class="rankup-tacho-delta">+24</span>
+            </div>
+
+            <button type="button" onclick="closeRankUpChoreography()"
+                class="rankup-continue-btn modal-pill-cta mt-6 px-6 py-2 rounded-full font-bold text-xs tracking-wide transition">
+                Weiter
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL 5: MATCH-ANALYSE (KOMPAKTES 1-SCREEN-DASHBOARD POP-UP) -->
     <div id="match-analysis-modal" onclick="if(event.target === this) toggleModalState(this.id)"
-        class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4 transition-opacity duration-200 opacity-0">
+        class="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-50 hidden items-center justify-center p-3 sm:p-5 transition-opacity duration-200 opacity-0">
         <div
-            class="fu-card rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto transition-transform duration-200 scale-95">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-                <div class="min-w-0">
-                    <div class="text-[10px] font-bold uppercase tracking-widest text-cyan-400 mono">Game Review</div>
-                    <h2 class="text-base sm:text-lg font-extrabold text-white heading-font">Match-Analyse</h2>
-                    <p id="ma-subtitle" class="text-[11px] mono text-slate-400 mt-0.5 truncate"></p>
-                </div>
-                <button onclick="closeMatchAnalysisModal()"
-                    class="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.14] border border-white/10 text-slate-300 hover:text-white text-xs font-bold flex items-center justify-center transition shrink-0">✕</button>
-            </div>
-
-            <!-- 4 Haupt-KPIs -->
-            <div id="ma-kpi-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5"></div>
-
-            <!-- Vorteils-Graph (Eval-Chart) -->
-            <div class="rounded-2xl bg-slate-950/80 border border-white/[0.08] p-3.5 space-y-2">
-                <div
-                    class="flex flex-wrap items-center justify-between gap-2 text-[10px] mono uppercase tracking-wider">
-                    <span class="font-bold text-slate-300">Vorteils-Verlauf (Kartendifferenz)</span>
-                    <span class="text-slate-500">Cyan = Du vorn · Gelb = Restock · Rot = Fehler</span>
-                </div>
-                <div id="ma-eval-chart"></div>
-                <div class="pt-2 border-t border-white/[0.06] text-xs text-slate-300 flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0"></span>
-                    <span id="ma-key-moment"></span>
-                </div>
-            </div>
-
-            <!-- Zug-Bewertungen (Brillant bis Fehler) -->
-            <div class="space-y-2">
-                <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mono">Zug-Bewertung</div>
-                <div id="ma-quality-grid" class="grid grid-cols-5 gap-1.5 sm:gap-2"></div>
-            </div>
-
-            <!-- Match-Profil + Zug-Timeline -->
-            <div class="grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-start">
-                <div class="sm:col-span-5 rounded-2xl bg-slate-950/75 border border-white/[0.07] p-3.5 space-y-2.5">
-                    <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mono">Match-Profil</div>
-                    <div id="ma-prop-bars" class="space-y-2.5"></div>
-                </div>
-                <div class="sm:col-span-7 rounded-2xl bg-slate-950/75 border border-white/[0.07] p-3.5 space-y-2">
-                    <div
-                        class="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400 mono">
-                        <span>Deine Züge</span>
-                        <span class="text-slate-500">Zeit · Bewertung · Vorsprung</span>
+            class="apple-settings-sheet ma-dashboard-sheet fu-card rounded-[28px] max-w-[1060px] w-full p-4 sm:p-5 shadow-2xl flex flex-col gap-3.5 max-h-[92dvh] overflow-y-auto lg:overflow-hidden transition-transform duration-200 scale-95">
+            <!-- Kopfzeile mit Aktions-Buttons (spart den unteren Footer → passt auf 1 Screen) -->
+            <div class="apple-set-header flex flex-wrap items-center justify-between gap-3 pb-3 shrink-0">
+                <div class="flex items-center gap-3 min-w-0">
+                    <span class="apple-set-title-badge" aria-hidden="true">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                        </svg>
+                    </span>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-base sm:text-[17px] font-extrabold text-white heading-font leading-tight">
+                                Match-Analyse</h2>
+                            <span
+                                class="px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-400/30 text-[9.5px] font-bold uppercase tracking-wider text-cyan-300 mono">Game
+                                Review</span>
+                        </div>
+                        <p id="ma-subtitle" class="text-[11px] mono text-slate-400 mt-0.5 truncate"></p>
                     </div>
-                    <div id="ma-move-timeline" class="max-h-52 overflow-y-auto space-y-1.5 pr-1"></div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button type="button" onclick="closeMatchAnalysisModal(); startNewBlinkGame();"
+                        class="modal-pill-cta px-4 py-1.5 rounded-full font-bold text-xs tracking-wide transition">▶
+                        Neue Partie</button>
+                    <button type="button" onclick="closeMatchAnalysisModal()"
+                        class="apple-set-test-btn px-3.5 py-1.5 rounded-full font-bold text-xs transition">Fertig</button>
                 </div>
             </div>
 
-            <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
-                <button onclick="closeMatchAnalysisModal(); startNewBlinkGame();"
-                    class="modal-pill-cta px-5 py-2 rounded-full font-bold text-xs transition">▶ Neue Partie</button>
-                <button onclick="closeMatchAnalysisModal()"
-                    class="px-4 py-2 rounded-full border border-white/10 bg-white/[0.05] hover:bg-white/[0.12] text-slate-200 font-bold text-xs transition">Schließen</button>
+            <!-- 4 Haupt-KPIs in einer kompakten Zeile -->
+            <div id="ma-kpi-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 shrink-0"></div>
+
+            <!-- 2-Spalten-Dashboard: Links Graph + Bewertung + Profil · Rechts Zug-Timeline -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-3.5 flex-1 min-h-0 items-stretch">
+                <!-- Linke Spalte (7 Cols) -->
+                <div class="lg:col-span-7 flex flex-col gap-3 min-h-0">
+                    <!-- Vorteils-Graph (Eval-Chart) -->
+                    <div class="apple-analysis-well rounded-2xl p-3.5 flex flex-col gap-2">
+                        <div
+                            class="flex flex-wrap items-center justify-between gap-2 text-[10px] mono uppercase tracking-wider">
+                            <span class="font-bold text-slate-300">Vorteils-Verlauf (Kartendifferenz)</span>
+                            <span class="text-slate-500">Cyan = Du vorn · Gelb = Restock · Rot = Fehler</span>
+                        </div>
+                        <div id="ma-eval-chart"></div>
+                        <div class="pt-2 border-t border-white/[0.06] text-[11.5px] text-slate-300 flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0"></span>
+                            <span id="ma-key-moment" class="leading-snug"></span>
+                        </div>
+                    </div>
+
+                    <!-- Zug-Bewertung (volle Breite der linken Spalte → alle 5 Labels sauber lesbar) -->
+                    <div class="apple-analysis-well rounded-2xl p-3 space-y-2">
+                        <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mono">
+                            Zug-Bewertung</div>
+                        <div id="ma-quality-grid" class="grid grid-cols-5 gap-2"></div>
+                    </div>
+
+                    <!-- Match-Profil (kompakt nebeneinander im 3-Spalten-Raster ohne Leerraum) -->
+                    <div class="apple-analysis-well rounded-2xl p-3 space-y-2">
+                        <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mono">
+                            Match-Profil</div>
+                        <div id="ma-prop-bars" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
+                    </div>
+                </div>
+
+                <!-- Rechte Spalte (5 Cols): Scrollbare Zug-Timeline bündig zur linken Spalte -->
+                <div class="lg:col-span-5 apple-analysis-well rounded-2xl p-3.5 flex flex-col gap-2 min-h-0">
+                    <div
+                        class="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400 mono shrink-0">
+                        <span>Deine Züge</span>
+                        <span class="text-slate-500">Zeit · Bewertung · Diff</span>
+                    </div>
+                    <div id="ma-move-timeline"
+                        class="flex-1 min-h-0 max-h-[260px] lg:max-h-[370px] overflow-y-auto space-y-1.5 pr-1"></div>
+                </div>
             </div>
         </div>
     </div>

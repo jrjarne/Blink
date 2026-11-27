@@ -375,6 +375,64 @@ function updatePlayerProfileField(key, value) {
     p2pSyncPlayerProfile();
 }
 
+function updatePlayerProfileColorLive(key, value) {
+    const next = sanitizePlayerProfile({ ...playerProfileState, [key]: value });
+    if (playerProfileState[key] === next[key]) return;
+    Object.assign(playerProfileState, next);
+    syncPlayerProfileUI();
+    syncProfilePreviewOnly();
+    syncColorGridSelection(
+        key === 'hairColor' ? 'profile-haircolor-grid' : 'profile-outfitcolor-grid',
+        key === 'hairColor' ? PLAYER_HAIR_COLORS : PLAYER_OUTFIT_COLORS,
+        playerProfileState[key]
+    );
+}
+
+function commitPlayerProfileColor(key, value) {
+    const next = sanitizePlayerProfile({ ...playerProfileState, [key]: value });
+    Object.assign(playerProfileState, next);
+    savePlayerProfileState();
+    playSound('tick');
+    syncPlayerProfileUI();
+    renderProfileModalUI();
+    p2pSyncPlayerProfile();
+}
+
+function syncProfilePreviewOnly() {
+    const prof = playerProfileState;
+    const col = prof.outfitColor || '#22d3ee';
+    const hdrBadge = document.getElementById('profile-header-badge');
+    if (hdrBadge) hdrBadge.innerHTML = getPlayerAvatarSVG(prof, 30);
+    const prevAvatar = document.getElementById('profile-preview-avatar');
+    if (prevAvatar) {
+        prevAvatar.innerHTML = getPlayerAvatarSVG(prof, 84);
+        prevAvatar.style.borderColor = `${col}99`;
+        prevAvatar.style.background = `radial-gradient(circle at 50% 35%, ${col}30, rgba(15,23,42,0.45))`;
+    }
+}
+
+function syncColorGridSelection(elId, list, currentHex) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const cur = (currentHex || '').toLowerCase();
+    const isPreset = list.some(h => h.toLowerCase() === cur);
+
+    el.querySelectorAll('button.profile-swatch[data-hex]').forEach(btn => {
+        btn.classList.toggle('is-selected', (btn.dataset.hex || '').toLowerCase() === cur);
+    });
+
+    const customLbl = el.querySelector('.profile-swatch-custom');
+    if (customLbl) {
+        customLbl.classList.toggle('is-selected', !isPreset);
+        customLbl.classList.toggle('has-custom-color', !isPreset);
+        customLbl.style.background = !isPreset ? currentHex : '';
+        const inp = customLbl.querySelector('input[type="color"]');
+        if (inp && document.activeElement !== inp && inp.value.toLowerCase() !== cur) {
+            inp.value = currentHex;
+        }
+    }
+}
+
 function randomizePlayerProfile() {
     const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
     Object.assign(playerProfileState, {
@@ -398,22 +456,17 @@ function p2pSyncPlayerProfile() {
     }
 }
 
-function toggleProfileModal() {
-    const modal = document.getElementById('profile-modal');
-    const isOpening = modal && modal.classList.contains('hidden');
-    if (isOpening) {
-        playSound('tick');
-        renderProfileModalUI();
+function toggleProfileModal(tab = 'profile') {
+    const sec = tab === 'account' || tab === 'cloud' ? 'cloud' : 'profile';
+    if (typeof toggleSettingsModal === 'function') {
+        toggleSettingsModal(sec);
     }
-    toggleModalState('profile-modal');
 }
 
 function openProfileFromSettings() {
-    const settings = document.getElementById('settings-modal');
-    if (settings && !settings.classList.contains('hidden')) {
-        toggleModalState('settings-modal');
+    if (typeof setSettingsSection === 'function') {
+        setSettingsSection('profile', false);
     }
-    setTimeout(() => toggleProfileModal(), 160);
 }
 
 function syncPlayerProfileUI() {
@@ -423,11 +476,24 @@ function syncPlayerProfileUI() {
 
     const headerBtn = document.getElementById('header-profile-btn');
     if (headerBtn) {
-        headerBtn.innerHTML = getPlayerAvatarSVG(prof, 28);
-        headerBtn.style.borderColor = `${col}88`;
-        headerBtn.style.background = `${col}1c`;
-        headerBtn.title = `${pName} (Profil & Charakter ändern)`;
+        // Cloud-Status-Punkt bewahren, falls bereits angehängt
+        const existingDot = document.getElementById('header-cloud-dot');
+        headerBtn.innerHTML = getPlayerAvatarSVG(prof, 26);
+        if (existingDot) headerBtn.appendChild(existingDot);
+        headerBtn.style.borderColor = 'transparent';
+        headerBtn.style.background = `${col}22`;
     }
+
+    const iosAvatar = document.getElementById('ios-sidebar-avatar');
+    if (iosAvatar) {
+        iosAvatar.innerHTML = getPlayerAvatarSVG(prof, 40);
+        iosAvatar.style.borderColor = `${col}99`;
+        iosAvatar.style.background = `radial-gradient(circle at 50% 35%, ${col}28, rgba(15,23,42,0.4))`;
+    }
+    const iosName = document.getElementById('ios-sidebar-name');
+    if (iosName) iosName.textContent = pName;
+    const iosElo = document.getElementById('ios-sidebar-elo');
+    if (iosElo && typeof playerEloState !== 'undefined') iosElo.textContent = `${playerEloState.elo} Elo`;
 
     const arenaAvatar = document.getElementById('player-avatar-slot');
     if (arenaAvatar) {
@@ -534,15 +600,24 @@ function renderProfileModalUI() {
     const renderColorGrid = (elId, list, currentHex, fieldKey) => {
         const el = document.getElementById(elId);
         if (!el) return;
-        el.innerHTML = list.map(hex => `
-                    <button type="button" onclick="updatePlayerProfileField('${fieldKey}', '${hex}')"
-                        class="profile-swatch ${currentHex.toLowerCase() === hex.toLowerCase() ? 'is-selected' : ''}"
-                        style="background:${hex}"></button>
+        if (el.dataset.rendered !== '1') {
+            el.dataset.rendered = '1';
+            el.innerHTML = list.map(hex => `
+                    <button type="button" data-hex="${hex}" onclick="updatePlayerProfileField('${fieldKey}', '${hex}')"
+                        class="profile-swatch" style="background:${hex}" aria-label="Farbe ${hex}"></button>
                 `).join('') + `
                     <label title="Eigene Farbe wählen" class="profile-swatch profile-swatch-custom">
-                        <span>+</span>
-                        <input type="color" value="${currentHex}" oninput="updatePlayerProfileField('${fieldKey}', this.value)" class="opacity-0 absolute inset-0 cursor-pointer">
+                        <span class="profile-swatch-plus" aria-hidden="true">+</span>
+                        <input type="color" value="${currentHex}" aria-label="Eigene Farbe wählen"
+                            class="profile-color-input">
                     </label>`;
+            const inp = el.querySelector('input[type="color"]');
+            if (inp) {
+                inp.addEventListener('input', (e) => updatePlayerProfileColorLive(fieldKey, e.target.value));
+                inp.addEventListener('change', (e) => commitPlayerProfileColor(fieldKey, e.target.value));
+            }
+        }
+        syncColorGridSelection(elId, list, currentHex);
     };
     renderColorGrid('profile-haircolor-grid', PLAYER_HAIR_COLORS, prof.hairColor, 'hairColor');
     renderColorGrid('profile-outfitcolor-grid', PLAYER_OUTFIT_COLORS, prof.outfitColor, 'outfitColor');
@@ -659,39 +734,82 @@ function toggleEloOverviewModal() {
 function renderEloOverviewModal() {
     const list = document.getElementById('elo-overview-list');
     if (!list) return;
-    const pElo = playerEloState.elo;
-    const pTier = getEloRankInfo(pElo).tier;
+    const pElo = Math.round(playerEloState.elo || 700);
+    const pRank = getEloRankInfo(pElo);
+    const pTier = pRank.tier;
+    const pIdx = Math.max(0, ELO_RANK_TIERS.findIndex(t => t.tier === pTier));
+    const nextTier = ELO_RANK_TIERS[pIdx + 1] || null;
     const activeAI = typeof getActiveTrainedAI === 'function' ? getActiveTrainedAI() : null;
     const aiTier = activeAI ? getEloRankInfo(activeAI.elo).tier : null;
     const playerAvatar = (typeof getPlayerAvatarSVG === 'function' && typeof playerProfileState !== 'undefined')
-        ? getPlayerAvatarSVG(playerProfileState, 15)
+        ? getPlayerAvatarSVG(playerProfileState, 16)
         : '';
 
-    list.innerHTML = ELO_RANK_TIERS.map(t => {
+    // Kontinuierlicher Fortschritt (0%..100%) über die 9 aufsteigenden Ränge von links nach rechts
+    const curTierObj = ELO_RANK_TIERS[pIdx];
+    let withinTier = 0.5;
+    if (!nextTier) {
+        withinTier = 1;
+    } else if (pIdx === 0) {
+        withinTier = Math.max(0.08, Math.min(0.95, pElo / 700));
+    } else {
+        const span = Math.max(1, (curTierObj.max + 1) - curTierObj.min);
+        withinTier = Math.max(0, Math.min(1, (pElo - curTierObj.min) / span));
+    }
+    const progressPct = Math.max(3, Math.min(100, ((pIdx + withinTier) / ELO_RANK_TIERS.length) * 100));
+    const toNextElo = nextTier ? Math.max(1, nextTier.min - pElo) : 0;
+
+    const stepsHtml = ELO_RANK_TIERS.map((t, idx) => {
         const isPlayer = t.tier === pTier;
         const isAI = activeAI && t.tier === aiTier;
-        const rankStyle = getEloRankInfo(Math.max(t.min, 500)).cls;
+        const isReached = idx < pIdx;
+        const barH = 38 + idx * 14; // sichtbar aufsteigend von 38px (Iron) bis 150px (Grandmaster)
+        const shortRange = t.range.replace(' Elo', '');
         return `
-                    <div class="apple-elo-card ${isPlayer ? 'is-player-tier' : ''}">
-                        <div class="flex items-center justify-between gap-2">
-                            <div class="flex items-center gap-2.5 min-w-0">
-                                <span class="apple-elo-icon-box">${getEloRankSVG(t.tier, 20)}</span>
-                                <div class="min-w-0">
-                                    <div class="text-xs font-extrabold text-white leading-tight truncate">${t.name}</div>
-                                    <div class="text-[10.5px] mono text-slate-400 leading-tight mt-0.5">${t.range}</div>
-                                </div>
-                            </div>
-                            <span class="px-2 py-0.5 rounded-full border text-[9px] mono font-bold shrink-0 ${rankStyle}">${t.name}</span>
-                        </div>
-                        ${(isPlayer || isAI) ? `
-                            <div class="flex flex-wrap items-center gap-1.5 pt-2 mt-2 apple-elo-badges-row">
-                                ${isPlayer ? `<span class="inline-flex items-center gap-1 ${playerAvatar ? 'pl-1 pr-2' : 'px-2'} py-0.5 rounded-full bg-cyan-400 text-slate-950 text-[9.5px] mono font-extrabold">${playerAvatar}<span>${getPlayerName()} · ${pElo}</span></span>` : ''}
-                                ${isAI ? `<span class="px-2 py-0.5 rounded-full bg-emerald-400/20 border border-emerald-400/40 text-emerald-300 text-[9.5px] mono font-bold">${activeAI.name} · ${activeAI.elo}</span>` : ''}
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
+            <div class="elo-step-col ${isPlayer ? 'is-player' : ''} ${isReached ? 'is-reached' : ''}">
+                <div class="elo-step-markers">
+                    ${isPlayer ? `<span class="elo-marker-pill is-player-pill" title="${getPlayerName()} · ${pElo} Elo">${playerAvatar}<span>${pElo}</span></span>` : ''}
+                    ${isAI ? `<span class="elo-marker-pill is-ai-pill" title="${activeAI.name} · ${activeAI.elo} Elo">KI · ${activeAI.elo}</span>` : ''}
+                </div>
+                <div class="elo-step-bar" style="height:${barH}px">
+                    <span class="elo-step-icon">${getEloRankSVG(t.tier, 22)}</span>
+                </div>
+                <div class="elo-step-meta">
+                    <div class="elo-step-name">${t.name}</div>
+                    <div class="elo-step-range mono">${shortRange}</div>
+                </div>
+            </div>
+        `;
     }).join('');
+
+    list.innerHTML = `
+        <div class="elo-ladder-summary">
+            <div class="flex items-center gap-2.5 min-w-0">
+                <span class="elo-summary-icon">${getEloRankSVG(pTier, 22)}</span>
+                <div class="min-w-0">
+                    <div class="text-xs font-extrabold text-white truncate">${getPlayerName()} · <span class="mono text-cyan-300">${pElo} Elo</span></div>
+                    <div class="text-[10.5px] mono text-slate-400">Aktueller Rang: <strong class="text-slate-200">${pRank.name}</strong></div>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 text-[11px] mono">
+                ${nextTier
+                    ? `<span class="elo-next-pill">Noch <strong class="text-cyan-300">${toNextElo} Elo</strong> bis ${nextTier.name}</span>`
+                    : `<span class="elo-next-pill is-max">Höchster Rang erreicht</span>`
+                }
+                ${activeAI ? `<span class="elo-ai-pill">KI ${activeAI.name}: ${activeAI.elo}</span>` : ''}
+            </div>
+        </div>
+
+        <div class="elo-ladder-scroll">
+            <div class="elo-ladder-inner">
+                <div class="elo-ladder-grid">${stepsHtml}</div>
+                <div class="elo-track-rail" aria-hidden="true">
+                    <div class="elo-track-fill" style="width:${progressPct.toFixed(1)}%"></div>
+                    <div class="elo-track-dot" style="left:${progressPct.toFixed(1)}%"></div>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 function renderEloBadgesInArena() {
@@ -725,12 +843,195 @@ function closeMatchSummaryOverlay() {
     if (overlay) overlay.classList.add('hidden');
 }
 
+function animateEloTacho(el, fromVal, toVal, durationMs = 920) {
+    if (!el) return;
+    const startVal = Math.round(fromVal);
+    const endVal = Math.round(toVal);
+    if (startVal === endVal || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+        el.textContent = String(endVal);
+        return;
+    }
+    const startTs = performance.now();
+    const diff = endVal - startVal;
+    el.textContent = String(startVal);
+    const step = (now) => {
+        const p = Math.min(1, (now - startTs) / durationMs);
+        const eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = String(Math.round(startVal + diff * eased));
+        if (p < 1) {
+            requestAnimationFrame(step);
+        } else {
+            el.textContent = String(endVal);
+            el.classList.remove('is-tacho-landed');
+            void el.offsetWidth;
+            el.classList.add('is-tacho-landed');
+        }
+    };
+    requestAnimationFrame(step);
+}
+
+function getTierProgressPct(eloVal) {
+    const rank = getEloRankInfo(eloVal);
+    const idx = Math.max(0, ELO_RANK_TIERS.findIndex(t => t.tier === rank.tier));
+    const cur = ELO_RANK_TIERS[idx];
+    const next = ELO_RANK_TIERS[idx + 1] || null;
+    if (!next) return { idx, cur, next: null, pct: 100 };
+    if (idx === 0) return { idx, cur, next, pct: Math.max(4, Math.min(99, (eloVal / 700) * 100)) };
+    const span = Math.max(1, (cur.max + 1) - cur.min);
+    const pct = Math.max(2, Math.min(99, ((eloVal - cur.min) / span) * 100));
+    return { idx, cur, next, pct };
+}
+
+let rankUpAnimRaf = null;
+let rankUpTimers = [];
+
+function closeRankUpChoreography() {
+    const ov = document.getElementById('rankup-cinematic-overlay');
+    if (rankUpAnimRaf) { cancelAnimationFrame(rankUpAnimRaf); rankUpAnimRaf = null; }
+    rankUpTimers.forEach(t => clearTimeout(t));
+    rankUpTimers = [];
+    if (!ov) return;
+    ov.classList.remove('is-open', 'is-revealed');
+    setTimeout(() => ov.classList.add('hidden'), 260);
+}
+
+function startRankUpSparks(canvas, accentHex = '#22d3ee') {
+    if (!canvas || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const resize = () => {
+        canvas.width = Math.round(window.innerWidth * dpr);
+        canvas.height = Math.round(window.innerHeight * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    resize();
+
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2 - 24;
+    const palette = [accentHex, '#fde68a', '#ffffff', '#67e8f9'];
+    const sparks = [];
+    const spawnBurst = (count, speedMin, speedMax) => {
+        for (let i = 0; i < count; i++) {
+            const ang = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.28;
+            const spd = speedMin + Math.random() * (speedMax - speedMin);
+            sparks.push({
+                x: cx + Math.cos(ang) * 16,
+                y: cy + Math.sin(ang) * 16,
+                vx: Math.cos(ang) * spd,
+                vy: Math.sin(ang) * spd - 0.5,
+                r: 1.4 + Math.random() * 2.4,
+                life: 1,
+                decay: 0.011 + Math.random() * 0.014,
+                col: palette[i % palette.length]
+            });
+        }
+    };
+
+    // Sanfter Auftakt + Haupt-Burst synchron zum Emblem-Morph
+    spawnBurst(22, 1.2, 3.2);
+    rankUpTimers.push(setTimeout(() => spawnBurst(68, 2.8, 8.6), 540));
+
+    const loop = () => {
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        let alive = 0;
+        for (let i = 0; i < sparks.length; i++) {
+            const s = sparks[i];
+            if (s.life <= 0) continue;
+            alive++;
+            s.x += s.vx;
+            s.y += s.vy;
+            s.vx *= 0.968;
+            s.vy = s.vy * 0.968 + 0.045;
+            s.life -= s.decay;
+            ctx.globalAlpha = Math.max(0, s.life);
+            ctx.fillStyle = s.col;
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        if (alive > 0) {
+            rankUpAnimRaf = requestAnimationFrame(loop);
+        } else {
+            rankUpAnimRaf = null;
+        }
+    };
+    rankUpAnimRaf = requestAnimationFrame(loop);
+}
+
+function triggerRankUpChoreography({ oldTier, oldName, newTier, newName, beforeElo, afterElo, delta }) {
+    const ov = document.getElementById('rankup-cinematic-overlay');
+    if (!ov) return;
+    if (rankUpAnimRaf) { cancelAnimationFrame(rankUpAnimRaf); rankUpAnimRaf = null; }
+    rankUpTimers.forEach(t => clearTimeout(t));
+    rankUpTimers = [];
+
+    const oldCrest = document.getElementById('rankup-old-crest');
+    const newCrest = document.getElementById('rankup-new-crest');
+    const titleEl = document.getElementById('rankup-title');
+    const subEl = document.getElementById('rankup-transition-label');
+    const tachoEl = document.getElementById('rankup-tacho-val');
+    const deltaEl = document.getElementById('rankup-tacho-delta');
+    const canvas = document.getElementById('rankup-canvas');
+
+    if (oldCrest) oldCrest.innerHTML = getEloRankSVG(oldTier, 64);
+    if (newCrest) newCrest.innerHTML = getEloRankSVG(newTier, 72);
+    if (titleEl) titleEl.textContent = newName;
+    if (subEl) subEl.textContent = `${oldName} → ${newName}`;
+    if (tachoEl) tachoEl.textContent = String(Math.round(beforeElo));
+    if (deltaEl) deltaEl.textContent = `${delta >= 0 ? '+' : ''}${delta}`;
+
+    ov.classList.remove('hidden', 'is-open', 'is-revealed');
+    void ov.offsetWidth;
+    ov.classList.add('is-open');
+
+    const tierAccentMap = {
+        iron: '#94a3b8', bronze: '#fb923c', silver: '#e2e8f0', gold: '#facc15',
+        platinum: '#22d3ee', emerald: '#34d399', diamond: '#60a5fa', master: '#c084fc', grandmaster: '#fb7185'
+    };
+    const accent = tierAccentMap[newTier] || '#22d3ee';
+    ov.style.setProperty('--rankup-accent', accent);
+
+    startRankUpSparks(canvas, accent);
+    if (typeof playSound === 'function') playSound('win');
+
+    rankUpTimers.push(setTimeout(() => {
+        ov.classList.add('is-revealed');
+        animateEloTacho(tachoEl, beforeElo, afterElo, 950);
+    }, 520));
+}
+
+function previewRankUpChoreography() {
+    const eloModal = document.getElementById('elo-overview-modal');
+    if (eloModal && !eloModal.classList.contains('hidden') && typeof toggleModalState === 'function') {
+        toggleModalState('elo-overview-modal');
+    }
+    const curElo = Math.round(playerEloState.elo || 700);
+    const curRank = getEloRankInfo(curElo);
+    const idx = Math.max(0, ELO_RANK_TIERS.findIndex(t => t.tier === curRank.tier));
+    const fromTier = ELO_RANK_TIERS[Math.min(idx, ELO_RANK_TIERS.length - 2)];
+    const toTier = ELO_RANK_TIERS[Math.min(idx + 1, ELO_RANK_TIERS.length - 1)];
+    const demoBefore = Math.max(fromTier.min, toTier.min - 18);
+    const demoAfter = toTier.min + 12;
+    triggerRankUpChoreography({
+        oldTier: fromTier.tier,
+        oldName: fromTier.name,
+        newTier: toTier.tier,
+        newName: toTier.name,
+        beforeElo: demoBefore,
+        afterElo: demoAfter,
+        delta: demoAfter - demoBefore
+    });
+}
+
 function showMatchSummaryOverlay({ didWin, oppLabel, beforePlayerElo, afterPlayerElo, playerDelta, beforeOppElo, afterOppElo, oppDelta }) {
     const overlay = document.getElementById('match-summary-overlay');
     const badgeEl = document.getElementById('match-summary-badge');
     const titleEl = document.getElementById('match-summary-title');
     const subEl = document.getElementById('match-summary-subtitle');
     const eloGrid = document.getElementById('match-summary-elo-grid');
+    const trackEl = document.getElementById('match-summary-elo-track');
     if (!overlay || !eloGrid) return;
 
     const fmtDelta = (d) => `${d >= 0 ? '+' : ''}${d}`;
@@ -763,35 +1064,85 @@ function showMatchSummaryOverlay({ didWin, oppLabel, beforePlayerElo, afterPlaye
         }
     }
 
+    const oldRank = getEloRankInfo(beforePlayerElo);
     const pRank = getEloRankInfo(afterPlayerElo);
     const oRank = getEloRankInfo(afterOppElo);
+    const beforeProg = getTierProgressPct(beforePlayerElo);
+    const afterProg = getTierProgressPct(afterPlayerElo);
+    const rankedUp = afterProg.idx > beforeProg.idx;
 
     eloGrid.innerHTML = `
-                <div class="rounded-2xl bg-slate-950/85 border border-white/[0.08] p-3.5 text-left space-y-1.5">
+                <div class="rounded-2xl bg-slate-950/85 border border-white/[0.08] p-2.5 text-left space-y-1">
                     <div class="flex items-center justify-between gap-1">
-                        <span class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-slate-400 mono truncate">${getPlayerAvatarSVG(playerProfileState, 18)}<span class="truncate">${getPlayerName()}</span></span>
-                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[9.5px] mono font-bold ${pRank.cls}">${getEloRankSVG(pRank.tier, 12)}${pRank.name}</span>
+                        <span class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-slate-400 mono truncate">${getPlayerAvatarSVG(playerProfileState, 16)}<span class="truncate">${getPlayerName()}</span></span>
+                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[9px] mono font-bold ${pRank.cls}">${getEloRankSVG(pRank.tier, 11)}${pRank.name}</span>
                     </div>
-                    <div class="flex items-baseline gap-2">
-                        <span class="text-xl font-extrabold text-cyan-300 mono">${afterPlayerElo}</span>
-                        <span class="text-xs font-bold mono ${deltaCls(playerDelta)}">(${fmtDelta(playerDelta)})</span>
+                    <div class="flex items-baseline justify-between gap-2">
+                        <div class="flex items-baseline gap-1.5">
+                            <span id="ms-player-elo-tacho" class="text-lg font-extrabold text-cyan-300 mono ms-tacho-val">${beforePlayerElo}</span>
+                            <span class="text-[11px] font-bold mono ms-delta-pop ${deltaCls(playerDelta)}">(${fmtDelta(playerDelta)})</span>
+                        </div>
+                        <span class="text-[9.5px] mono text-slate-500">vorher ${beforePlayerElo}</span>
                     </div>
-                    <div class="text-[10px] mono text-slate-500">Vorher: ${beforePlayerElo} Elo</div>
                 </div>
-                <div class="rounded-2xl bg-slate-950/85 border border-white/[0.08] p-3.5 text-left space-y-1.5">
+                <div class="rounded-2xl bg-slate-950/85 border border-white/[0.08] p-2.5 text-left space-y-1">
                     <div class="flex items-center justify-between gap-1">
-                        <span class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-slate-400 mono truncate">${getOpponentAvatarSVG(18)}<span class="truncate">${oppLabel}</span></span>
-                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[9.5px] mono font-bold ${oRank.cls}">${getEloRankSVG(oRank.tier, 12)}${oRank.name}</span>
+                        <span class="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-slate-400 mono truncate">${getOpponentAvatarSVG(16)}<span class="truncate">${oppLabel}</span></span>
+                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[9px] mono font-bold ${oRank.cls}">${getEloRankSVG(oRank.tier, 11)}${oRank.name}</span>
                     </div>
-                    <div class="flex items-baseline gap-2">
-                        <span class="text-xl font-extrabold text-white mono">${afterOppElo}</span>
-                        ${oppDelta !== 0 ? `<span class="text-xs font-bold mono ${deltaCls(oppDelta)}">(${fmtDelta(oppDelta)})</span>` : ''}
+                    <div class="flex items-baseline justify-between gap-2">
+                        <div class="flex items-baseline gap-1.5">
+                            <span id="ms-opp-elo-tacho" class="text-lg font-extrabold text-white mono">${beforeOppElo}</span>
+                            ${oppDelta !== 0 ? `<span class="text-[11px] font-bold mono ${deltaCls(oppDelta)}">(${fmtDelta(oppDelta)})</span>` : ''}
+                        </div>
+                        <span class="text-[9.5px] mono text-slate-500">${oppDelta !== 0 ? `vorher ${beforeOppElo}` : 'fest'}</span>
                     </div>
-                    <div class="text-[10px] mono text-slate-500">${oppDelta !== 0 ? `Vorher: ${beforeOppElo} Elo` : 'Feste Gegner-Elo'}</div>
                 </div>
             `;
 
+    if (trackEl) {
+        const startPct = rankedUp ? 6 : beforeProg.pct;
+        const endPct = afterProg.pct;
+        trackEl.classList.remove('hidden');
+        trackEl.innerHTML = `
+            <div class="ms-elo-track-box">
+                <div class="flex items-center justify-between text-[10px] mono text-slate-400 mb-1.5">
+                    <span class="inline-flex items-center gap-1 font-bold text-slate-200">${getEloRankSVG(pRank.tier, 13)}${pRank.name}</span>
+                    <span>${afterProg.next ? `Noch <strong class="text-cyan-300">${Math.max(1, afterProg.next.min - afterPlayerElo)}</strong> bis ${afterProg.next.name}` : 'Höchster Rang'}</span>
+                </div>
+                <div class="ms-elo-rail">
+                    <div id="ms-elo-fill" class="ms-elo-fill ${rankedUp ? 'is-rankup' : ''}" style="width:${startPct.toFixed(1)}%"></div>
+                    <div id="ms-elo-dot" class="ms-elo-dot" style="left:${startPct.toFixed(1)}%"></div>
+                </div>
+            </div>
+        `;
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                const fill = document.getElementById('ms-elo-fill');
+                const dot = document.getElementById('ms-elo-dot');
+                if (fill) fill.style.width = `${endPct.toFixed(1)}%`;
+                if (dot) dot.style.left = `${endPct.toFixed(1)}%`;
+            });
+        });
+    }
+
     overlay.classList.remove('hidden');
+    animateEloTacho(document.getElementById('ms-player-elo-tacho'), beforePlayerElo, afterPlayerElo, 950);
+    if (oppDelta !== 0) animateEloTacho(document.getElementById('ms-opp-elo-tacho'), beforeOppElo, afterOppElo, 950);
+
+    if (rankedUp) {
+        setTimeout(() => {
+            triggerRankUpChoreography({
+                oldTier: oldRank.tier,
+                oldName: oldRank.name,
+                newTier: pRank.tier,
+                newName: pRank.name,
+                beforeElo: beforePlayerElo,
+                afterElo: afterPlayerElo,
+                delta: playerDelta
+            });
+        }, 480);
+    }
 }
 
 function updatePlayerEloAfterMatch(oppElo, didWin, oppLabel, kFactor = 32) {
